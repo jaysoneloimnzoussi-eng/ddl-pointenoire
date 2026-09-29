@@ -80,7 +80,8 @@ export const VerticalSidebar: React.FC = () => {
     setIsMobileSidebarOpen,
     isTabletBrigadeMode,
     setIsTabletBrigadeMode,
-    currentUser
+    currentUser,
+    logout
   } = useSession();
 
   const handleSelectModule = (id: string) => {
@@ -236,8 +237,8 @@ export const VerticalSidebar: React.FC = () => {
           ))}
         </div>
 
-        {/* Sidebar Footer with PTA Certification */}
-        <div className="p-3 border-t border-[#033468] bg-[#011b36] text-[10px] text-slate-400">
+        {/* Sidebar Footer with PTA Certification & Logout */}
+        <div className="p-3 border-t border-[#033468] bg-[#011b36] text-[10px] text-slate-400 space-y-2">
           {!isSidebarCollapsed ? (
             <div className="flex items-center justify-between">
               <div>
@@ -253,6 +254,22 @@ export const VerticalSidebar: React.FC = () => {
               2026
             </div>
           )}
+
+          {/* Quick logout action */}
+          <button
+            onClick={() => {
+              setIsMobileSidebarOpen(false);
+              logout();
+            }}
+            className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} px-2 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/40 transition text-xs font-semibold`}
+            title="Quitter la session"
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="text-red-400">⎋</span>
+              {!isSidebarCollapsed && <span>Déconnexion</span>}
+            </div>
+            {!isSidebarCollapsed && <span className="text-[9px] text-red-400 font-mono-ref">Fermer</span>}
+          </button>
         </div>
       </aside>
     </>

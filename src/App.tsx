@@ -2,6 +2,7 @@ import React from 'react';
 import { SessionProvider, useSession } from './context/SessionContext';
 import { RepublicHeader } from './components/common/RepublicHeader';
 import { VerticalSidebar } from './components/common/VerticalSidebar';
+import { LoginPage } from './components/auth/LoginPage';
 import { DashboardModule } from './components/modules/DashboardModule';
 import { FieldRecensementModule } from './components/modules/FieldRecensementModule';
 import { MobileAgentCalendarModule } from './components/modules/MobileAgentCalendarModule';
@@ -20,7 +21,19 @@ import { REPUBLIQUE_CONGO } from './constants/referential';
 import { AlertCircle, CheckCircle, Info, X } from 'lucide-react';
 
 const AppContent: React.FC = () => {
-  const { activeModule, isTabletBrigadeMode, activeNotification, clearNotification } = useSession();
+  const {
+    isAuthenticated,
+    login,
+    activeModule,
+    isTabletBrigadeMode,
+    activeNotification,
+    clearNotification
+  } = useSession();
+
+  // If not authenticated, render LoginPage
+  if (!isAuthenticated) {
+    return <LoginPage onLoginSuccess={login} />;
+  }
 
   const renderActiveModule = () => {
     switch (activeModule) {

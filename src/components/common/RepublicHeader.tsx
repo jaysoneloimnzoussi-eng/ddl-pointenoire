@@ -20,7 +20,8 @@ import {
   ChevronDown,
   Bell,
   RefreshCw,
-  Menu
+  Menu,
+  LogOut
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { APP_USERS, REPUBLIQUE_CONGO } from '../../constants/referential';
@@ -47,6 +48,7 @@ export const RepublicHeader: React.FC = () => {
   const {
     currentUser,
     switchUserById,
+    logout,
     activeModule,
     setActiveModule,
     isTabletBrigadeMode,
@@ -263,6 +265,20 @@ export const RepublicHeader: React.FC = () => {
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Déconnexion Option */}
+                <div className="p-1.5 border-t border-slate-100 bg-slate-50/70">
+                  <button
+                    onClick={() => {
+                      setUserDropdownOpen(false);
+                      logout();
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-md transition flex items-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Déconnexion de la session</span>
+                  </button>
                 </div>
               </div>
             )}
