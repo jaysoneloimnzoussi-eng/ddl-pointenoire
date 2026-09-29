@@ -249,7 +249,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                     <div className="h-12 flex items-center justify-center italic text-slate-400 font-serif text-sm">
                       [Signature & Sceau]
                     </div>
-                    <p className="font-extrabold text-[#022448] text-xs">Jacques Alphonse MATOKO</p>
+                    <p className="font-extrabold text-[#022448] text-xs">Jean Richard NTSEKE NGOUAKA</p>
                   </div>
                 </div>
               </div>
@@ -460,7 +460,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                     <div className="h-12 flex items-center justify-center text-slate-400 text-xs italic font-serif">
                       [Signature officielle et Cachet]
                     </div>
-                    <p className="font-extrabold text-[#022448] text-xs">Jacques Alphonse MATOKO</p>
+                    <p className="font-extrabold text-[#022448] text-xs">Jean Richard NTSEKE NGOUAKA</p>
                   </div>
                 </div>
               </div>

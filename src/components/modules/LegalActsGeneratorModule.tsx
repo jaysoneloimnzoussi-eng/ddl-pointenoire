@@ -68,8 +68,8 @@ export const LegalActsGeneratorModule: React.FC = () => {
       date_emission: new Date().toISOString().split('T')[0],
       delai_huitaine_date: delai,
       motif,
-      signataire_nom: currentUser.role === 'DIRECTEUR' ? currentUser.name : 'Jacques Alphonse MATOKO',
-      signataire_titre: currentUser.role === 'DIRECTEUR' ? currentUser.title : 'Directeur Départemental des Loisirs de Pointe-Noire',
+      signataire_nom: currentUser.role === 'DIRECTEUR' ? currentUser.name : 'Jean Richard NTSEKE NGOUAKA',
+      signataire_titre: currentUser.role === 'DIRECTEUR' ? currentUser.title : 'Directeur Départemental des Loisirs de Pointe-Noire (DDL-PN)',
       agent_notificateur: `${currentUser.name} (${currentUser.badge})`,
       visa_lois: [
         'Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs en République du Congo',
@@ -262,7 +262,7 @@ export const LegalActsGeneratorModule: React.FC = () => {
 
               <div className="bg-slate-50 p-3 rounded border text-[11px] text-slate-600 space-y-1">
                 <p className="font-bold text-slate-800">Signataire de l'acte :</p>
-                <p>Jacques Alphonse MATOKO (Directeur Départemental des Loisirs de Pointe-Noire)</p>
+                <p>Jean Richard NTSEKE NGOUAKA (Directeur Départemental des Loisirs de Pointe-Noire)</p>
                 <p className="text-slate-500">Agent notificateur : {currentUser.name} ({currentUser.badge})</p>
               </div>
 

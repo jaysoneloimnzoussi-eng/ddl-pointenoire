@@ -41,7 +41,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         // fallback
       }
     }
-    return APP_USERS[0]; // Default: Directeur Jacques Alphonse MATOKO
+    return APP_USERS[0]; // Default: Jacques MATOKO (Admin / Resp. SAA)
   });
 
   const [activeModule, setActiveModule] = useState<string>(() => {

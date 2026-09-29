@@ -32,7 +32,7 @@ export const TransmissionDglModule: React.FC = () => {
       date: '2026-08-20',
       count: 18,
       status: 'REÇU_A_BRAZZAVILLE',
-      signataire: 'Jacques Alphonse MATOKO',
+      signataire: 'Jean Richard NTSEKE NGOUAKA',
       totalAmount: 4680000
     },
     {
@@ -40,7 +40,7 @@ export const TransmissionDglModule: React.FC = () => {
       date: '2026-05-15',
       count: 20,
       status: 'ARRETES_SIGNES_MINISTERE',
-      signataire: 'Jacques Alphonse MATOKO',
+      signataire: 'Jean Richard NTSEKE NGOUAKA',
       totalAmount: 5200000
     },
     {
@@ -48,7 +48,7 @@ export const TransmissionDglModule: React.FC = () => {
       date: '2026-02-28',
       count: 14,
       status: 'ARRETES_SIGNES_MINISTERE',
-      signataire: 'Jacques Alphonse MATOKO',
+      signataire: 'Jean Richard NTSEKE NGOUAKA',
       totalAmount: 3840000
     }
   ];

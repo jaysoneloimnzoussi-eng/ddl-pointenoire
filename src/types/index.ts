@@ -120,6 +120,7 @@ export interface AgentTourneeEvent {
 }
 
 export type UserRole =
+  | 'ADMIN'
   | 'DIRECTEUR'
   | 'CHEF_SAA'
   | 'AGENT_SAA'

@@ -135,7 +135,7 @@ function generateSeedActs(): OfficialLegalAct[] {
       date_emission: '2026-09-20',
       delai_huitaine_date: '2026-09-27',
       motif: 'Exploitation sans agrément d’ouverture et émission de nuisances sonores constatées de nuit.',
-      signataire_nom: 'Jacques Alphonse MATOKO',
+      signataire_nom: 'Jean Richard NTSEKE NGOUAKA',
       signataire_titre: 'Directeur Départemental des Loisirs de Pointe-Noire',
       agent_notificateur: 'Agent SAA Loubaki (Badge N° 08)',
       visa_lois: [

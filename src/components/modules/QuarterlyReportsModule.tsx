@@ -216,7 +216,7 @@ export const QuarterlyReportsModule: React.FC = () => {
           </div>
           <div className="text-right font-serif">
             <p className="text-slate-600">Le Directeur Départemental des Loisirs,</p>
-            <p className="font-extrabold text-[#022448]">Jacques Alphonse MATOKO</p>
+            <p className="font-extrabold text-[#022448]">Jean Richard NTSEKE NGOUAKA</p>
           </div>
         </div>
       </div>

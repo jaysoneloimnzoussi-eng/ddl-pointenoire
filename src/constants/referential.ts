@@ -182,54 +182,134 @@ export const TAXATION_RULES = {
 
 export const APP_USERS: AppUser[] = [
   {
+    id: 'ADMIN-MATOKO',
+    badge: 'ADM-PN-001',
+    name: 'Jacques MATOKO',
+    role: 'ADMIN',
+    title: 'Administrateur Application & Resp. Service Assistance et Autorisation (SAA)',
+    phone: '053028383',
+    service: 'Service Assistance & Autorisation (SAA) / Contrôle Qualités & Conformité',
+    email: 'Jacks.matoko@gmail.com'
+  },
+  {
     id: 'DIR-01',
     badge: 'DDL-DIR-001',
-    name: 'Jacques Alphonse MATOKO',
+    name: 'Jean Richard NTSEKE NGOUAKA',
     role: 'DIRECTEUR',
-    title: 'Directeur Départemental des Loisirs de Pointe-Noire',
+    title: 'Directeur Départemental des Loisirs de Pointe-Noire (DDL-PN)',
     phone: '+242 06 600 00 01',
-    service: 'Cabinet de Direction',
+    service: 'Cabinet de Direction Départementale',
     email: 'directeur@ddl-pointenoire.cg'
   },
   {
-    id: 'SAA-CHEF',
-    badge: 'SAA-PN-001',
-    name: 'Chef Brigade SAA',
-    role: 'CHEF_SAA',
-    title: 'Chef de Brigade - Service Agrément & Assainissement',
-    phone: '+242 06 620 11 22',
-    service: 'Brigade SAA',
-    email: 'saa.commandement@ddl-pointenoire.cg'
-  },
-  {
-    id: 'SAA-008',
-    badge: 'SAA-PN-008',
-    name: 'Agent SAA Loubaki',
+    id: '0594a697-48ba-4fb7-b4cb-a979ad46f37c',
+    badge: 'SAA-PN-315',
+    name: 'Loic Anaclet Brell AMBETOS',
     role: 'AGENT_SAA',
-    title: 'Agent Enquêteur Assermenté (Badge N° 08)',
-    phone: '+242 06 654 32 10',
+    title: 'Contrôleur Qualité et Conformité (Matricule : 315713H)',
+    phone: '06 425 0604',
     service: 'Brigade SAA - Terrain',
-    email: 'loubaki.saa@ddl-pointenoire.cg'
+    email: 'ambetos.saa@ddl-pointenoire.cg'
   },
   {
-    id: 'SAA-005',
+    id: 'f42ad6b1-701a-4d8c-81df-504be9b607af',
+    badge: 'SAA-PN-249',
+    name: 'Yvette Lucette OBOMBA',
+    role: 'AGENT_SAA',
+    title: 'Statistiques et Documentation (Matricule : 249 500F)',
+    phone: '065531376 / 05 627 2029',
+    service: 'Brigade SAA - Terrain',
+    email: 'obomba.saa@ddl-pointenoire.cg'
+  },
+  {
+    id: 'd016ff2d-7544-466e-98c7-3cc83dbc1203',
+    badge: 'SAA-PN-002',
+    name: 'Rhonel KIOUNGA',
+    role: 'AGENT_SAA',
+    title: 'Agent de Terrain DDL',
+    phone: '+242 06 933 8110',
+    service: 'Brigade SAA - Terrain',
+    email: 'kiounga.saa@ddl-pointenoire.cg'
+  },
+  {
+    id: '9dfdf0dd-0177-4126-89db-335cfaf7c0dc',
+    badge: 'SAA-PN-003',
+    name: 'Éloge MAHOUA-WAWA',
+    role: 'AGENT_SAA',
+    title: 'Agent de Terrain DDL',
+    phone: '06 955 8937',
+    service: 'Brigade SAA - Terrain',
+    email: 'wawaeloge@gmail.com'
+  },
+  {
+    id: '9b6f4a6e-9557-4e5e-bd4b-9590ec256bca',
+    badge: 'SAA-PN-004',
+    name: 'Franck MPIKA',
+    role: 'AGENT_SAA',
+    title: 'Contrôleur Qualité et Conformité',
+    phone: '+242 06 6536116 / 05 749 4748',
+    service: 'Brigade SAA - Terrain',
+    email: 'franckmpika555@gmail.com'
+  },
+  {
+    id: '8f0c52a7-7ab4-498c-b67d-273e98583fe4',
     badge: 'SAA-PN-005',
-    name: 'Agent SAA Tchicaya',
+    name: 'Anicet NGOMA',
     role: 'AGENT_SAA',
-    title: 'Agent Enquêteur Assermenté (Badge N° 05)',
-    phone: '+242 05 522 33 44',
+    title: 'Agent de Terrain DDL',
+    phone: '06 902 3655',
     service: 'Brigade SAA - Terrain',
-    email: 'tchicaya.saa@ddl-pointenoire.cg'
+    email: 'ngoma.saa@ddl-pointenoire.cg'
   },
   {
-    id: 'SAA-012',
-    badge: 'SAA-PN-012',
-    name: 'Agent SAA Makosso',
+    id: '2136e93e-5733-44f9-b9ce-a61bb2538f58',
+    badge: 'SAA-PN-006',
+    name: 'Jude ELENGA LAURGAEL',
     role: 'AGENT_SAA',
-    title: 'Agent Enquêteur Assermenté (Badge N° 12)',
-    phone: '+242 06 911 22 33',
+    title: 'Contrôleur Qualité & Conformité',
+    phone: '05 087 6707',
     service: 'Brigade SAA - Terrain',
-    email: 'makosso.saa@ddl-pointenoire.cg'
+    email: 'elenga.saa@ddl-pointenoire.cg'
+  },
+  {
+    id: '60588776-5ed5-424c-8579-9fb599ce1896',
+    badge: 'SAA-PN-007',
+    name: 'Fredy IBARA LABIRA',
+    role: 'AGENT_SAA',
+    title: 'Contrôleur Qualité et Conformité',
+    phone: '06 000 00 07',
+    service: 'Brigade SAA - Terrain',
+    email: 'ibara.saa@ddl-pointenoire.cg'
+  },
+  {
+    id: 'b9fb7b59-a262-4751-a25a-e6c10e6472ea',
+    badge: 'SAA-PN-008',
+    name: 'Hugues GALOUM OCKOUO',
+    role: 'AGENT_SAA',
+    title: 'Contrôleur Qualité et Conformité',
+    phone: '06 675 73 87 / 06 125 8401',
+    service: 'Brigade SAA - Terrain',
+    email: 'galoum.saa@ddl-pointenoire.cg'
+  },
+  {
+    id: '268281cd-3b0c-476f-a99a-0e7f8c41a9e0',
+    badge: 'SAA-PN-009',
+    name: 'Juveldi MPEMBA',
+    role: 'AGENT_SAA',
+    title: 'Responsable Qualité',
+    phone: '068817104',
+    service: 'Brigade SAA - Terrain',
+    email: 'jacquesmatoko.emploi@gmail.com'
+  },
+  {
+    id: '4aa6cbd4-7b8d-48cf-adc9-736e8295c9d0',
+    badge: 'SPA-PN-010',
+    name: 'Ulriche Pergella KITSAKOU',
+    role: 'CHEF_SPA',
+    title: 'Promotion & Animation des Loisirs',
+    phone: '06 000 00 10',
+    service: 'Service Promotion, Animation & Loisirs Sains',
+    email: 'kitsakou.spa@ddl-pointenoire.cg'
   },
   {
     id: 'SAF-REGIE',
@@ -240,16 +320,6 @@ export const APP_USERS: AppUser[] = [
     phone: '+242 06 800 12 34',
     service: 'Service Administratif & Financier (SAF)',
     email: 'regie.saf@ddl-pointenoire.cg'
-  },
-  {
-    id: 'SPA-CHEF',
-    badge: 'SPA-PN-01',
-    name: 'Chef Service SPA',
-    role: 'CHEF_SPA',
-    title: 'Chef de Service Promotion & Animation des Loisirs',
-    phone: '+242 06 700 45 67',
-    service: 'Service Promotion, Animation & Loisirs Sains',
-    email: 'promotion.spa@ddl-pointenoire.cg'
   }
 ];
 
