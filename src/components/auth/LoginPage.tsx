@@ -4,15 +4,14 @@ import {
   Smartphone,
   Lock,
   User,
-  KeyRound,
   ArrowRight,
-  Sparkles,
-  CheckCircle2,
-  Building2,
-  Check,
   Eye,
   EyeOff,
-  UserCheck
+  UserCheck,
+  CheckCircle2,
+  Mail,
+  BadgeAlert,
+  HelpCircle
 } from 'lucide-react';
 import { OfficialRepublicLogo, RepublicTricolorBar } from '../common/OfficialSeal';
 import { REPUBLIQUE_CONGO, APP_USERS } from '../../constants/referential';
@@ -25,72 +24,85 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [activeTab, setActiveTab] = useState<'ADMIN' | 'AGENT'>('ADMIN');
 
-  // Admin login states
-  const [selectedAdminId, setSelectedAdminId] = useState<string>('DIR-01');
-  const [adminPassword, setAdminPassword] = useState<string>('congo2026');
-  const [showAdminPassword, setShowAdminPassword] = useState<boolean>(false);
-  const [adminError, setAdminError] = useState<string>('');
+  // Input credentials
+  const [identifier, setIdentifier] = useState<string>('directeur@ddl-pointenoire.cg');
+  const [password, setPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
-  // Agent terrain states
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('SAA-008');
-  const [agentPin, setAgentPin] = useState<string>('1234');
+  // Agents only: badge or phone or email
+  const [agentBadge, setAgentBadge] = useState<string>('SAA-PN-008');
+  const [agentPhone, setAgentPhone] = useState<string>('+242 06 654 32 10');
   const [agentError, setAgentError] = useState<string>('');
 
-  // Quick list of admins
+  // Lists filtered strictly from referential APP_USERS
   const adminUsers = APP_USERS.filter(u => u.role !== 'AGENT_SAA');
-  // Quick list of field agents
   const agentUsers = APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'CHEF_SAA');
 
+  // Connect as Admin / Cadre
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setAdminError('');
-    if (!adminPassword) {
-      setAdminError('Veuillez saisir votre mot de passe d\'habilitation.');
+    setErrorMessage('');
+
+    const trimmedInput = identifier.trim().toLowerCase();
+    // Match against real database record (email, badge or ID)
+    const matchedUser = adminUsers.find(
+      u =>
+        u.email.toLowerCase() === trimmedInput ||
+        u.badge.toLowerCase() === trimmedInput ||
+        u.id.toLowerCase() === trimmedInput
+    );
+
+    if (!matchedUser) {
+      setErrorMessage(
+        `Aucun compte d'administration ne correspond à l'identifiant « ${identifier} ». Seuls les agents et cadres enregistrés dans le registre officiel DDL-PN sont autorisés.`
+      );
       return;
     }
-    const user = APP_USERS.find(u => u.id === selectedAdminId) || APP_USERS[0];
-    onLoginSuccess(user, 'MOD-01');
+
+    onLoginSuccess(matchedUser, 'MOD-01');
   };
 
+  // Connect as Field Agent SAA
   const handleAgentLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setAgentError('');
-    if (!agentPin || agentPin.length < 4) {
-      setAgentError('Le code PIN assermenté doit comporter 4 chiffres.');
+
+    const trimmedBadge = agentBadge.trim().toUpperCase();
+    const matchedAgent = agentUsers.find(
+      u =>
+        u.badge.toUpperCase() === trimmedBadge ||
+        u.id.toUpperCase() === trimmedBadge ||
+        u.email.toLowerCase() === agentBadge.trim().toLowerCase()
+    );
+
+    if (!matchedAgent) {
+      setAgentError(
+        `Matricule de brigade « ${agentBadge} » non répertorié. Seuls les agents assermentés de la Brigade SAA enregistrés dans la base ont accès au portail de terrain.`
+      );
       return;
     }
-    const user = APP_USERS.find(u => u.id === selectedAgentId) || APP_USERS[2];
-    // Automatically route agents to field portal / Google agenda
-    onLoginSuccess(user, 'MOD-03');
+
+    onLoginSuccess(matchedAgent, 'MOD-03');
   };
 
-  const handleQuickDemoAdmin = (userId: string) => {
-    setSelectedAdminId(userId);
-    setAdminPassword('congo2026');
-    const user = APP_USERS.find(u => u.id === userId) || APP_USERS[0];
-    onLoginSuccess(user, 'MOD-01');
+  const handleSelectAdminAccount = (user: AppUser) => {
+    setIdentifier(user.email);
+    setErrorMessage('');
   };
 
-  const handleQuickDemoAgent = (userId: string) => {
-    setSelectedAgentId(userId);
-    setAgentPin('1234');
-    const user = APP_USERS.find(u => u.id === userId) || APP_USERS[2];
-    onLoginSuccess(user, 'MOD-03');
+  const handleSelectAgentAccount = (user: AppUser) => {
+    setAgentBadge(user.badge);
+    setAgentPhone(user.phone);
+    setAgentError('');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#011427] via-[#022448] to-[#01381b] text-slate-800 flex flex-col justify-between p-3 sm:p-6 relative overflow-hidden select-none">
-      {/* Background Republic Watermark */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none flex items-center justify-center">
-        <div className="w-[800px] h-[800px] rounded-full border-[60px] border-white flex items-center justify-center font-republic text-9xl font-black text-white">
-          DDL
-        </div>
-      </div>
-
-      {/* Top Bar with Republic Emblem */}
-      <header className="relative z-10 max-w-6xl mx-auto w-full flex items-center justify-between pb-4 border-b border-white/10 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-[#011427] via-[#022448] to-[#012d1b] text-slate-800 flex flex-col justify-between p-3 sm:p-6 select-none relative">
+      {/* Top Republic Header */}
+      <header className="relative z-10 max-w-5xl mx-auto w-full flex items-center justify-between pb-4 border-b border-white/10 text-white">
         <div className="flex items-center gap-3">
-          <OfficialRepublicLogo size="md" className="shrink-0 drop-shadow-md" />
+          <OfficialRepublicLogo size="md" className="shrink-0 drop-shadow" />
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] sm:text-xs font-black tracking-widest text-amber-400 font-republic uppercase">
@@ -101,79 +113,82 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               </span>
             </div>
             <h1 className="text-xs sm:text-sm font-extrabold text-white tracking-wide uppercase">
-              Direction Départementale des Loisirs de Pointe-Noire
+              {REPUBLIQUE_CONGO.direction_departementale}
             </h1>
             <p className="text-[10px] text-slate-300 hidden md:block">
-              {REPUBLIQUE_CONGO.ministere}
+              {REPUBLIQUE_CONGO.ministere} ({REPUBLIQUE_CONGO.ministere_abreviation})
             </p>
           </div>
         </div>
 
         <div className="hidden sm:flex items-center gap-2 bg-white/10 border border-white/20 px-3 py-1 rounded-full text-xs text-emerald-300 font-mono-ref">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Portail Sécurisé SAA 2026</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span>Année {REPUBLIQUE_CONGO.annee_pta}</span>
         </div>
       </header>
 
       {/* Main Login Card */}
-      <main className="relative z-10 max-w-4xl mx-auto w-full my-auto py-6 sm:py-10">
-        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-white/20 overflow-hidden backdrop-blur-sm grid grid-cols-1 lg:grid-cols-12">
-          {/* Left Hero / Brand Column */}
-          <div className="lg:col-span-5 bg-gradient-to-br from-[#022448] to-[#011a35] text-white p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-700/50">
+      <main className="relative z-10 max-w-4xl mx-auto w-full my-auto py-6 sm:py-8">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+          {/* Left Column: Official Notice & Database Registry */}
+          <div className="lg:col-span-5 bg-[#022448] text-white p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-700/50">
             <div>
-              <div className="inline-flex items-center gap-2 bg-amber-400 text-slate-950 font-extrabold text-[10px] sm:text-xs px-2.5 py-1 rounded-full uppercase tracking-wider mb-4 shadow-sm">
+              <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 font-extrabold text-[10px] sm:text-xs px-2.5 py-1 rounded-full uppercase tracking-wider mb-4">
                 <Shield className="w-3.5 h-3.5" />
-                <span>Système Intégré Officiel</span>
+                <span>Registre Authentifié</span>
               </div>
 
               <h2 className="text-xl sm:text-2xl font-black font-republic tracking-tight leading-snug">
-                Plateforme Numérique de Régulation & Recouvrement
+                Portail Officiel d'Accès Sécurisé
               </h2>
 
-              <p className="text-xs sm:text-sm text-slate-300 mt-3 leading-relaxed">
-                Accès exclusif des fonctionnaires et agents assermentés de la Direction Départementale des Loisirs de Pointe-Noire.
+              <p className="text-xs sm:text-sm text-slate-300 mt-2.5 leading-relaxed">
+                Conformément à la réglementation de la République du Congo, l'accès est strictement réservé aux agents publics et assermentés enregistrés dans la base institutionnelle de la DDL-PN.
               </p>
 
-              {/* Badges / Highlights */}
-              <div className="mt-6 space-y-2.5 text-xs">
-                <div className="flex items-center gap-2.5 text-slate-200">
-                  <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                    <Check className="w-3.5 h-3.5" />
-                  </div>
-                  <span>Poste de commandement & 6 arrondissements</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-slate-200">
-                  <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                    <Check className="w-3.5 h-3.5" />
-                  </div>
-                  <span>Google Agenda SAA & Enquêtes in situ</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-slate-200">
-                  <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                    <Check className="w-3.5 h-3.5" />
-                  </div>
-                  <span>Recouvrement 100% hors-ligne synchronisé</span>
+              {/* Verified Registered Accounts list */}
+              <div className="mt-5 pt-4 border-t border-white/10">
+                <p className="text-[10px] uppercase font-bold text-amber-300 tracking-wider mb-2">
+                  Personnel Répertorié dans la Base :
+                </p>
+                <div className="space-y-1.5 text-xs">
+                  {APP_USERS.map(u => (
+                    <div
+                      key={u.id}
+                      className="p-1.5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-between text-[11px]"
+                    >
+                      <div>
+                        <span className="font-bold text-white block">{u.name}</span>
+                        <span className="text-[10px] text-slate-300">{u.title}</span>
+                      </div>
+                      <span className="text-[9px] font-mono-ref bg-white/10 text-amber-300 px-1.5 py-0.5 rounded font-bold">
+                        {u.badge}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
 
-            {/* Republic Color Line & Footer of Left Col */}
             <div className="mt-6 pt-4 border-t border-white/10">
-              <RepublicTricolorBar className="mb-3" />
-              <p className="text-[10px] text-slate-400 font-mono-ref">
-                Homologation Arrêté Ministériel • Exercice {REPUBLIQUE_CONGO.annee_pta}
+              <RepublicTricolorBar className="mb-2.5" />
+              <p className="text-[10px] text-slate-400">
+                {REPUBLIQUE_CONGO.siege} • {REPUBLIQUE_CONGO.contact}
               </p>
             </div>
           </div>
 
-          {/* Right Form Column */}
+          {/* Right Column: Dynamic Form */}
           <div className="lg:col-span-7 p-6 sm:p-8 bg-slate-50 flex flex-col justify-between">
             <div>
-              {/* Tab Selector: ADMIN vs AGENT TERRAIN */}
+              {/* Tab Selector: Direction / Admin vs Agent Terrain */}
               <div className="bg-slate-200/80 p-1 rounded-xl flex gap-1 mb-6">
                 <button
                   type="button"
-                  onClick={() => setActiveTab('ADMIN')}
+                  onClick={() => {
+                    setActiveTab('ADMIN');
+                    setErrorMessage('');
+                  }}
                   className={`flex-1 py-2 sm:py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition ${
                     activeTab === 'ADMIN'
                       ? 'bg-white text-[#022448] shadow-sm'
@@ -186,7 +201,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
                 <button
                   type="button"
-                  onClick={() => setActiveTab('AGENT')}
+                  onClick={() => {
+                    setActiveTab('AGENT');
+                    setAgentError('');
+                  }}
                   className={`flex-1 py-2 sm:py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition ${
                     activeTab === 'AGENT'
                       ? 'bg-[#006d2f] text-white shadow-sm'
@@ -203,15 +221,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 <form onSubmit={handleAdminLogin} className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Identité du Cadre / Fonctionnaire
+                      Compte Cadre / Direction (Sélectionnez ou saisissez)
                     </label>
                     <select
-                      value={selectedAdminId}
-                      onChange={e => setSelectedAdminId(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#022448] shadow-sm"
+                      value={identifier}
+                      onChange={e => {
+                        setIdentifier(e.target.value);
+                        setErrorMessage('');
+                      }}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#022448] shadow-xs"
                     >
                       {adminUsers.map(u => (
-                        <option key={u.id} value={u.id}>
+                        <option key={u.id} value={u.email}>
                           {u.name} — {u.title} ({u.badge})
                         </option>
                       ))}
@@ -220,32 +241,30 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Mot de passe d'habilitation
+                      Identifiant Institutionnel / Email vérifié
                     </label>
                     <div className="relative">
                       <input
-                        type={showAdminPassword ? 'text' : 'password'}
-                        value={adminPassword}
-                        onChange={e => setAdminPassword(e.target.value)}
-                        placeholder="Mot de passe sécurisé"
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-800 pr-10 focus:outline-none focus:ring-2 focus:ring-[#022448] shadow-sm font-mono-ref"
+                        type="text"
+                        value={identifier}
+                        onChange={e => {
+                          setIdentifier(e.target.value);
+                          setErrorMessage('');
+                        }}
+                        placeholder="ex: directeur@ddl-pointenoire.cg"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#022448] shadow-xs font-mono-ref"
+                        required
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowAdminPassword(!showAdminPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-                      >
-                        {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                        <Mail className="w-4 h-4" />
+                      </div>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      Identifiant par défaut prérempli pour démonstration : <strong className="font-mono-ref">congo2026</strong>
-                    </p>
                   </div>
 
-                  {adminError && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl text-xs font-medium">
-                      {adminError}
+                  {errorMessage && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl text-xs font-medium flex items-start gap-2">
+                      <BadgeAlert className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
+                      <span>{errorMessage}</span>
                     </div>
                   )}
 
@@ -253,27 +272,37 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                     type="submit"
                     className="w-full bg-gradient-to-r from-[#022448] to-[#023b75] hover:from-[#011a35] hover:to-[#022448] text-white font-bold py-3 px-4 rounded-xl text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 group"
                   >
-                    <span>Ouvrir la Session Administrateur</span>
+                    <span>Valider et Accéder au Poste de Commandement</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
                   </button>
 
-                  {/* Fast Switch Badges */}
+                  {/* Registered Cadres Quick Pick */}
                   <div className="pt-3 border-t border-slate-200/80">
                     <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
-                      Accès rapide un-clic :
+                      Sélectionner un compte vérifié :
                     </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {adminUsers.map(u => (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onClick={() => handleQuickDemoAdmin(u.id)}
-                          className="text-[11px] bg-white hover:bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-slate-700 font-semibold transition flex items-center gap-1.5 shadow-2xs"
-                        >
-                          <UserCheck className="w-3 h-3 text-[#022448]" />
-                          <span>{u.name.split(' ')[0]} ({u.role.replace('_', ' ')})</span>
-                        </button>
-                      ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {adminUsers.map(u => {
+                        const isChosen = identifier.toLowerCase() === u.email.toLowerCase();
+                        return (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => handleSelectAdminAccount(u)}
+                            className={`text-left p-2 rounded-lg border text-xs transition flex items-start gap-2 ${
+                              isChosen
+                                ? 'bg-blue-50 border-blue-300 text-blue-900 font-bold'
+                                : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                            }`}
+                          >
+                            <UserCheck className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isChosen ? 'text-[#022448]' : 'text-slate-400'}`} />
+                            <div className="leading-tight truncate">
+                              <span className="block truncate font-semibold">{u.name}</span>
+                              <span className="text-[10px] text-slate-500 font-mono-ref">{u.badge}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </form>
@@ -282,16 +311,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 <form onSubmit={handleAgentLogin} className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Agent Assermenté de Brigade
+                      Agent Assermenté SAA Répertorié
                     </label>
                     <select
-                      value={selectedAgentId}
-                      onChange={e => setSelectedAgentId(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#006d2f] shadow-sm"
+                      value={agentBadge}
+                      onChange={e => {
+                        const b = e.target.value;
+                        setAgentBadge(b);
+                        const match = agentUsers.find(a => a.badge === b);
+                        if (match) setAgentPhone(match.phone);
+                        setAgentError('');
+                      }}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#006d2f] shadow-xs"
                     >
                       {agentUsers.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} ({u.badge}) — {u.title}
+                        <option key={u.id} value={u.badge}>
+                          {u.name} — {u.badge} ({u.phone})
                         </option>
                       ))}
                     </select>
@@ -299,26 +334,33 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Code PIN Assermenté (4 Chiffres)
+                      Matricule de Badge Officiel
                     </label>
                     <div className="relative">
                       <input
-                        type="password"
-                        maxLength={4}
-                        value={agentPin}
-                        onChange={e => setAgentPin(e.target.value.replace(/\D/g, ''))}
-                        placeholder="••••"
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-center text-xl tracking-[0.5em] font-mono-ref font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006d2f] shadow-sm"
+                        type="text"
+                        value={agentBadge}
+                        onChange={e => {
+                          setAgentBadge(e.target.value);
+                          setAgentError('');
+                        }}
+                        placeholder="ex: SAA-PN-008"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-mono-ref font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006d2f] shadow-xs"
+                        required
                       />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                        <Smartphone className="w-4 h-4" />
+                      </div>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-1 text-center">
-                      Code d'habilitation terrain prérempli : <strong className="font-mono-ref">1234</strong>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Numéro de liaison brigade : <strong className="font-mono-ref text-slate-700">{agentPhone}</strong>
                     </p>
                   </div>
 
                   {agentError && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl text-xs font-medium">
-                      {agentError}
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl text-xs font-medium flex items-start gap-2">
+                      <BadgeAlert className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
+                      <span>{agentError}</span>
                     </div>
                   )}
 
@@ -327,38 +369,53 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                     className="w-full bg-gradient-to-r from-[#006d2f] to-[#028a3d] hover:from-[#005a26] hover:to-[#006d2f] text-white font-bold py-3 px-4 rounded-xl text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 group"
                   >
                     <Smartphone className="w-4 h-4" />
-                    <span>Lancer le Portail Terrain & Google Agenda</span>
+                    <span>Ouvrir l'Espace Terrain & Google Agenda SAA</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
                   </button>
 
-                  {/* Fast Switch Agent Badges */}
+                  {/* Registered SAA Agents Selection */}
                   <div className="pt-3 border-t border-slate-200/80">
                     <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
-                      Sélection immédiate de l'agent en tournée :
+                      Agents Assermentés de la Brigade SAA :
                     </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {agentUsers.map(u => (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onClick={() => handleQuickDemoAgent(u.id)}
-                          className="text-[11px] bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 px-2.5 py-1 rounded-lg text-slate-700 font-semibold transition flex items-center gap-1.5 shadow-2xs"
-                        >
-                          <Smartphone className="w-3 h-3 text-[#006d2f]" />
-                          <span>{u.name} ({u.badge})</span>
-                        </button>
-                      ))}
+                    <div className="space-y-1.5">
+                      {agentUsers.map(u => {
+                        const isChosen = agentBadge.toUpperCase() === u.badge.toUpperCase();
+                        return (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => handleSelectAgentAccount(u)}
+                            className={`w-full text-left p-2 rounded-lg border text-xs transition flex items-center justify-between ${
+                              isChosen
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold'
+                                : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Smartphone className={`w-3.5 h-3.5 ${isChosen ? 'text-[#006d2f]' : 'text-slate-400'}`} />
+                              <div>
+                                <span className="font-semibold block">{u.name}</span>
+                                <span className="text-[10px] text-slate-500">{u.title}</span>
+                              </div>
+                            </div>
+                            <span className="font-mono-ref text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                              {u.badge}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </form>
               )}
             </div>
 
-            {/* Offline & Security Guarantee */}
-            <div className="mt-6 pt-4 border-t border-slate-200 text-center">
+            {/* Verification Guarantee */}
+            <div className="mt-6 pt-3 border-t border-slate-200 text-center">
               <p className="text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Compatible connexion 4G instable & fonctionnement 100% hors-ligne.</span>
+                <span>Base locale et synchronisation centrale conformes aux matricules DDL-PN.</span>
               </p>
             </div>
           </div>
@@ -366,12 +423,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       </main>
 
       {/* Official Footer */}
-      <footer className="relative z-10 max-w-6xl mx-auto w-full text-center text-[10px] sm:text-xs text-slate-400 pt-4 border-t border-white/10">
+      <footer className="relative z-10 max-w-5xl mx-auto w-full text-center text-[10px] text-slate-400 pt-3 border-t border-white/10">
         <p>
-          République du Congo • Ministère de la Culture, des Arts, du Tourisme et des Loisirs • Direction Départementale des Loisirs de Pointe-Noire (DDL-PN)
+          {REPUBLIQUE_CONGO.nom} • {REPUBLIQUE_CONGO.ministere} • {REPUBLIQUE_CONGO.direction_departementale}
         </p>
-        <p className="text-slate-500 mt-1">
-          Tous droits réservés • Déploiement Vercel & PWA Mobile Ready • Version 2.0.0-PROD-2026
+        <p className="text-slate-500 mt-0.5">
+          Système Intégré de Régulation des Loisirs • Version 2.0.0-PROD-2026
         </p>
       </footer>
     </div>

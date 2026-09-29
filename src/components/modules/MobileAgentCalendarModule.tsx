@@ -48,54 +48,21 @@ import { APP_USERS, TERRITORIAL_REFERENTIAL } from '../../constants/referential'
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
 import { OfficialRepublicLogo } from '../common/OfficialSeal';
 
-// Liste officielle des agents assermentés de terrain de la Brigade SAA
-const FIELD_AGENTS = [
-  {
-    badge: 'SAA-PN-005',
-    name: 'Jean-Paul MAVOUNGOU',
-    role: 'Chef de Brigade SAA',
-    zone: 'Arrondissements 1 Lumumba & 2 Mvou-Mvou',
-    phone: '+242 06 630 11 22',
-    avatar: 'JM',
-    pin: '1234'
-  },
-  {
-    badge: 'SAA-PN-008',
-    name: 'Guy-Serge LOUBAKI',
-    role: 'Agent Contrôleur & Acoustique SAA',
-    zone: 'Arrondissements 3 Tié-Tié & 6 Ngoyo',
-    phone: '+242 05 522 33 44',
-    avatar: 'GL',
-    pin: '1234'
-  },
-  {
-    badge: 'SAA-PN-012',
-    name: 'Brigitte NGOMA',
-    role: 'Agent Recouvrement SAA',
-    zone: 'Arrondissements 4 Louandjili & 5 Mongo-Mpoukou',
-    phone: '+242 06 911 22 33',
-    avatar: 'BN',
-    pin: '1234'
-  },
-  {
-    badge: 'SAA-PN-015',
-    name: 'Vivien KIMPOUNI',
-    role: 'Inspecteur Assainissement & Salubrité',
-    zone: 'Arrondissement 1 Lumumba (Côte Sauvage & Centre)',
-    phone: '+242 06 444 55 66',
-    avatar: 'VK',
-    pin: '1234'
-  },
-  {
-    badge: 'SAA-PN-018',
-    name: 'Christian MABIALA',
-    role: 'Contrôleur Terrain Brigade Tié-Tié',
-    zone: 'Arrondissements 3 Tié-Tié & 5 Mongo-Mpoukou',
-    phone: '+242 05 777 88 99',
-    avatar: 'CM',
-    pin: '1234'
-  }
-];
+// Liste officielle des agents assermentés de terrain de la Brigade SAA (strictement issus de APP_USERS)
+const FIELD_AGENTS = APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'CHEF_SAA').map(u => ({
+  badge: u.badge,
+  name: u.name,
+  role: u.title,
+  zone: u.badge === 'SAA-PN-001'
+    ? 'Commandement Central Brigade SAA - Tous Arrondissements'
+    : u.badge === 'SAA-PN-008'
+    ? 'Arrondissements 1 Lumumba & 2 Mvou-Mvou'
+    : u.badge === 'SAA-PN-005'
+    ? 'Arrondissements 3 Tié-Tié & 6 Ngoyo'
+    : 'Arrondissements 4 Louandjili & 5 Mongo-Mpoukou',
+  phone: u.phone,
+  avatar: u.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+}));
 
 export const MobileAgentCalendarModule: React.FC = () => {
   const { currentUser, switchUserById, triggerNotification } = useSession();
