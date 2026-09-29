@@ -1,0 +1,6 @@
+{
+  "name": "Système Intégré DDL-PN - République du Congo",
+  "description": "Direction Départementale des Loisirs de Pointe-Noire (DDL-PN / MCAPNIT) - Plateforme officielle de régulation, recensement, recouvrement SAA, SIG territorial et gestion du PTA 2026.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

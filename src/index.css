@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --vert-congo: #006d2f;
+    --jaune-or: #ffd700;
+    --rouge-congo: #dc2626;
+    --bleu-direction: #022448;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  .font-republic {
+    font-family: 'Cinzel', 'Merriweather', Georgia, serif;
+  }
+
+  .font-legal {
+    font-family: 'Merriweather', Georgia, serif;
+  }
+
+  .font-mono-ref {
+    font-family: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+}
+
+/* Print stylesheets for Official A4 and 58mm POS thermal tickets */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-page-a4 {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    padding: 15mm 20mm !important;
+    margin: 0 auto !important;
+    background: white !important;
+    box-shadow: none !important;
+    page-break-after: always;
+  }
+
+  .print-ticket-58mm {
+    width: 58mm !important;
+    max-width: 58mm !important;
+    padding: 2mm !important;
+    margin: 0 !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    background: white !important;
+    box-shadow: none !important;
+  }
+
+  @page {
+    margin: 0.8cm;
+  }
+}
+
+/* Custom scrollbars for high data density government dashboard */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
