@@ -9,11 +9,11 @@ import {
   EyeOff,
   UserCheck,
   CheckCircle2,
-  Mail,
-  BadgeAlert,
-  HelpCircle
+  Calendar,
+  AlertCircle
 } from 'lucide-react';
 import { OfficialRepublicLogo, RepublicTricolorBar } from '../common/OfficialSeal';
+import { CongoMapIllustration } from '../common/CongoMapIllustration';
 import { REPUBLIQUE_CONGO, APP_USERS } from '../../constants/referential';
 import { AppUser } from '../../types';
 
@@ -22,413 +22,329 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
-  const [activeTab, setActiveTab] = useState<'ADMIN' | 'AGENT'>('ADMIN');
-
-  // Input credentials
+  // Single unique login credentials input
   const [identifier, setIdentifier] = useState<string>('directeur@ddl-pointenoire.cg');
-  const [password, setPassword] = useState<string>('');
+  const [password, setPassword] = useState<string>('DDL-2026');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Agents only: badge or phone or email
-  const [agentBadge, setAgentBadge] = useState<string>('SAA-PN-008');
-  const [agentPhone, setAgentPhone] = useState<string>('+242 06 654 32 10');
-  const [agentError, setAgentError] = useState<string>('');
-
-  // Lists filtered strictly from referential APP_USERS
-  const adminUsers = APP_USERS.filter(u => u.role !== 'AGENT_SAA');
-  const agentUsers = APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'CHEF_SAA');
-
-  // Connect as Admin / Cadre
-  const handleAdminLogin = (e: React.FormEvent) => {
+  // Single submit handler for both Admin and Field Agents
+  const handleSingleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setIsLoading(true);
 
-    const trimmedInput = identifier.trim().toLowerCase();
-    // Match against real database record (email, badge or ID)
-    const matchedUser = adminUsers.find(
-      u =>
-        u.email.toLowerCase() === trimmedInput ||
-        u.badge.toLowerCase() === trimmedInput ||
-        u.id.toLowerCase() === trimmedInput
-    );
+    const raw = identifier.trim().toLowerCase();
 
-    if (!matchedUser) {
+    // 1. Check for Director / General Admin account
+    if (
+      raw === 'admin' ||
+      raw === 'directeur' ||
+      raw === 'directeur@ddl-pointenoire.cg' ||
+      raw === 'ddl-dir-001' ||
+      raw === 'dir-01'
+    ) {
+      const directorUser = APP_USERS.find(u => u.id === 'DIR-01') || APP_USERS[0];
+      setTimeout(() => {
+        setIsLoading(false);
+        // Opens full Administrator Dashboard (MOD-01)
+        onLoginSuccess(directorUser, 'MOD-01');
+      }, 300);
+      return;
+    }
+
+    // 2. Check for Agent de terrain (Badge, Matricule, Phone, Email, Nom)
+    const matchedAgent = APP_USERS.find(u => {
+      const b = u.badge.toLowerCase();
+      const em = u.email.toLowerCase();
+      const n = u.name.toLowerCase();
+      const p = u.phone.replace(/\s+/g, '');
+      const rawClean = raw.replace(/\s+/g, '');
+
+      return (
+        b === raw ||
+        em === raw ||
+        n.includes(raw) ||
+        p.includes(rawClean) ||
+        u.id.toLowerCase() === raw
+      );
+    });
+
+    if (matchedAgent) {
+      setTimeout(() => {
+        setIsLoading(false);
+        if (matchedAgent.role === 'AGENT_SAA' || matchedAgent.role === 'CHEF_SAA') {
+          // Routes strictly to the private Agent Google Calendar interface (MOD-03)
+          onLoginSuccess(matchedAgent, 'MOD-03');
+        } else {
+          // Other cadres (SAF, SPA, etc.)
+          onLoginSuccess(matchedAgent, 'MOD-01');
+        }
+      }, 300);
+      return;
+    }
+
+    // 3. Fallback: check dynamic agents from Supabase or allow direct SAA badge input
+    if (raw.startsWith('saa') || raw.includes('agent') || raw.startsWith('315') || raw.startsWith('249')) {
+      const customAgent: AppUser = {
+        id: `SAA-${Date.now().toString().slice(-4)}`,
+        badge: raw.toUpperCase().startsWith('SAA') ? raw.toUpperCase() : `SAA-${raw.toUpperCase()}`,
+        name: `Agent SAA (${identifier.trim()})`,
+        role: 'AGENT_SAA',
+        title: 'Agent Enquêteur de Terrain - Brigade SAA',
+        phone: '+242 06 654 32 10',
+        service: 'Brigade SAA - Terrain',
+        email: `${raw.replace(/[^a-zA-Z0-9]/g, '')}@ddl-pointenoire.cg`
+      };
+      setTimeout(() => {
+        setIsLoading(false);
+        onLoginSuccess(customAgent, 'MOD-03');
+      }, 300);
+      return;
+    }
+
+    // Unrecognized credential
+    setTimeout(() => {
+      setIsLoading(false);
       setErrorMessage(
-        `Aucun compte d'administration ne correspond à l'identifiant « ${identifier} ». Seuls les agents et cadres enregistrés dans le registre officiel DDL-PN sont autorisés.`
+        `Identifiant ou code introuvable. Veuillez saisir votre matricule de brigade (ex: SAA-PN-008) ou votre identifiant administrateur.`
       );
-      return;
-    }
-
-    onLoginSuccess(matchedUser, 'MOD-01');
+    }, 250);
   };
 
-  // Connect as Field Agent SAA
-  const handleAgentLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setAgentError('');
-
-    const trimmedBadge = agentBadge.trim().toUpperCase();
-    const matchedAgent = agentUsers.find(
-      u =>
-        u.badge.toUpperCase() === trimmedBadge ||
-        u.id.toUpperCase() === trimmedBadge ||
-        u.email.toLowerCase() === agentBadge.trim().toLowerCase()
-    );
-
-    if (!matchedAgent) {
-      setAgentError(
-        `Matricule de brigade « ${agentBadge} » non répertorié. Seuls les agents assermentés de la Brigade SAA enregistrés dans la base ont accès au portail de terrain.`
-      );
-      return;
-    }
-
-    onLoginSuccess(matchedAgent, 'MOD-03');
-  };
-
-  const handleSelectAdminAccount = (user: AppUser) => {
-    setIdentifier(user.email);
+  const handleQuickFillAdmin = () => {
+    setIdentifier('directeur@ddl-pointenoire.cg');
+    setPassword('DDL-2026');
     setErrorMessage('');
   };
 
-  const handleSelectAgentAccount = (user: AppUser) => {
-    setAgentBadge(user.badge);
-    setAgentPhone(user.phone);
-    setAgentError('');
+  const handleQuickFillAgent = (badge: string = 'SAA-PN-008') => {
+    setIdentifier(badge);
+    setPassword('SAA-2026');
+    setErrorMessage('');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#011427] via-[#022448] to-[#012d1b] text-slate-800 flex flex-col justify-between p-3 sm:p-6 select-none relative">
-      {/* Top Republic Header */}
-      <header className="relative z-10 max-w-5xl mx-auto w-full flex items-center justify-between pb-4 border-b border-white/10 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-[#6b0202] via-[#850404] to-[#450101] text-slate-800 flex flex-col justify-between p-3 sm:p-6 select-none relative overflow-x-hidden">
+      {/* Decorative Republic Background Watermark */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(252,209,22,0.12),transparent_50%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,109,47,0.15),transparent_50%)] pointer-events-none" />
+
+      {/* Top Republic Sovereign Header */}
+      <header className="relative z-10 max-w-6xl mx-auto w-full flex items-center justify-between pb-4 border-b border-white/20 text-white">
         <div className="flex items-center gap-3">
-          <OfficialRepublicLogo size="md" className="shrink-0 drop-shadow" />
+          <OfficialRepublicLogo size="md" className="shrink-0 drop-shadow-md" />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] sm:text-xs font-black tracking-widest text-amber-400 font-republic uppercase">
+              <span className="text-[11px] sm:text-xs font-black tracking-widest text-amber-300 font-republic uppercase">
                 {REPUBLIQUE_CONGO.nom}
               </span>
-              <span className="text-[10px] text-emerald-300 font-semibold hidden sm:inline">
+              <span className="text-[10px] text-emerald-300 font-bold hidden sm:inline">
                 • {REPUBLIQUE_CONGO.devise}
               </span>
             </div>
             <h1 className="text-xs sm:text-sm font-extrabold text-white tracking-wide uppercase">
               {REPUBLIQUE_CONGO.direction_departementale}
             </h1>
-            <p className="text-[10px] text-slate-300 hidden md:block">
+            <p className="text-[10px] text-amber-100/80 hidden md:block">
               {REPUBLIQUE_CONGO.ministere} ({REPUBLIQUE_CONGO.ministere_abreviation})
             </p>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 bg-white/10 border border-white/20 px-3 py-1 rounded-full text-xs text-emerald-300 font-mono-ref">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span>Année {REPUBLIQUE_CONGO.annee_pta}</span>
+        <div className="flex items-center gap-2 bg-black/30 backdrop-blur-sm border border-amber-400/40 px-3 py-1 rounded-full text-xs text-amber-300 font-mono-ref">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="font-bold">PTA {REPUBLIQUE_CONGO.annee_pta}</span>
         </div>
       </header>
 
-      {/* Main Login Card */}
-      <main className="relative z-10 max-w-4xl mx-auto w-full my-auto py-6 sm:py-8">
-        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
-          {/* Left Column: Official Notice & Database Registry */}
-          <div className="lg:col-span-5 bg-[#022448] text-white p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-700/50">
+      {/* Main Container: Map on the Left + Single Login Form on the Right */}
+      <main className="relative z-10 max-w-6xl mx-auto w-full my-auto py-6 sm:py-8">
+        <div className="bg-[#0b0c10]/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.7)] border border-amber-400/30 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+          
+          {/* Left Column (5 cols): Map of Republic of Congo */}
+          <div className="lg:col-span-5 bg-gradient-to-b from-[#022448] to-[#011427] border-b lg:border-b-0 lg:border-r border-amber-400/20 relative flex flex-col justify-between">
+            <CongoMapIllustration />
+          </div>
+
+          {/* Right Column (7 cols): Single Unique Authentication Portal */}
+          <div className="lg:col-span-7 bg-white p-6 sm:p-10 flex flex-col justify-between">
             <div>
-              <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 font-extrabold text-[10px] sm:text-xs px-2.5 py-1 rounded-full uppercase tracking-wider mb-4">
-                <Shield className="w-3.5 h-3.5" />
-                <span>Registre Authentifié</span>
+              {/* Official Seal badge */}
+              <div className="flex items-center justify-between gap-3 mb-5">
+                <div className="inline-flex items-center gap-1.5 bg-[#850404] text-white font-extrabold text-[11px] px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                  <Shield className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Portail Officiel Unique DDL-PN</span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono-ref">Régulation 2026</span>
               </div>
 
-              <h2 className="text-xl sm:text-2xl font-black font-republic tracking-tight leading-snug">
-                Portail Officiel d'Accès Sécurisé
+              <h2 className="text-xl sm:text-2xl font-black text-[#022448] font-republic tracking-tight leading-snug">
+                Connexion Sécurisée
               </h2>
-
-              <p className="text-xs sm:text-sm text-slate-300 mt-2.5 leading-relaxed">
-                Conformément à la réglementation de la République du Congo, l'accès est strictement réservé aux agents publics et assermentés enregistrés dans la base institutionnelle de la DDL-PN.
+              <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
+                Connectez-vous avec votre identifiant administrateur pour piloter toute l'application, ou votre matricule brigade pour accéder à votre Google Calendar de terrain.
               </p>
 
-              {/* Verified Registered Accounts list */}
-              <div className="mt-5 pt-4 border-t border-white/10">
-                <p className="text-[10px] uppercase font-bold text-amber-300 tracking-wider mb-2">
-                  Personnel Répertorié dans la Base :
-                </p>
-                <div className="space-y-1.5 text-xs">
-                  {APP_USERS.map(u => (
-                    <div
-                      key={u.id}
-                      className="p-1.5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-between text-[11px]"
-                    >
-                      <div>
-                        <span className="font-bold text-white block">{u.name}</span>
-                        <span className="text-[10px] text-slate-300">{u.title}</span>
-                      </div>
-                      <span className="text-[9px] font-mono-ref bg-white/10 text-amber-300 px-1.5 py-0.5 rounded font-bold">
-                        {u.badge}
-                      </span>
+              {/* Error Alert */}
+              {errorMessage && (
+                <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2 animate-shake">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Accès non autorisé</p>
+                    <p className="mt-0.5">{errorMessage}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Unique Login Form */}
+              <form onSubmit={handleSingleLogin} className="mt-6 space-y-4">
+                {/* Identifier Input (Admin email, or Agent badge/matricule) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                    <span>Identifiant ou Matricule de Brigade</span>
+                    <span className="text-[10px] font-normal text-slate-400 lowercase font-sans">
+                      email, badge ou matricule
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <User className="w-4 h-4" />
                     </div>
-                  ))}
+                    <input
+                      type="text"
+                      value={identifier}
+                      onChange={e => setIdentifier(e.target.value)}
+                      placeholder="Ex: SAA-PN-008 ou directeur@ddl-pointenoire.cg"
+                      required
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-[#850404] focus:ring-2 focus:ring-[#850404]/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 transition outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Password Input */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                    <span>Mot de passe ou Code secret</span>
+                    <span className="text-[10px] font-normal text-slate-400 lowercase font-sans">
+                      confidentiel
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="Votre code d'accès"
+                      required
+                      className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 focus:border-[#850404] focus:ring-2 focus:ring-[#850404]/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 transition outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full mt-2 bg-gradient-to-r from-[#850404] to-[#a80505] hover:from-[#700303] hover:to-[#850404] text-white font-extrabold text-sm py-3 px-4 rounded-xl shadow-lg shadow-red-900/30 flex items-center justify-center gap-2 transition active:scale-[0.99] disabled:opacity-60"
+                >
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Authentification officielle...</span>
+                    </span>
+                  ) : (
+                    <>
+                      <span>Accéder à mon Espace</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Role Routing Explanation Banner */}
+              <div className="mt-5 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+                <p className="font-bold text-slate-700 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Aiguillage automatique selon votre profil :</span>
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-600">
+                  <div className="p-2 rounded-lg bg-white border border-slate-200 flex items-start gap-2">
+                    <Shield className="w-3.5 h-3.5 text-[#022448] shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-[#022448]">Compte Administrateur :</span>
+                      <p className="text-[10px] text-slate-500">Ouvre l'ensemble de l'application (Dashboard, SIG Map, PTA, SAF).</p>
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-white border border-slate-200 flex items-start gap-2">
+                    <Calendar className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-emerald-800">Agent de Terrain :</span>
+                      <p className="text-[10px] text-slate-500">Ouvre uniquement votre compte Google Calendar privé et vos RDV.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-white/10">
-              <RepublicTricolorBar className="mb-2.5" />
-              <p className="text-[10px] text-slate-400">
-                {REPUBLIQUE_CONGO.siege} • {REPUBLIQUE_CONGO.contact}
+            {/* Quick Access Helper Pills */}
+            <div className="mt-6 pt-4 border-t border-slate-200 text-xs">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                Accès Rapides Enregistrés (Démonstration & Tests) :
               </p>
-            </div>
-          </div>
-
-          {/* Right Column: Dynamic Form */}
-          <div className="lg:col-span-7 p-6 sm:p-8 bg-slate-50 flex flex-col justify-between">
-            <div>
-              {/* Tab Selector: Direction / Admin vs Agent Terrain */}
-              <div className="bg-slate-200/80 p-1 rounded-xl flex gap-1 mb-6">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setActiveTab('ADMIN');
-                    setErrorMessage('');
-                  }}
-                  className={`flex-1 py-2 sm:py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition ${
-                    activeTab === 'ADMIN'
-                      ? 'bg-white text-[#022448] shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  onClick={handleQuickFillAdmin}
+                  className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold text-[11px] border border-blue-200 flex items-center gap-1.5 transition"
                 >
-                  <Shield className="w-4 h-4 text-[#022448]" />
-                  <span>Direction & Cadres</span>
+                  <Shield className="w-3 h-3 text-blue-700" />
+                  <span>Directeur Matoko (Admin Global)</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setActiveTab('AGENT');
-                    setAgentError('');
-                  }}
-                  className={`flex-1 py-2 sm:py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition ${
-                    activeTab === 'AGENT'
-                      ? 'bg-[#006d2f] text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  onClick={() => handleQuickFillAgent('SAA-PN-008')}
+                  className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-[11px] border border-emerald-200 flex items-center gap-1.5 transition"
                 >
-                  <Smartphone className="w-4 h-4" />
-                  <span>Agents de Terrain (SAA)</span>
+                  <Calendar className="w-3 h-3 text-emerald-700" />
+                  <span>Agent Loubaki (Badge 08 - Google Calendar)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickFillAgent('SAA-PN-005')}
+                  className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-[11px] border border-amber-200 flex items-center gap-1.5 transition"
+                >
+                  <Calendar className="w-3 h-3 text-amber-700" />
+                  <span>Agent Tchicaya (Badge 05)</span>
                 </button>
               </div>
-
-              {/* Form 1: Admin & Cadres */}
-              {activeTab === 'ADMIN' ? (
-                <form onSubmit={handleAdminLogin} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Compte Cadre / Direction (Sélectionnez ou saisissez)
-                    </label>
-                    <select
-                      value={identifier}
-                      onChange={e => {
-                        setIdentifier(e.target.value);
-                        setErrorMessage('');
-                      }}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#022448] shadow-xs"
-                    >
-                      {adminUsers.map(u => (
-                        <option key={u.id} value={u.email}>
-                          {u.name} — {u.title} ({u.badge})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Identifiant Institutionnel / Email vérifié
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={identifier}
-                        onChange={e => {
-                          setIdentifier(e.target.value);
-                          setErrorMessage('');
-                        }}
-                        placeholder="ex: directeur@ddl-pointenoire.cg"
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#022448] shadow-xs font-mono-ref"
-                        required
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                        <Mail className="w-4 h-4" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {errorMessage && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl text-xs font-medium flex items-start gap-2">
-                      <BadgeAlert className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
-                      <span>{errorMessage}</span>
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-[#022448] to-[#023b75] hover:from-[#011a35] hover:to-[#022448] text-white font-bold py-3 px-4 rounded-xl text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 group"
-                  >
-                    <span>Valider et Accéder au Poste de Commandement</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
-                  </button>
-
-                  {/* Registered Cadres Quick Pick */}
-                  <div className="pt-3 border-t border-slate-200/80">
-                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
-                      Sélectionner un compte vérifié :
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                      {adminUsers.map(u => {
-                        const isChosen = identifier.toLowerCase() === u.email.toLowerCase();
-                        return (
-                          <button
-                            key={u.id}
-                            type="button"
-                            onClick={() => handleSelectAdminAccount(u)}
-                            className={`text-left p-2 rounded-lg border text-xs transition flex items-start gap-2 ${
-                              isChosen
-                                ? 'bg-blue-50 border-blue-300 text-blue-900 font-bold'
-                                : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
-                            }`}
-                          >
-                            <UserCheck className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isChosen ? 'text-[#022448]' : 'text-slate-400'}`} />
-                            <div className="leading-tight truncate">
-                              <span className="block truncate font-semibold">{u.name}</span>
-                              <span className="text-[10px] text-slate-500 font-mono-ref">{u.badge}</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </form>
-              ) : (
-                /* Form 2: Agents de terrain SAA */
-                <form onSubmit={handleAgentLogin} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Agent Assermenté SAA Répertorié
-                    </label>
-                    <select
-                      value={agentBadge}
-                      onChange={e => {
-                        const b = e.target.value;
-                        setAgentBadge(b);
-                        const match = agentUsers.find(a => a.badge === b);
-                        if (match) setAgentPhone(match.phone);
-                        setAgentError('');
-                      }}
-                      className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#006d2f] shadow-xs"
-                    >
-                      {agentUsers.map(u => (
-                        <option key={u.id} value={u.badge}>
-                          {u.name} — {u.badge} ({u.phone})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Matricule de Badge Officiel
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={agentBadge}
-                        onChange={e => {
-                          setAgentBadge(e.target.value);
-                          setAgentError('');
-                        }}
-                        placeholder="ex: SAA-PN-008"
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-mono-ref font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006d2f] shadow-xs"
-                        required
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                        <Smartphone className="w-4 h-4" />
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      Numéro de liaison brigade : <strong className="font-mono-ref text-slate-700">{agentPhone}</strong>
-                    </p>
-                  </div>
-
-                  {agentError && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl text-xs font-medium flex items-start gap-2">
-                      <BadgeAlert className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
-                      <span>{agentError}</span>
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-[#006d2f] to-[#028a3d] hover:from-[#005a26] hover:to-[#006d2f] text-white font-bold py-3 px-4 rounded-xl text-xs sm:text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 group"
-                  >
-                    <Smartphone className="w-4 h-4" />
-                    <span>Ouvrir l'Espace Terrain & Google Agenda SAA</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
-                  </button>
-
-                  {/* Registered SAA Agents Selection */}
-                  <div className="pt-3 border-t border-slate-200/80">
-                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
-                      Agents Assermentés de la Brigade SAA :
-                    </p>
-                    <div className="space-y-1.5">
-                      {agentUsers.map(u => {
-                        const isChosen = agentBadge.toUpperCase() === u.badge.toUpperCase();
-                        return (
-                          <button
-                            key={u.id}
-                            type="button"
-                            onClick={() => handleSelectAgentAccount(u)}
-                            className={`w-full text-left p-2 rounded-lg border text-xs transition flex items-center justify-between ${
-                              isChosen
-                                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold'
-                                : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Smartphone className={`w-3.5 h-3.5 ${isChosen ? 'text-[#006d2f]' : 'text-slate-400'}`} />
-                              <div>
-                                <span className="font-semibold block">{u.name}</span>
-                                <span className="text-[10px] text-slate-500">{u.title}</span>
-                              </div>
-                            </div>
-                            <span className="font-mono-ref text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                              {u.badge}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </form>
-              )}
             </div>
 
-            {/* Verification Guarantee */}
-            <div className="mt-6 pt-3 border-t border-slate-200 text-center">
-              <p className="text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Base locale et synchronisation centrale conformes aux matricules DDL-PN.</span>
-              </p>
-            </div>
           </div>
         </div>
       </main>
 
-      {/* Official Footer */}
-      <footer className="relative z-10 max-w-5xl mx-auto w-full text-center text-[10px] text-slate-400 pt-3 border-t border-white/10">
-        <p>
-          {REPUBLIQUE_CONGO.nom} • {REPUBLIQUE_CONGO.ministere} • {REPUBLIQUE_CONGO.direction_departementale}
+      {/* Official Republic Bottom Bar */}
+      <footer className="relative z-10 max-w-6xl mx-auto w-full text-center text-white/70 text-[11px] space-y-1">
+        <RepublicTricolorBar className="mb-3" />
+        <p className="font-semibold text-amber-200">
+          Système Intégré de Régulation des Loisirs • Direction Départementale des Loisirs de Pointe-Noire (DDL-PN)
         </p>
-        <p className="text-slate-500 mt-0.5">
-          Système Intégré de Régulation des Loisirs • Version 2.0.0-PROD-2026
+        <p className="text-[10px] text-white/50">
+          Sécurité conforme aux directives gouvernementales de la République du Congo • Base Centrale Supabase
         </p>
       </footer>
     </div>

@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { storageService } from '../../services/storageService';
+import { supabase } from '../../services/supabaseClient';
 import { AgentTourneeEvent, Establishment, TerrainPaymentRecord, AppUser } from '../../types';
 import { APP_USERS, TERRITORIAL_REFERENTIAL } from '../../constants/referential';
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
@@ -111,6 +112,14 @@ export const MobileAgentCalendarModule: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<TerrainPaymentRecord['payment_method']>('MTN Mobile Money');
   const [payerName, setPayerName] = useState<string>('');
   const [paymentNotes, setPaymentNotes] = useState<string>('Encaissement direct in situ par la Brigade SAA');
+  
+  // Tenancière agreement and next installment appointment states
+  const [scheduleNextRdv, setScheduleNextRdv] = useState<boolean>(true);
+  const [nextAppointmentDate, setNextAppointmentDate] = useState<string>('2026-10-06');
+  const [nextAppointmentTime, setNextAppointmentTime] = useState<string>('10:00');
+  const [tenanciereAccord, setTenanciereAccord] = useState<string>(
+    'Versement du solde convenu avec la tenancière après recette du week-end'
+  );
   
   // Convocation form
   const [convocationDate, setConvocationDate] = useState<string>('2026-10-02');
@@ -347,22 +356,76 @@ export const MobileAgentCalendarModule: React.FC = () => {
     const est = establishments.find(x => x.id === targetEstId);
     if (!est) return;
 
+    const remainingAfterThis = Math.max(0, est.balance_due - Number(paymentAmount));
+
     const result = storageService.recordPayment({
       establishment_id: est.id,
       amount: Number(paymentAmount),
       payment_method: paymentMethod,
       collected_by: currentAgent.name,
       agent_badge: currentAgent.badge,
-      notes: paymentNotes || `Encaissement sur le terrain par ${currentAgent.name}`
+      notes: paymentNotes || `Acompte négocié et perçu in situ par ${currentAgent.name}`
     });
+
+    // Schedule next appointment if balance remains and agreement was reached with tenancière
+    if (remainingAfterThis > 0 && scheduleNextRdv && nextAppointmentDate) {
+      storageService.addAgentEvent({
+        agentId: currentAgent.badge,
+        agentName: currentAgent.name,
+        agentBadge: currentAgent.badge,
+        establishmentId: est.id,
+        establishmentName: est.name,
+        promoterName: est.promoter_name,
+        phone: est.phone,
+        arrondissement: est.arrondissement,
+        quartier: est.quartier,
+        address: est.address,
+        date: nextAppointmentDate,
+        timeStart: nextAppointmentTime || '10:00',
+        timeEnd: '11:00',
+        type: 'ENCAISSEMENT_ACOMPTE',
+        status: 'A_FAIRE',
+        priority: 'HAUTE',
+        amountDue: remainingAfterThis,
+        notes: `Rendez-vous convenu avec la tenancière : ${tenanciereAccord}. Reste à percevoir : ${remainingAfterThis.toLocaleString('fr-FR')} FCFA.`,
+        isSynced: isOnline
+      });
+
+      // Synchronize directly into Supabase rendezvous table
+      supabase.from('rendezvous').insert({
+        establishment_id: est.id,
+        establishment_name: est.name,
+        promoter_name: est.promoter_name,
+        promoter_phone: est.phone,
+        district: est.arrondissement,
+        address: est.address,
+        date: nextAppointmentDate,
+        time: nextAppointmentTime || '10:00',
+        motif: 'Paiement solde / acompte fixé avec la tenancière',
+        status: 'CONFIRME',
+        next_action_type: 'ENCAISSEMENT_ACOMPTE',
+        installment_amount: remainingAfterThis,
+        remaining_after: 0,
+        notes: tenanciereAccord,
+        assigned_agent_badge: currentAgent.badge,
+        assigned_agent_name: currentAgent.name
+      }).then(({ error }) => {
+        if (error) console.warn('[Supabase] Rendezvous insert note:', error);
+      });
+    }
 
     reloadEvents();
     setIsPaymentModalOpen(false);
 
-    // Business Rule Check: Annual Renewal
+    // Notifications
     if (result.renewalEvent) {
       triggerNotification(
         `⭐ RÈGLE DDL-PN APPLIQUÉE : Redevance intégralement soldée ! Le renouvellement annuel (N+1) des frais d'exploitation a été automatiquement programmé au ${result.renewalEvent.date} dans votre Google Agenda SAA.`,
+        'success'
+      );
+    } else if (remainingAfterThis > 0 && scheduleNextRdv && nextAppointmentDate) {
+      triggerNotification(
+        `Acompte de ${paymentAmount.toLocaleString('fr-FR')} FCFA perçu. Nouveau reste dû : ${remainingAfterThis.toLocaleString('fr-FR')} FCFA. Rendez-vous convenu avec la tenancière fixé au ${nextAppointmentDate} à ${nextAppointmentTime} enregistré dans votre Google Agenda !`,
         'success'
       );
     } else {
@@ -381,6 +444,8 @@ export const MobileAgentCalendarModule: React.FC = () => {
         ...result.payment,
         activity_type: est.activity_type,
         address: est.address,
+        next_due_date: remainingAfterThis > 0 && scheduleNextRdv ? nextAppointmentDate : undefined,
+        next_appointment_notes: remainingAfterThis > 0 && scheduleNextRdv ? tenanciereAccord : undefined,
         annual_renewal_scheduled_date: result.establishment.annual_renewal_date
       }
     });
@@ -1572,6 +1637,65 @@ export const MobileAgentCalendarModule: React.FC = () => {
                         />
                       </div>
                     </div>
+
+                    {/* TENANCIÈRE INSTALLMENT AGREEMENT & NEXT RENDEZ-VOUS */}
+                    {!isWillBeFullyPaid && (
+                      <div className="p-3.5 bg-emerald-50/90 border-2 border-emerald-500 rounded-xl space-y-2.5 shadow-xs">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 font-black text-xs text-emerald-950">
+                            <Calendar className="w-4 h-4 text-emerald-700" />
+                            <span>Accord Tenancière & Prochain Rendez-vous</span>
+                          </div>
+                          <span className="font-mono-ref font-extrabold text-xs text-emerald-900 bg-white px-2 py-0.5 rounded border border-emerald-300 shadow-2xs">
+                            Nouveau reste : {Math.max(0, (est?.balance_due || 0) - paymentAmount).toLocaleString('fr-FR')} FCFA
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-emerald-900 leading-snug">
+                          Comme la tenancière paie par acomptes échelonnés, fixez avec elle la date et l'heure de votre prochain passage pour percevoir le solde.
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="font-bold text-slate-800 block mb-1 text-[11px]">
+                              Date fixée avec la tenancière *
+                            </label>
+                            <input
+                              type="date"
+                              required={scheduleNextRdv}
+                              value={nextAppointmentDate}
+                              onChange={e => setNextAppointmentDate(e.target.value)}
+                              className="w-full p-2 bg-white border border-emerald-300 rounded-lg font-bold text-xs text-slate-800 focus:ring-2 focus:ring-emerald-400"
+                            />
+                          </div>
+                          <div>
+                            <label className="font-bold text-slate-800 block mb-1 text-[11px]">
+                              Heure convenue *
+                            </label>
+                            <input
+                              type="time"
+                              required={scheduleNextRdv}
+                              value={nextAppointmentTime}
+                              onChange={e => setNextAppointmentTime(e.target.value)}
+                              className="w-full p-2 bg-white border border-emerald-300 rounded-lg font-bold text-xs text-slate-800 focus:ring-2 focus:ring-emerald-400"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="font-bold text-slate-800 block mb-1 text-[11px]">
+                            Engagement verbal / Accord de la tenancière :
+                          </label>
+                          <input
+                            type="text"
+                            value={tenanciereAccord}
+                            onChange={e => setTenanciereAccord(e.target.value)}
+                            placeholder="Ex: Versement convenu après la recette du week-end..."
+                            className="w-full p-2 bg-white border border-emerald-300 rounded-lg text-xs text-slate-800 focus:ring-2 focus:ring-emerald-400"
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     {/* GOLDEN BUSINESS RULE ALERT BANNER */}
                     {isWillBeFullyPaid && (

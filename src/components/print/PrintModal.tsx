@@ -129,6 +129,23 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                     <span>{data.transaction_ref}</span>
                   </div>
                 )}
+                {/* Prochain versement convenu avec la tenancière */}
+                {data.next_due_date && (
+                  <div className="mt-2 pt-1 border-t border-dashed border-black bg-emerald-50 p-1.5 text-center rounded">
+                    <span className="font-extrabold text-[8.5px] uppercase block text-emerald-950">
+                      🤝 Prochain RDV Convenu (Solde)
+                    </span>
+                    <span className="font-mono-ref font-black text-[10px] text-black block">
+                      {data.next_due_date}
+                    </span>
+                    {data.next_appointment_notes && (
+                      <span className="text-[7px] text-slate-700 italic block leading-tight mt-0.5">
+                        « {data.next_appointment_notes} »
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Règle de renouvellement N+1 obligatoire */}
                 {(data.annual_renewal_scheduled_date || data.annual_renewal_date) && (
                   <div className="mt-2 pt-1 border-t border-dashed border-black bg-amber-50 p-1 text-center">

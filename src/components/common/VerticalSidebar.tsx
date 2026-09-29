@@ -161,9 +161,21 @@ export const VerticalSidebar: React.FC = () => {
           </div>
         )}
 
-        {/* Scrollable List of 13 Modules */}
+        {/* Scrollable List of Modules according to role */}
         <div className="flex-1 overflow-y-auto py-3 px-2 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
-          {SIDEBAR_SECTIONS.map((section, sIdx) => (
+          {(currentUser.role === 'AGENT_SAA'
+            ? [
+                {
+                  title: 'MON ESPACE TERRAIN (AGENT)',
+                  items: [
+                    { id: 'MOD-03', num: '03', label: 'Mon Agenda Google Calendar', shortLabel: 'Mon Agenda', icon: Smartphone, badge: currentUser.badge },
+                    { id: 'MOD-02', num: '02', label: 'Mes Établissements & Convocations', shortLabel: 'Mes Établissements', icon: ClipboardList },
+                    { id: 'MOD-07', num: '07', label: 'Carte SIG de Mes Tournées', shortLabel: 'Ma Carte SIG', icon: MapPin },
+                  ]
+                }
+              ]
+            : SIDEBAR_SECTIONS
+          ).map((section, sIdx) => (
             <div key={sIdx} className="space-y-1">
               {!isSidebarCollapsed ? (
                 <div className="px-2.5 py-1 text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 font-mono-ref">
