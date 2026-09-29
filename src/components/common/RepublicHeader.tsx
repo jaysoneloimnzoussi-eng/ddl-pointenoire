@@ -83,10 +83,20 @@ export const RepublicHeader: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleSyncNow = () => {
-    storageService.flushOfflineQueue();
-    setNetworkStatus(storageService.getNetworkStatus());
-    triggerNotification('Synchronisation immédiate avec Supabase réussie.', 'success');
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncNow = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await storageService.flushOfflineQueue();
+      setNetworkStatus(storageService.getNetworkStatus());
+      triggerNotification('Synchronisation immédiate avec Supabase réussie.', 'success');
+    } catch (err: any) {
+      triggerNotification('Erreur lors de la synchronisation Supabase: ' + (err?.message || 'Vérifiez le réseau'), 'error');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   return (
@@ -159,15 +169,14 @@ export const RepublicHeader: React.FC = () => {
               </span>
             )}
 
-            {networkStatus.queueLength > 0 && (
-              <button
-                onClick={handleSyncNow}
-                title="Synchroniser les données locales"
-                className="ml-1 p-0.5 hover:bg-emerald-100 rounded text-emerald-700 transition"
-              >
-                <RefreshCw className="w-3 h-3 animate-spin" />
-              </button>
-            )}
+            <button
+              onClick={handleSyncNow}
+              disabled={isSyncing}
+              title="Synchroniser avec Supabase"
+              className="ml-1 p-1 hover:bg-emerald-100 rounded text-emerald-700 transition flex items-center gap-1"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
+            </button>
           </div>
 
           {/* Quick Tablet / Field Mode Toggle */}

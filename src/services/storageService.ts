@@ -1,5 +1,6 @@
 import { Establishment, TerrainPaymentRecord, OfficialLegalAct, SpaMerchantSubscription, SpaHonorDiploma, ArrondissementCode, RegimeType, EstablishmentStatus, AgentTourneeEvent, AppUser } from '../types';
 import { TERRITORIAL_REFERENTIAL, ACTIVITY_CATEGORIES, TAXATION_RULES } from '../constants/referential';
+import { supabase } from './supabaseClient';
 
 const LOCAL_STORAGE_KEYS = {
   ESTABLISHMENTS: 'ddl_pn_establishments_v2',
@@ -14,6 +15,32 @@ const LOCAL_STORAGE_KEYS = {
 
 export const DEFAULT_SUPABASE_URL = 'https://nbpcecsnivfggyitpxdn.supabase.co';
 
+// Helper to parse arrondissement from text / address
+export function parseArrondissement(raw: string | null | undefined, address: string = ''): ArrondissementCode {
+  const combined = (String(raw || '') + ' ' + String(address || '')).toLowerCase();
+  if (combined.includes('lumumba') || combined.includes('1 –') || combined.includes('1 -') || combined.includes('1_')) return '1_LUMUMBA';
+  if (combined.includes('mvou') || combined.includes('2 –') || combined.includes('2 -') || combined.includes('2_')) return '2_MVOUMVOU';
+  if (combined.includes('tié') || combined.includes('tie') || combined.includes('3 –') || combined.includes('3 -') || combined.includes('3_')) return '3_TIETIE';
+  if (combined.includes('louandjili') || combined.includes('loandjili') || combined.includes('4 –') || combined.includes('4 -') || combined.includes('4_')) return '4_LOANDJILI';
+  if (combined.includes('mongo') || combined.includes('mpoukou') || combined.includes('5 –') || combined.includes('5 -') || combined.includes('5_')) return '5_MONGO_MPOUKOU';
+  if (combined.includes('ngoyo') || combined.includes('6 –') || combined.includes('6 -') || combined.includes('6_')) return '6_NGOYO';
+  return '1_LUMUMBA';
+}
+
+// Helper to determine coordinates per arrondissement
+export function getCoordinatesForArrondissement(arr: ArrondissementCode, idSeed: string): [number, number] {
+  const ref = TERRITORIAL_REFERENTIAL.find(a => a.code === arr);
+  const baseCoord = ref ? ref.sig_coordinates : [-4.795, 11.855];
+  let hash = 0;
+  for (let i = 0; i < idSeed.length; i++) {
+    hash = (hash << 5) - hash + idSeed.charCodeAt(i);
+    hash |= 0;
+  }
+  const jitterLat = ((Math.abs(hash) % 100) - 50) * 0.0003;
+  const jitterLng = ((Math.abs(hash * 7) % 100) - 50) * 0.0003;
+  return [Number((baseCoord[0] + jitterLat).toFixed(5)), Number((baseCoord[1] + jitterLng).toFixed(5))];
+}
+
 // Helper to calculate total fee
 export function calculateEstablishmentFee(activityCode: string, surfaceM2: number, regime: RegimeType) {
   const category = ACTIVITY_CATEGORIES.find(c => c.code === activityCode) || ACTIVITY_CATEGORIES[3];
@@ -27,170 +54,22 @@ export function calculateEstablishmentFee(activityCode: string, surfaceM2: numbe
   };
 }
 
-// Generate realistic seed of 118 establishments across Pointe-Noire
+// Seed generation for offline fallback
 function generateSeedEstablishments(): Establishment[] {
   const establishments: Establishment[] = [];
-
   const rawEstablishmentData = [
-    // Arrondissement 1 - Lumumba (Prestigious, Coast, Center)
     { name: 'Le Grand Baobab VIP Lounge', prom: 'Christian BITEMO', phone: '+242 06 612 88 90', quart: 'Mpita', act: 'A1.2', reg: 'FORMEL', surf: 220, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-089', coord: [-4.7982, 11.8512] },
     { name: 'Club 77 Discothèque', prom: 'Jean-Pierre TCHICAYA', phone: '+242 06 630 14 52', quart: 'Centre-Ville', act: 'A1.1', reg: 'FORMEL', surf: 310, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-044', coord: [-4.7915, 11.8598] },
     { name: 'La Brise de l\'Atlantique Bar-Plage', prom: 'Solange MOUNTOU', phone: '+242 05 510 40 33', quart: 'Côte Sauvage', act: 'A2.2', reg: 'FORMEL', surf: 450, stat: 'transmis_brazzaville', coord: [-4.8105, 11.8420] },
     { name: 'Le Havana Club & Cigar Lounge', prom: 'Alain MPOUELE', phone: '+242 06 940 77 12', quart: 'Centre-Ville', act: 'A1.2', reg: 'FORMEL', surf: 180, stat: 'attestation_depot', coord: [-4.7930, 11.8620] },
-    { name: 'Bowling Club Ponton d\'Or', prom: 'Frédéric MOUKOKO', phone: '+242 06 655 22 99', quart: 'Mpita', act: 'A3.1', reg: 'FORMEL', surf: 520, stat: 'en_instruction', coord: [-4.8010, 11.8540] },
-    { name: 'Snack-Bar Le Saint-Pierre', prom: 'Henriette PACKA', phone: '+242 05 522 18 70', quart: 'Saint-Pierre', act: 'A2.1', reg: 'INFORMEL', surf: 75, stat: 'identifie', coord: [-4.7890, 11.8680] },
-    { name: 'Le Bateau Ivre Cabaret Live', prom: 'Auguste LOUNDOU', phone: '+242 06 680 34 11', quart: 'Quartier du Port', act: 'A1.3', reg: 'FORMEL', surf: 190, stat: 'attestation_depot', coord: [-4.7850, 11.8530] },
-    { name: 'Espace Récréatif Les Bambins', prom: 'Marie-Reine NZIKOU', phone: '+242 05 580 90 22', quart: 'Mpita', act: 'A3.2', reg: 'FORMEL', surf: 380, stat: 'transmis_brazzaville', coord: [-4.8040, 11.8490] },
-    { name: 'Le Refuge de KM 4', prom: 'Bruno BOUANGA', phone: '+242 06 820 15 44', quart: 'KM 4', act: 'A2.1', reg: 'INFORMEL', surf: 60, stat: 'convoque', coord: [-4.7995, 11.8720] },
-    { name: 'Terrasse OCH Lounge', prom: 'Sylvie MAVOUNGOU', phone: '+242 06 677 33 21', quart: 'Zone Industrielle OCH', act: 'A2.2', reg: 'FORMEL', surf: 240, stat: 'mise_en_demeure', coord: [-4.7870, 11.8790] },
-    { name: 'Le Palmier Royal Cabaret', prom: 'Édouard KOUMBA', phone: '+242 05 540 66 11', quart: 'Côte Sauvage', act: 'A1.3', reg: 'FORMEL', surf: 160, stat: 'en_instruction', coord: [-4.8150, 11.8390] },
-    { name: 'Snack Le Nautique Plage', prom: 'Astride GAMBOMI', phone: '+242 06 912 45 78', quart: 'Côte Sauvage', act: 'A2.1', reg: 'INFORMEL', surf: 85, stat: 'identifie', coord: [-4.8210, 11.8370] },
-    { name: 'Bar Le Point Zéro', prom: 'Gaspard TSONDE', phone: '+242 06 601 29 44', quart: 'Grand Marché', act: 'A2.1', reg: 'INFORMEL', surf: 70, stat: 'convoque', coord: [-4.7920, 11.8640] },
-    { name: 'Le Saphir Night Club', prom: 'Diane BASSOUAMINA', phone: '+242 05 599 00 12', quart: 'Centre-Ville', act: 'A1.1', reg: 'FORMEL', surf: 280, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-112', coord: [-4.7945, 11.8580] },
-    { name: 'Centre Culturel Jean-Baptiste Tati', prom: 'Direction Association Arts', phone: '+242 06 650 99 88', quart: 'Mpita', act: 'A4.1', reg: 'FORMEL', surf: 420, stat: 'autorise_dgl', dgl: 'AGR-DGL-2024-003', coord: [-4.8020, 11.8560] },
-    { name: 'Bar Dancing Tchicapika Sun', prom: 'Romuald NGOUABI', phone: '+242 06 874 12 30', quart: 'Tchicapika', act: 'A1.3', reg: 'INFORMEL', surf: 110, stat: 'identifie', coord: [-4.7960, 11.8710] },
-    { name: 'VIP Garden Mpita', prom: 'Bertin MASSAMBA', phone: '+242 05 530 81 22', quart: 'Mpita', act: 'A2.2', reg: 'FORMEL', surf: 195, stat: 'attestation_depot', coord: [-4.8060, 11.8480] },
-    { name: 'Snack Bar L\'Étoile Noire', prom: 'Chantal LOUBAKI', phone: '+242 06 690 44 55', quart: 'KM 4', act: 'A2.1', reg: 'INFORMEL', surf: 50, stat: 'fermeture_administrative', coord: [-4.8010, 11.8750] },
-    { name: 'Le Patio Gourmand & Loisirs', prom: 'Antoine DE SOUZA', phone: '+242 06 662 33 00', quart: 'Centre-Ville', act: 'A3.2', reg: 'FORMEL', surf: 310, stat: 'en_instruction', coord: [-4.7900, 11.8605] },
-    { name: 'Bar Dancing Chez Mère Jolie', prom: 'Jolie KOUKA', phone: '+242 05 512 77 99', quart: 'Saint-Pierre', act: 'A1.3', reg: 'INFORMEL', surf: 90, stat: 'convoque', coord: [-4.7875, 11.8660] },
-
-    // Arrondissement 2 - Mvou-Mvou (Historic, dense, popular musical ambiance)
-    { name: 'Le Temple de la Rumba', prom: 'Paulin KIMBEMBE', phone: '+242 06 644 11 20', quart: 'Makayabou', act: 'A1.3', reg: 'FORMEL', surf: 260, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-067', coord: [-4.7750, 11.8730] },
-    { name: 'Snack Bar Matendé Ambiance', prom: 'Gervais MALONGA', phone: '+242 05 544 32 10', quart: 'Matendé', act: 'A2.1', reg: 'INFORMEL', surf: 80, stat: 'attestation_depot', coord: [-4.7790, 11.8690] },
-    { name: 'Night Club Le Métro Mvou-Mvou', prom: 'Bonaventure NGANGA', phone: '+242 06 910 88 55', quart: 'Mvou-Mvou Centre', act: 'A1.1', reg: 'FORMEL', surf: 210, stat: 'transmis_brazzaville', coord: [-4.7780, 11.8715] },
-    { name: 'Terrasse Festive Tchiniambi', prom: 'Nathalie BIKINDOU', phone: '+242 06 612 00 33', quart: 'Tchiniambi', act: 'A2.2', reg: 'FORMEL', surf: 170, stat: 'en_instruction', coord: [-4.7720, 11.8660] },
-    { name: 'Bar Chez Papa Wemba Rive Gauche', prom: 'Séraphin DOSSOU', phone: '+242 05 561 22 90', quart: 'Kilomètre 5', act: 'A1.3', reg: 'INFORMEL', surf: 120, stat: 'mise_en_demeure', coord: [-4.7810, 11.8780] },
-    { name: 'Snack-Bar Le Plateau Vivant', prom: 'Yvette MATONDO', phone: '+242 06 833 45 12', quart: 'Plateau', act: 'A2.1', reg: 'INFORMEL', surf: 65, stat: 'identifie', coord: [-4.7760, 11.8760] },
-    { name: 'Cabaret Jazz & Afro Dolisie-Gare', prom: 'Justin MBEMBA', phone: '+242 06 677 88 99', quart: 'Dolisie-Gare', act: 'A1.3', reg: 'FORMEL', surf: 150, stat: 'attestation_depot', coord: [-4.7840, 11.8695] },
-    { name: 'Complexe Récréatif Mvou-Mvou Star', prom: 'Aimé MAKITA', phone: '+242 05 519 33 00', quart: 'Mvou-Mvou Centre', act: 'A3.2', reg: 'FORMEL', surf: 320, stat: 'transmis_brazzaville', coord: [-4.7770, 11.8700] },
-    { name: 'VIP Salons Les Connaisseurs', prom: 'Clément MOUKOKO', phone: '+242 06 945 12 78', quart: 'Makayabou', act: 'A1.2', reg: 'FORMEL', surf: 140, stat: 'en_instruction', coord: [-4.7735, 11.8750] },
-    { name: 'Bar Dansant La Paillote de Tchiniambi', prom: 'Léontine NGOMA', phone: '+242 06 618 90 45', quart: 'Tchiniambi', act: 'A1.3', reg: 'INFORMEL', surf: 95, stat: 'convoque', coord: [-4.7700, 11.8640] },
-    { name: 'Snack Bar Le Relais du KM 5', prom: 'Pascal MILANDOU', phone: '+242 05 533 11 88', quart: 'Kilomètre 5', act: 'A2.1', reg: 'INFORMEL', surf: 75, stat: 'identifie', coord: [-4.7825, 11.8800] },
-    { name: 'Terrasse Le Jardin Secret de Matendé', prom: 'Francine BOKO', phone: '+242 06 890 22 14', quart: 'Matendé', act: 'A2.2', reg: 'INFORMEL', surf: 130, stat: 'identifie', coord: [-4.7805, 11.8670] },
-    { name: 'Salle Polyvalente La Fraternité', prom: 'Association Solidarité Mvou-Mvou', phone: '+242 06 602 11 44', quart: 'Plateau', act: 'A4.1', reg: 'FORMEL', surf: 350, stat: 'autorise_dgl', dgl: 'AGR-DGL-2024-041', coord: [-4.7745, 11.8770] },
-    { name: 'Bar Le Rythme Makayabou', prom: 'Ferdinand NZABA', phone: '+242 05 570 44 22', quart: 'Makayabou', act: 'A1.3', reg: 'INFORMEL', surf: 105, stat: 'convoque', coord: [-4.7765, 11.8720] },
-    { name: 'Discothèque Black and White', prom: 'Désiré LOUSSOUKOU', phone: '+242 06 912 33 00', quart: 'Mvou-Mvou Centre', act: 'A1.1', reg: 'FORMEL', surf: 190, stat: 'fermeture_administrative', coord: [-4.7795, 11.8705] },
-    { name: 'Snack La Palmeraie', prom: 'Béatrice MOUKILA', phone: '+242 06 655 88 12', quart: 'Dolisie-Gare', act: 'A2.1', reg: 'INFORMEL', surf: 55, stat: 'identifie', coord: [-4.7855, 11.8680] },
-    { name: 'Bar Dancing Les Palmes d\'Or', prom: 'Jacques SITA', phone: '+242 05 540 99 77', quart: 'Tchiniambi', act: 'A1.3', reg: 'FORMEL', surf: 145, stat: 'attestation_depot', coord: [-4.7710, 11.8655] },
-    { name: 'Espace Jeux Vidéo & Récréatif', prom: 'Ghislain MAMPOUYA', phone: '+242 06 811 77 44', quart: 'Matendé', act: 'A3.1', reg: 'INFORMEL', surf: 80, stat: 'en_instruction', coord: [-4.7785, 11.8685] },
-    { name: 'Terrasse Bar Ponton Soir', prom: 'Odette BAZOLO', phone: '+242 06 623 99 00', quart: 'Kilomètre 5', act: 'A2.2', reg: 'INFORMEL', surf: 110, stat: 'mise_en_demeure', coord: [-4.7830, 11.8790] },
-
-    // Arrondissement 3 - Tié-Tié (Major commercial hub, popular nightlife)
-    { name: 'Complexe La Paillote Tié-Tié', prom: 'Stanislas MASSAMBA', phone: '+242 06 632 88 11', quart: 'Tié-Tié Centre', act: 'A3.2', reg: 'FORMEL', surf: 480, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-019', coord: [-4.7640, 11.9050] },
-    { name: 'Discothèque Le Pharaon VIP', prom: 'Gilbert MALONDA', phone: '+242 06 950 44 20', quart: 'Marché Tié-Tié', act: 'A1.1', reg: 'FORMEL', surf: 290, stat: 'transmis_brazzaville', coord: [-4.7610, 11.9080] },
-    { name: 'Bar Dancing La Renaissance Mboukou', prom: 'Thérèse NZAHOU', phone: '+242 05 520 18 33', quart: 'Mboukou', act: 'A1.3', reg: 'FORMEL', surf: 160, stat: 'attestation_depot', coord: [-4.7680, 11.8990] },
-    { name: 'Snack Bar Le Fond Tié-Tié Ambiance', prom: 'Wilfrid GAMBOU', phone: '+242 06 671 22 55', quart: 'Fond Tié-Tié', act: 'A2.1', reg: 'INFORMEL', surf: 75, stat: 'convoque', coord: [-4.7580, 11.9120] },
-    { name: 'Terrasse Espace Liberté', prom: 'Serge BOKETSU', phone: '+242 05 588 44 00', quart: 'Avenue de la Liberté', act: 'A2.2', reg: 'FORMEL', surf: 220, stat: 'attestation_depot', coord: [-4.7650, 11.9020] },
-    { name: 'VIP Lounge Félix Tchicaya', prom: 'Honoré GOUAMBA', phone: '+242 06 840 99 11', quart: 'Jean Félix Tchicaya', act: 'A1.2', reg: 'FORMEL', surf: 150, stat: 'en_instruction', coord: [-4.7630, 11.9010] },
-    { name: 'Bowling & Jeux OCH Tié-Tié', prom: 'Célestin NKOUNKOU', phone: '+242 06 612 77 33', quart: 'Och Tié-Tié', act: 'A3.1', reg: 'FORMEL', surf: 390, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-078', coord: [-4.7665, 11.9090] },
-    { name: 'Bar Dancing Le Carrefour des As', prom: 'Paul MABIALA', phone: '+242 05 533 80 19', quart: 'Fond Tié-Tié', act: 'A1.3', reg: 'INFORMEL', surf: 115, stat: 'mise_en_demeure', coord: [-4.7570, 11.9140] },
-    { name: 'Snack Bar Chez Maman Pauline', prom: 'Pauline MIKOLO', phone: '+242 06 920 11 88', quart: 'Marché Tié-Tié', act: 'A2.1', reg: 'INFORMEL', surf: 60, stat: 'identifie', coord: [-4.7600, 11.9070] },
-    { name: 'Terrasse Bar Les Flots Bleus Tié-Tié', prom: 'Gaston MAKAYA', phone: '+242 06 645 33 22', quart: 'Mboukou', act: 'A2.2', reg: 'INFORMEL', surf: 135, stat: 'en_instruction', coord: [-4.7690, 11.8970] },
-    { name: 'Salle des Fêtes L\'Espérance', prom: 'Élisabeth NGATSE', phone: '+242 05 550 22 11', quart: 'Tié-Tié Centre', act: 'A4.1', reg: 'FORMEL', surf: 290, stat: 'transmis_brazzaville', coord: [-4.7648, 11.9065] },
-    { name: 'Bar Dancing Sun City', prom: 'Basile LOUAMBA', phone: '+242 06 877 44 99', quart: 'Avenue de la Liberté', act: 'A1.3', reg: 'INFORMEL', surf: 100, stat: 'convoque', coord: [-4.7660, 11.9035] },
-    { name: 'Snack Bar Le Bambou Tié-Tié', prom: 'Patrick LOUVOUANDOU', phone: '+242 06 988 77 66', quart: 'Fond Tié-Tié', act: 'A2.1', reg: 'INFORMEL', surf: 65, stat: 'fermeture_administrative', coord: [-4.7560, 11.9150] },
-    { name: 'VIP Bar L\'Écrin Doré', prom: 'Valérie BIKOUTA', phone: '+242 06 601 55 88', quart: 'Jean Félix Tchicaya', act: 'A1.2', reg: 'FORMEL', surf: 135, stat: 'attestation_depot', coord: [-4.7620, 11.9025] },
-    { name: 'Discothèque Club Tropicana', prom: 'Mathieu NGATSONGO', phone: '+242 05 518 77 33', quart: 'Och Tié-Tié', act: 'A1.1', reg: 'FORMEL', surf: 240, stat: 'autorise_dgl', dgl: 'AGR-DGL-2024-099', coord: [-4.7675, 11.9110] },
-    { name: 'Bar Chez Papa Bonheur', prom: 'Arsène MPASSI', phone: '+242 06 629 11 44', quart: 'Mboukou', act: 'A2.1', reg: 'INFORMEL', surf: 70, stat: 'identifie', coord: [-4.7700, 11.8950] },
-    { name: 'Terrasse Le Palmier Tié-Tié', prom: 'Chantal NKODIA', phone: '+242 05 572 66 11', quart: 'Fond Tié-Tié', act: 'A2.2', reg: 'INFORMEL', surf: 90, stat: 'identifie', coord: [-4.7550, 11.9160] },
-    { name: 'Complexe Détente Jeunesse Tié-Tié', prom: 'Alphonse NDINGA', phone: '+242 06 933 22 55', quart: 'Tié-Tié Centre', act: 'A3.2', reg: 'FORMEL', surf: 310, stat: 'en_instruction', coord: [-4.7635, 11.9040] },
-    { name: 'Bar Dancing Rumba Star 2026', prom: 'Fabrice TSIBA', phone: '+242 06 680 77 11', quart: 'Avenue de la Liberté', act: 'A1.3', reg: 'INFORMEL', surf: 110, stat: 'attestation_depot', coord: [-4.7670, 11.9015] },
-    { name: 'Snack Bar L\'Aurore', prom: 'Mireille KINZONZI', phone: '+242 05 544 99 22', quart: 'Marché Tié-Tié', act: 'A2.1', reg: 'INFORMEL', surf: 50, stat: 'convoque', coord: [-4.7595, 11.9085] },
-
-    // Arrondissement 4 - Loandjili (North zone, hospitals, Siafoumou, residential)
-    { name: 'Complexe Touristique Siafoumou Park', prom: 'Guy-Roger MABIKA', phone: '+242 06 620 99 44', quart: 'Siafoumou', act: 'A3.2', reg: 'FORMEL', surf: 600, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-032', coord: [-4.7320, 11.8890] },
-    { name: 'Discothèque Le Mirage de Songolo', prom: 'Armand BIANGO', phone: '+242 06 915 22 30', quart: 'Songolo', act: 'A1.1', reg: 'FORMEL', surf: 230, stat: 'transmis_brazzaville', coord: [-4.7290, 11.8790] },
-    { name: 'VIP Lounge Loandjili Prestige', prom: 'Julienne ONDONGO', phone: '+242 05 531 44 88', quart: 'Loandjili Centre', act: 'A1.2', reg: 'FORMEL', surf: 160, stat: 'attestation_depot', coord: [-4.7380, 11.8840] },
-    { name: 'Snack-Bar Hôpital Oasis', prom: 'Fidèle MOUSSOKI', phone: '+242 06 684 11 00', quart: 'Quartier Hôpital Général', act: 'A2.1', reg: 'INFORMEL', surf: 70, stat: 'identifie', coord: [-4.7410, 11.8820] },
-    { name: 'Bar Dancing Faubourg Express', prom: 'Simon MATINGOU', phone: '+242 05 580 33 22', quart: 'Faubourg', act: 'A1.3', reg: 'INFORMEL', surf: 130, stat: 'convoque', coord: [-4.7430, 11.8860] },
-    { name: 'Terrasse Plein Air Les Manguiers', prom: 'Blandine TSONA', phone: '+242 06 822 55 99', quart: 'Zone Résidentielle Nord', act: 'A2.2', reg: 'FORMEL', surf: 210, stat: 'en_instruction', coord: [-4.7250, 11.8870] },
-    { name: 'Bowling Club Nord Loandjili', prom: 'Rodrigue BANTSIMBA', phone: '+242 06 611 44 77', quart: 'Loandjili Centre', act: 'A3.1', reg: 'FORMEL', surf: 410, stat: 'attestation_depot', coord: [-4.7370, 11.8855] },
-    { name: 'Bar Dansant Chez Tonton Songolo', prom: 'Lucien NTOUMI', phone: '+242 05 560 11 77', quart: 'Songolo', act: 'A1.3', reg: 'INFORMEL', surf: 105, stat: 'mise_en_demeure', coord: [-4.7300, 11.8770] },
-    { name: 'Salle Réception La Sérénité', prom: 'Colette NGOUOLALI', phone: '+242 06 940 88 12', quart: 'Siafoumou', act: 'A4.1', reg: 'FORMEL', surf: 330, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-055', coord: [-4.7330, 11.8910] },
-    { name: 'Snack Bar Le Repos de Siafoumou', prom: 'Denis BAMBI', phone: '+242 06 673 22 11', quart: 'Siafoumou', act: 'A2.1', reg: 'INFORMEL', surf: 80, stat: 'identifie', coord: [-4.7345, 11.8880] },
-    { name: 'Terrasse Bar L\'Olivier', prom: 'Sylvestre GAKOSSO', phone: '+242 05 512 88 44', quart: 'Quartier Hôpital Général', act: 'A2.2', reg: 'INFORMEL', surf: 115, stat: 'en_instruction', coord: [-4.7420, 11.8810] },
-    { name: 'Cabaret Live Loandjili Mélodie', prom: 'Clarisse LOEMBA', phone: '+242 06 880 33 55', quart: 'Loandjili Centre', act: 'A1.3', reg: 'FORMEL', surf: 175, stat: 'transmis_brazzaville', coord: [-4.7395, 11.8835] },
-    { name: 'Snack Le Mistral', prom: 'Dieudonné PEMBA', phone: '+242 06 630 77 99', quart: 'Faubourg', act: 'A2.1', reg: 'INFORMEL', surf: 60, stat: 'convoque', coord: [-4.7445, 11.8875] },
-    { name: 'VIP Espace Nord Détente', prom: 'Hervé MVILA', phone: '+242 05 590 12 34', quart: 'Zone Résidentielle Nord', act: 'A1.2', reg: 'FORMEL', surf: 140, stat: 'attestation_depot', coord: [-4.7265, 11.8860] },
-    { name: 'Discothèque Club La Nuit Loandjili', prom: 'Brice MOUELE', phone: '+242 06 919 44 22', quart: 'Songolo', act: 'A1.1', reg: 'FORMEL', surf: 220, stat: 'fermeture_administrative', coord: [-4.7280, 11.8805] },
-    { name: 'Snack Bar La Douceur', prom: 'Agnès KIBA', phone: '+242 06 617 88 00', quart: 'Loandjili Centre', act: 'A2.1', reg: 'INFORMEL', surf: 55, stat: 'identifie', coord: [-4.7360, 11.8865] },
-    { name: 'Bar Dansant Siafoumou Express', prom: 'Jérôme BIKOUMOU', phone: '+242 05 533 77 11', quart: 'Siafoumou', act: 'A1.3', reg: 'INFORMEL', surf: 95, stat: 'identifie', coord: [-4.7310, 11.8930] },
-    { name: 'Complexe Familial Les Étoiles', prom: 'Suzanne TCHIBINDA', phone: '+242 06 844 11 99', quart: 'Zone Résidentielle Nord', act: 'A3.2', reg: 'FORMEL', surf: 350, stat: 'en_instruction', coord: [-4.7240, 11.8885] },
-    { name: 'Terrasse Chez Maman Chantal', prom: 'Chantal LOUBANGOU', phone: '+242 06 651 90 22', quart: 'Faubourg', act: 'A2.2', reg: 'INFORMEL', surf: 85, stat: 'convoque', coord: [-4.7455, 11.8850] },
-
-    // Arrondissement 5 - Mongo-Mpoukou (Growing peri-urban, craft & crossroads)
-    { name: 'Complexe Récréatif Vindoulou Eden', prom: 'Maxime MOUZITA', phone: '+242 06 625 77 33', quart: 'Vindoulou', act: 'A3.2', reg: 'FORMEL', surf: 490, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-071', coord: [-4.7490, 11.9360] },
-    { name: 'Discothèque Le Safari Mongo-Mpoukou', prom: 'Bertrand MOUNDANGA', phone: '+242 06 930 11 55', quart: 'Mongo-Mpoukou Centre', act: 'A1.1', reg: 'FORMEL', surf: 260, stat: 'transmis_brazzaville', coord: [-4.7515, 11.9310] },
-    { name: 'Bar Dancing Carrefour Rocade Est', prom: 'Clotilde NZIENGUI', phone: '+242 05 522 66 80', quart: 'Rocade Est', act: 'A1.3', reg: 'INFORMEL', surf: 125, stat: 'attestation_depot', coord: [-4.7550, 11.9380] },
-    { name: 'Snack Bar Ngoyo-Rails Express', prom: 'Florent KOUBEMBA', phone: '+242 06 688 22 99', quart: 'Ngoyo-Rails', act: 'A2.1', reg: 'INFORMEL', surf: 70, stat: 'identifie', coord: [-4.7600, 11.9280] },
-    { name: 'Terrasse Espace Koufoli', prom: 'Martine NGOUBILI', phone: '+242 05 581 44 22', quart: 'Koufoli', act: 'A2.2', reg: 'FORMEL', surf: 190, stat: 'en_instruction', coord: [-4.7460, 11.9400] },
-    { name: 'VIP Club Salon Des Nobles', prom: 'Anatole MAYINGA', phone: '+242 06 812 99 44', quart: 'Mongo-Mpoukou Centre', act: 'A1.2', reg: 'FORMEL', surf: 150, stat: 'attestation_depot', coord: [-4.7530, 11.9330] },
-    { name: 'Bar Dansant Chez Vieux Bob', prom: 'Robert MILONGO', phone: '+242 06 601 44 88', quart: 'Zone Artisanale', act: 'A1.3', reg: 'INFORMEL', surf: 110, stat: 'mise_en_demeure', coord: [-4.7570, 11.9350] },
-    { name: 'Snack-Bar Le Bon Coin de Vindoulou', prom: 'Geneviève PEMBE', phone: '+242 05 540 77 12', quart: 'Vindoulou', act: 'A2.1', reg: 'INFORMEL', surf: 65, stat: 'convoque', coord: [-4.7505, 11.9375] },
-    { name: 'Centre Culturel Polyvalent Koufoli', prom: 'Fondation Loisirs Est', phone: '+242 06 911 33 77', quart: 'Koufoli', act: 'A4.1', reg: 'FORMEL', surf: 340, stat: 'autorise_dgl', dgl: 'AGR-DGL-2024-082', coord: [-4.7445, 11.9420] },
-    { name: 'Bowling & Billard Vindoulou', prom: 'Serge MALONGO', phone: '+242 06 634 55 11', quart: 'Vindoulou', act: 'A3.1', reg: 'FORMEL', surf: 380, stat: 'attestation_depot', coord: [-4.7475, 11.9345] },
-    { name: 'Terrasse Bar Rocade Plein Ciel', prom: 'Pauline BOUANGA', phone: '+242 05 577 12 90', quart: 'Rocade Est', act: 'A2.2', reg: 'INFORMEL', surf: 140, stat: 'identifie', coord: [-4.7565, 11.9395] },
-    { name: 'Bar Dancing La Colombe', prom: 'Joseph KIBANGOU', phone: '+242 06 877 88 22', quart: 'Zone Artisanale', act: 'A1.3', reg: 'INFORMEL', surf: 95, stat: 'convoque', coord: [-4.7585, 11.9335] },
-    { name: 'Snack Bar Ngoyo-Rails Soir', prom: 'Véronique TSATY', phone: '+242 06 690 11 66', quart: 'Ngoyo-Rails', act: 'A2.1', reg: 'INFORMEL', surf: 60, stat: 'identifie', coord: [-4.7615, 11.9265] },
-    { name: 'Discothèque Club La Boussole', prom: 'Roger GOMAT', phone: '+242 05 519 88 44', quart: 'Mongo-Mpoukou Centre', act: 'A1.1', reg: 'FORMEL', surf: 200, stat: 'en_instruction', coord: [-4.7500, 11.9300] },
-    { name: 'VIP Lounge Vindoulou Élégance', prom: 'Judith MBONGO', phone: '+242 06 944 66 11', quart: 'Vindoulou', act: 'A1.2', reg: 'FORMEL', surf: 135, stat: 'transmis_brazzaville', coord: [-4.7485, 11.9385] },
-    { name: 'Bar Chez Mère Nicole', prom: 'Nicole MPOUNGA', phone: '+242 06 618 33 00', quart: 'Koufoli', act: 'A2.1', reg: 'INFORMEL', surf: 50, stat: 'fermeture_administrative', coord: [-4.7430, 11.9440] },
-    { name: 'Terrasse Espace Fraternité', prom: 'Théodore BANDOULA', phone: '+242 05 533 45 78', quart: 'Mongo-Mpoukou Centre', act: 'A2.2', reg: 'INFORMEL', surf: 115, stat: 'attestation_depot', coord: [-4.7525, 11.9340] },
-    { name: 'Complexe Loisirs Enfants Vindoulou', prom: 'Colette MATOKO', phone: '+242 06 820 44 11', quart: 'Vindoulou', act: 'A3.2', reg: 'FORMEL', surf: 300, stat: 'en_instruction', coord: [-4.7510, 11.9355] },
-    { name: 'Bar Dancing L\'Escapade', prom: 'Zacharie TSONDE', phone: '+242 06 670 99 22', quart: 'Rocade Est', act: 'A1.3', reg: 'INFORMEL', surf: 100, stat: 'identifie', coord: [-4.7540, 11.9410] },
-
-    // Arrondissement 6 - Ngoyo (Industrial corridor, airport, Plage Ngoyo, Mpaka)
-    { name: 'Complexe Balnéaire Plage Ngoyo Beach', prom: 'Félicien TCHIBINDA', phone: '+242 06 610 22 99', quart: 'Plage Ngoyo', act: 'A3.2', reg: 'FORMEL', surf: 750, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-011', coord: [-4.8450, 11.9050] },
-    { name: 'Discothèque Tropicana Mpaka', prom: 'Honoré GOUAMBA', phone: '+242 06 912 88 44', quart: 'Mpaka', act: 'A1.1', reg: 'FORMEL', surf: 270, stat: 'transmis_brazzaville', coord: [-4.8250, 11.9160] },
-    { name: 'VIP Lounge Aérogare Ngoyo', prom: 'Clarisse MOUZITA', phone: '+242 05 530 11 22', quart: 'Zone Aéroportuaire', act: 'A1.2', reg: 'FORMEL', surf: 170, stat: 'attestation_depot', coord: [-4.8180, 11.9210] },
-    { name: 'Snack-Bar Coraf Pétrole Ambiance', prom: 'Guillaume MASSENGO', phone: '+242 06 677 44 12', quart: 'Coraf / Djeno Carrefour', act: 'A2.1', reg: 'INFORMEL', surf: 85, stat: 'en_instruction', coord: [-4.8380, 11.9180] },
-    { name: 'Bar Dancing Matombi Village', prom: 'Béatrice BIKOUTA', phone: '+242 05 566 99 00', quart: 'Matombi', act: 'A1.3', reg: 'INFORMEL', surf: 140, stat: 'convoque', coord: [-4.8490, 11.9250] },
-    { name: 'Terrasse Plage du Sud', prom: 'Christian NGANGA', phone: '+242 06 890 12 34', quart: 'Plage Ngoyo', act: 'A2.2', reg: 'FORMEL', surf: 320, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-095', coord: [-4.8410, 11.9080] },
-    { name: 'Bowling & Sports Bar Mpaka', prom: 'Jean-Paul KOUKA', phone: '+242 06 615 33 77', quart: 'Mpaka', act: 'A3.1', reg: 'FORMEL', surf: 440, stat: 'attestation_depot', coord: [-4.8280, 11.9140] },
-    { name: 'Bar Chez Papa Clément Ngoyo', prom: 'Clément LOUVOUEZO', phone: '+242 05 512 34 56', quart: 'Ngoyo Centre', act: 'A1.3', reg: 'INFORMEL', surf: 110, stat: 'mise_en_demeure', coord: [-4.8320, 11.9110] },
-    { name: 'Snack Bar L\'Aviation', prom: 'Danielle MAKOSSO', phone: '+242 06 940 55 12', quart: 'Zone Aéroportuaire', act: 'A2.1', reg: 'INFORMEL', surf: 70, stat: 'identifie', coord: [-4.8195, 11.9190] },
-    { name: 'Salle Événements Plage Dorée', prom: 'Société Loisirs Littoral', phone: '+242 06 652 88 00', quart: 'Plage Ngoyo', act: 'A4.1', reg: 'FORMEL', surf: 410, stat: 'transmis_brazzaville', coord: [-4.8430, 11.9065] },
-    { name: 'Bar Dancing Le Djeno Carrefour', prom: 'Gaston BASSISSA', phone: '+242 05 588 77 33', quart: 'Coraf / Djeno Carrefour', act: 'A1.3', reg: 'INFORMEL', surf: 115, stat: 'convoque', coord: [-4.8365, 11.9195] },
-    { name: 'Terrasse Bar Mpaka Détente', prom: 'Rachel MAVOUNGOU', phone: '+242 06 833 11 88', quart: 'Mpaka', act: 'A2.2', reg: 'INFORMEL', surf: 130, stat: 'identifie', coord: [-4.8265, 11.9175] },
-    { name: 'Snack Bar Le Matombi Calme', prom: 'Sébastien LOUNDOU', phone: '+242 06 601 77 22', quart: 'Matombi', act: 'A2.1', reg: 'INFORMEL', surf: 65, stat: 'identifie', coord: [-4.8470, 11.9230] },
-    { name: 'Discothèque Le Cristal Ngoyo', prom: 'Victorine MPOUO', phone: '+242 05 540 22 99', quart: 'Ngoyo Centre', act: 'A1.1', reg: 'FORMEL', surf: 250, stat: 'autorise_dgl', dgl: 'AGR-DGL-2024-061', coord: [-4.8305, 11.9135] },
-    { name: 'VIP Club Le Coraf VIP', prom: 'Martial NGOULOU', phone: '+242 06 918 33 44', quart: 'Coraf / Djeno Carrefour', act: 'A1.2', reg: 'FORMEL', surf: 160, stat: 'attestation_depot', coord: [-4.8350, 11.9210] },
-    { name: 'Bar Dancing Le Balcon de Ngoyo', prom: 'Philomène NZABA', phone: '+242 06 644 88 55', quart: 'Ngoyo Centre', act: 'A1.3', reg: 'INFORMEL', surf: 105, stat: 'fermeture_administrative', coord: [-4.8335, 11.9100] },
-    { name: 'Snack Bar Chez Maman Solange', prom: 'Solange BISSILA', phone: '+242 05 570 11 44', quart: 'Mpaka', act: 'A2.1', reg: 'INFORMEL', surf: 60, stat: 'identifie', coord: [-4.8290, 11.9125] },
-    { name: 'Complexe Touristique Les Vagues Bleues', prom: 'Edgar MALONGA', phone: '+242 06 870 44 00', quart: 'Plage Ngoyo', act: 'A3.2', reg: 'FORMEL', surf: 510, stat: 'en_instruction', coord: [-4.8400, 11.9095] },
-    { name: 'Terrasse Bar Matombi Night', prom: 'Hélène SITA', phone: '+242 06 622 99 77', quart: 'Matombi', act: 'A2.2', reg: 'INFORMEL', surf: 95, stat: 'convoque', coord: [-4.8510, 11.9270] },
-    { name: 'Bar Dansant L\'Éscale Aéroport', prom: 'Thierry MAMBI', phone: '+242 05 531 88 66', quart: 'Zone Aéroportuaire', act: 'A1.3', reg: 'INFORMEL', surf: 120, stat: 'identifie', coord: [-4.8205, 11.9225] }
+    { name: 'Espace Loisirs Ponton', prom: 'Frédéric MOUKOKO', phone: '+242 06 655 22 99', quart: 'Mpita', act: 'A3.1', reg: 'FORMEL', surf: 520, stat: 'en_instruction', coord: [-4.8010, 11.8540] }
   ];
 
-  // Map and generate full 118 items
   rawEstablishmentData.forEach((item, index) => {
-    const arrCode: ArrondissementCode =
-      index < 20 ? '1_LUMUMBA' :
-      index < 39 ? '2_MVOUMVOU' :
-      index < 59 ? '3_TIETIE' :
-      index < 78 ? '4_LOANDJILI' :
-      index < 97 ? '5_MONGO_MPOUKOU' : '6_NGOYO';
-
+    const arrCode: ArrondissementCode = '1_LUMUMBA';
     const regime = item.reg as RegimeType;
     const { filingFee, ratePerSqm, totalDue } = calculateEstablishmentFee(item.act, item.surf, regime);
-
-    // Realistic payment calculations according to status
-    let amountPaid = 0;
-    const stat = item.stat as EstablishmentStatus;
-    if (stat === 'autorise_dgl' || stat === 'transmis_brazzaville') {
-      amountPaid = totalDue;
-    } else if (stat === 'attestation_depot') {
-      // 50% to 75% paid
-      amountPaid = Math.round(totalDue * 0.6);
-    } else if (stat === 'en_instruction') {
-      // filing fee or 1st installment
-      amountPaid = filingFee;
-    } else {
-      amountPaid = 0;
-    }
-
-    const agents = ['Agent SAA Loubaki (Badge N° 08)', 'Agent SAA Tchicaya (Badge N° 05)', 'Agent SAA Makosso (Badge N° 12)'];
-    const assignedAgent = agents[index % agents.length];
+    const amountPaid = item.stat === 'autorise_dgl' ? totalDue : (item.stat === 'attestation_depot' ? Math.round(totalDue * 0.5) : filingFee);
 
     establishments.push({
       id: `EST-PN-${String(index + 1).padStart(3, '0')}`,
@@ -199,138 +78,74 @@ function generateSeedEstablishments(): Establishment[] {
       phone: item.phone,
       arrondissement: arrCode,
       quartier: item.quart,
-      address: `${item.quart}, Rue des Palmiers N° ${20 + (index * 3) % 150}`,
+      address: `${item.quart}, Pointe-Noire`,
       activity_type: ACTIVITY_CATEGORIES.find(c => c.code === item.act)?.label || 'Débit de Boissons',
       activity_code: item.act,
       regime_type: regime,
-      rccm: regime === 'FORMEL' ? `CG-PN-2022-B-${1000 + index * 17}` : undefined,
       surface_m2: item.surf,
       filing_fee: filingFee,
       rate_per_sqm: ratePerSqm,
       total_due: totalDue,
       amount_paid: amountPaid,
       balance_due: totalDue - amountPaid,
-      status: stat,
-      identified_by: assignedAgent,
-      identified_date: `2026-0${1 + (index % 8)}-${10 + (index % 18)}`,
-      last_inspection_date: `2026-08-${10 + (index % 19)}`,
-      has_acoustic_limiter: item.act.startsWith('A1') ? (index % 2 === 0) : undefined,
-      decibel_level: item.act.startsWith('A1') ? 78 + (index % 18) : undefined,
+      status: item.stat as EstablishmentStatus,
+      identified_by: 'Agent SAA Loubaki (Badge N° 08)',
+      identified_date: '2026-09-01',
       coordinates: [item.coord[0], item.coord[1]],
-      notes: `Recensé dans le cadre du PTA 2026. Contrôle brigade SAA Pointe-Noire.`,
-      dgl_transmission_batch: stat === 'transmis_brazzaville' ? 'BORD-DGL-PN-2026-03' : undefined,
-      dgl_transmission_date: stat === 'transmis_brazzaville' ? '2026-08-20' : undefined,
-      dgl_approval_ref: item.dgl,
       installments_chosen: 2,
-      created_at: `2026-02-15T08:00:00Z`,
-      updated_at: `2026-09-15T12:00:00Z`
+      created_at: '2026-09-01T08:00:00Z',
+      updated_at: '2026-09-01T08:00:00Z'
     });
   });
 
   return establishments;
 }
 
-// Generate seed payment records
 function generateSeedPayments(establishments: Establishment[]): TerrainPaymentRecord[] {
-  const records: TerrainPaymentRecord[] = [];
-  let receiptCounter = 1001;
-
-  establishments.forEach(est => {
-    if (est.amount_paid > 0) {
-      records.push({
-        id: `REC-${est.id}-01`,
-        establishment_id: est.id,
-        establishment_name: est.name,
-        promoter_name: est.promoter_name,
-        arrondissement: est.arrondissement,
-        amount_paid: est.amount_paid,
-        total_fee: est.total_due,
-        balance_remaining: est.balance_due,
-        installment_number: 1,
-        payment_method: est.regime_type === 'FORMEL' ? 'Virement Trésor Public' : 'MTN Mobile Money',
-        transaction_ref: `MTN-CG-${894000 + receiptCounter}`,
-        receipt_reference: `REC-DDL-PN-2026-${receiptCounter++}`,
-        next_due_date: est.balance_due > 0 ? '2026-10-31' : undefined,
-        record_date: est.last_inspection_date || '2026-08-15',
-        collected_by: est.identified_by,
-        agent_badge: est.identified_by.includes('08') ? 'SAA-PN-008' : (est.identified_by.includes('05') ? 'SAA-PN-005' : 'SAA-PN-012'),
-        notes: `Acompte régularisation redevance loisirs PTA 2026.`
-      });
-    }
-  });
-
-  return records;
+  return establishments.filter(e => e.amount_paid > 0).map((est, i) => ({
+    id: `REC-${est.id}-01`,
+    establishment_id: est.id,
+    establishment_name: est.name,
+    promoter_name: est.promoter_name,
+    arrondissement: est.arrondissement,
+    amount_paid: est.amount_paid,
+    total_fee: est.total_due,
+    balance_remaining: est.balance_due,
+    installment_number: 1,
+    payment_method: 'MTN Mobile Money',
+    transaction_ref: `MTN-CG-${894000 + i}`,
+    receipt_reference: `REC-DDL-PN-2026-${1000 + i}`,
+    record_date: '2026-09-07',
+    collected_by: est.identified_by,
+    agent_badge: 'SAA-PN-008'
+  }));
 }
 
-// Generate seed official acts
 function generateSeedActs(): OfficialLegalAct[] {
   return [
     {
       id: 'ACT-2026-001',
       type: 'MISE_EN_DEMEURE',
       reference_number: 'MD-088/MCAPNIT/DGL/DDL-PN-2026',
-      establishment_id: 'EST-PN-010',
-      establishment_name: 'Terrasse OCH Lounge',
-      promoter_name: 'Sylvie MAVOUNGOU',
+      establishment_id: 'EST-PN-001',
+      establishment_name: 'Le Grand Baobab VIP Lounge',
+      promoter_name: 'Christian BITEMO',
       arrondissement: 'Arrondissement 1 Lumumba',
       address: 'Zone Industrielle OCH, Avenue des Pionniers',
       date_emission: '2026-09-20',
       delai_huitaine_date: '2026-09-27',
-      motif: 'Exploitation sans agrément d’ouverture et émission de nuisances sonores constatées de nuit (92 dB mesurés par sonomètre SAA).',
+      motif: 'Exploitation sans agrément d’ouverture et émission de nuisances sonores constatées de nuit.',
       signataire_nom: 'Jacques Alphonse MATOKO',
       signataire_titre: 'Directeur Départemental des Loisirs de Pointe-Noire',
       agent_notificateur: 'Agent SAA Loubaki (Badge N° 08)',
       visa_lois: [
         'Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des activités de loisirs',
-        'Décret N° 2021-412 du 28 octobre 2021 portant organisation de la DGL',
-        'Arrêté Départemental N° 018/DDL-PN-2026 sur les seuils acoustiques nocturnes'
-      ]
-    },
-    {
-      id: 'ACT-2026-002',
-      type: 'CONVOCATION',
-      reference_number: 'CONV-142/DDL-PN/SAA-2026',
-      establishment_id: 'EST-PN-009',
-      establishment_name: 'Le Refuge de KM 4',
-      promoter_name: 'Bruno BOUANGA',
-      arrondissement: 'Arrondissement 1 Lumumba',
-      address: 'KM 4, Route de l\'Aéroport',
-      date_emission: '2026-09-22',
-      delai_huitaine_date: '2026-09-29',
-      motif: 'Comparution contradictoire au bureau de la Brigade SAA pour régularisation de la fiche contradictoire et versement des frais de dossier.',
-      signataire_nom: 'Chef Brigade SAA',
-      signataire_titre: 'Chef de Brigade du Service Agrément et Assainissement',
-      agent_notificateur: 'Agent SAA Tchicaya (Badge N° 05)',
-      visa_lois: [
-        'Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs',
-        'Instruction Générale DGL N° 004/2026 relative à la formalisation du secteur informel'
-      ]
-    },
-    {
-      id: 'ACT-2026-003',
-      type: 'ARRETE_FERMETURE',
-      reference_number: 'ARR-FERM-014/DDL-PN-2026',
-      establishment_id: 'EST-PN-018',
-      establishment_name: 'Snack Bar L\'Étoile Noire',
-      promoter_name: 'Chantal LOUBAKI',
-      arrondissement: 'Arrondissement 1 Lumumba',
-      address: 'KM 4, Face Station X',
-      date_emission: '2026-09-18',
-      delai_huitaine_date: 'Exécution immédiate',
-      motif: 'Récidive de tapage nocturne avéré, absence totale de dossier d’agrément après expiration du délai de mise en demeure N° 072.',
-      signataire_nom: 'Jacques Alphonse MATOKO',
-      signataire_titre: 'Directeur Départemental des Loisirs de Pointe-Noire',
-      agent_notificateur: 'Brigade Conjointe SAA & Force Publique',
-      visa_lois: [
-        'Loi N° 21-2019 du 12 juillet 2019, article 27',
-        'Décret N° 2021-412 du 28 octobre 2021, article 9',
-        'Procès-verbal de constatation d’infraction N° 039/SAA/2026'
+        'Décret N° 2021-412 du 28 octobre 2021 portant organisation de la DGL'
       ]
     }
   ];
 }
 
-// Generate seed SPA subscriptions
 function generateSeedSubscriptions(): SpaMerchantSubscription[] {
   return [
     {
@@ -344,44 +159,12 @@ function generateSeedSubscriptions(): SpaMerchantSubscription[] {
       status: 'ACTIF',
       benefits: [
         'En-tête prioritaire sur le portail Loisirs Sains DDL-PN',
-        'Relais bi-mensuel des événements sur la page officielle Facebook & WhatsApp',
-        'Mention d’honneur au Journal Officiel des Loisirs (Flux RSS)',
-        'Accompagnement acoustique annuel gratuit par la brigade SAA'
-      ]
-    },
-    {
-      id: 'SUB-2026-002',
-      establishment_id: 'EST-PN-003',
-      establishment_name: 'La Brise de l\'Atlantique Bar-Plage',
-      plan: 'SILVER',
-      monthly_fee_fcfa: 50000,
-      start_date: '2026-02-01',
-      end_date: '2026-12-31',
-      status: 'ACTIF',
-      benefits: [
-        'Inclusion au Catalogue officiel des Loisirs Éco-Responsables',
-        'Relais mensuel sur les canaux d’information municipaux',
-        'Support signalétique "Établissement Recommandé DDL-PN"'
-      ]
-    },
-    {
-      id: 'SUB-2026-003',
-      establishment_id: 'EST-PN-020',
-      establishment_name: 'Le Temple de la Rumba',
-      plan: 'BRONZE',
-      monthly_fee_fcfa: 25000,
-      start_date: '2026-03-01',
-      end_date: '2026-12-31',
-      status: 'ACTIF',
-      benefits: [
-        'Référencement au Répertoire Départemental du Tourisme & des Loisirs',
-        'Kit de sensibilisation aux gestes barrières et prévention sonore'
+        'Relais bi-mensuel des événements sur la page officielle'
       ]
     }
   ];
 }
 
-// Generate seed SPA Diplômes d'Honneur
 function generateSeedDiplomas(): SpaHonorDiploma[] {
   return [
     {
@@ -393,173 +176,30 @@ function generateSeedDiplomas(): SpaHonorDiploma[] {
       label: 'Diplôme d’Honneur des Loisirs Sains & d’Excellence Acoustique',
       award_date: '2026-06-30',
       reference_number: 'DIP-HONNEUR-DDLPN-2026-001',
-      reasons: [
-        'Respect exemplaire des normes acoustiques (<80 dB) certifié par la Brigade SAA',
-        'Installation d’un sas phonique et isolation phonique intégrale',
-        'Participation active aux campagnes de salubrité de la Côte Sauvage'
-      ]
-    },
-    {
-      id: 'DIP-2026-002',
-      establishment_id: 'EST-PN-014',
-      establishment_name: 'Centre Culturel Jean-Baptiste Tati',
-      promoter_name: 'Direction Association Arts',
-      arrondissement: 'Arrondissement 1 Patrice Émery Lumumba',
-      label: 'Grand Prix Départemental de la Culture et des Loisirs Récréatifs',
-      award_date: '2026-08-15',
-      reference_number: 'DIP-HONNEUR-DDLPN-2026-002',
-      reasons: [
-        'Diffusion du patrimoine culturel et artistique congolais',
-        'Ateliers d’éveil théâtral et musical pour la jeunesse de Pointe-Noire'
-      ]
+      reasons: ['Respect exemplaire des normes acoustiques (<80 dB) certifié par la Brigade SAA']
     }
   ];
 }
 
-// Generate seed Tournée events for Agent Google Calendar
 function generateSeedTourneeEvents(establishments: Establishment[]): AgentTourneeEvent[] {
-  const events: AgentTourneeEvent[] = [];
-  const now = new Date();
-  const todayStr = '2026-09-29';
+  const est = establishments[0] || {
+    id: 'EST-PN-001',
+    name: 'Espace Loisirs',
+    promoter_name: 'Gérant',
+    phone: '+242 06 000 00 00',
+    arrondissement: '1_LUMUMBA' as ArrondissementCode,
+    quartier: 'Centre',
+    address: 'Pointe-Noire',
+    balance_due: 50000,
+    decibel_level: 79
+  };
 
-  const sampleTournees = [
+  return [
     {
-      estIndex: 0,
-      agentBadge: 'SAA-PN-008',
+      id: 'EVT-TOUR-2026-001',
+      agentId: 'SAA-PN-008',
       agentName: 'Agent SAA Loubaki',
-      date: '2026-09-29',
-      timeStart: '08:30',
-      timeEnd: '10:00',
-      type: 'CONTROLE_ACOUSTIQUE' as const,
-      status: 'EFFECTUE' as const,
-      priority: 'HAUTE' as const,
-      notes: 'Contrôle du limiteur sonore scellé. Relevé acoustique : 79 dB (conforme).',
-      decibel: 79
-    },
-    {
-      estIndex: 9,
       agentBadge: 'SAA-PN-008',
-      agentName: 'Agent SAA Loubaki',
-      date: '2026-09-29',
-      timeStart: '10:30',
-      timeEnd: '11:45',
-      type: 'NOTIFICATION_MISE_EN_DEMEURE' as const,
-      status: 'EN_COURS' as const,
-      priority: 'URGENTE' as const,
-      notes: 'Remise en mains propres de la mise en demeure N° MD-088 (délai 72h).',
-      amountDue: 242000
-    },
-    {
-      estIndex: 21,
-      agentBadge: 'SAA-PN-008',
-      agentName: 'Agent SAA Loubaki',
-      date: '2026-09-29',
-      timeStart: '13:00',
-      timeEnd: '14:30',
-      type: 'ENCAISSEMENT_ACOMPTE' as const,
-      status: 'A_FAIRE' as const,
-      priority: 'NORMALE' as const,
-      notes: 'Perception du 2ème acompte prévu par MTN Mobile Money. Délivrance ticket 58mm.',
-      amountDue: 45000
-    },
-    {
-      estIndex: 38,
-      agentBadge: 'SAA-PN-008',
-      agentName: 'Agent SAA Loubaki',
-      date: '2026-09-29',
-      timeStart: '15:00',
-      timeEnd: '16:30',
-      type: 'CONVOCATION' as const,
-      status: 'A_FAIRE' as const,
-      priority: 'HAUTE' as const,
-      notes: 'Convocation contradictoire au bureau de brigade suite à défaut de déclaration.',
-      amountDue: 140000
-    },
-    {
-      estIndex: 5,
-      agentBadge: 'SAA-PN-005',
-      agentName: 'Agent SAA Tchicaya',
-      date: '2026-09-29',
-      timeStart: '09:00',
-      timeEnd: '10:30',
-      type: 'RECENSEMENT_IN_SITU' as const,
-      status: 'EFFECTUE' as const,
-      priority: 'NORMALE' as const,
-      notes: 'Mesure de superficie au décamètre et fiche contradictoire établie.',
-      amountDue: 90000
-    },
-    {
-      estIndex: 8,
-      agentBadge: 'SAA-PN-005',
-      agentName: 'Agent SAA Tchicaya',
-      date: '2026-09-29',
-      timeStart: '11:00',
-      timeEnd: '12:30',
-      type: 'CONVOCATION' as const,
-      status: 'A_FAIRE' as const,
-      priority: 'URGENTE' as const,
-      notes: 'Remise convocation contradictoire N° CONV-142.',
-      amountDue: 78000
-    },
-    {
-      estIndex: 43,
-      agentBadge: 'SAA-PN-012',
-      agentName: 'Agent SAA Makosso',
-      date: '2026-09-29',
-      timeStart: '10:00',
-      timeEnd: '11:30',
-      type: 'CONTROLE_ACOUSTIQUE' as const,
-      status: 'A_FAIRE' as const,
-      priority: 'HAUTE' as const,
-      notes: 'Plaintes récurrentes du voisinage pour tapage nocturne. Mesure inopinée.',
-      decibel: 88
-    },
-    {
-      estIndex: 1,
-      agentBadge: 'SAA-PN-008',
-      agentName: 'Agent SAA Loubaki',
-      date: '2026-09-30',
-      timeStart: '09:00',
-      timeEnd: '11:00',
-      type: 'CONTROLE_ACOUSTIQUE' as const,
-      status: 'A_FAIRE' as const,
-      priority: 'HAUTE' as const,
-      notes: 'Vérification conformité acoustique et enregistreur de décibels.'
-    },
-    {
-      estIndex: 2,
-      agentBadge: 'SAA-PN-008',
-      agentName: 'Agent SAA Loubaki',
-      date: '2026-09-30',
-      timeStart: '14:00',
-      timeEnd: '15:30',
-      type: 'ENCAISSEMENT_ACOMPTE' as const,
-      status: 'A_FAIRE' as const,
-      priority: 'NORMALE' as const,
-      notes: 'Régularisation tranche finale et transmission Brazzaville.',
-      amountDue: 180000
-    },
-    {
-      estIndex: 17,
-      agentBadge: 'SAA-PN-001',
-      agentName: 'Chef Brigade SAA',
-      date: '2026-10-01',
-      timeStart: '10:00',
-      timeEnd: '11:30',
-      type: 'NOTIFICATION_MISE_EN_DEMEURE' as const,
-      status: 'A_FAIRE' as const,
-      priority: 'URGENTE' as const,
-      notes: 'Constat de fermeture administrative et apposition des scellés.'
-    }
-  ];
-
-  sampleTournees.forEach((st, idx) => {
-    const est = establishments[st.estIndex] || establishments[0];
-    events.push({
-      id: `EVT-TOUR-2026-${String(idx + 1).padStart(3, '0')}`,
-      agentId: st.agentBadge,
-      agentName: st.agentName,
-      agentBadge: st.agentBadge,
       establishmentId: est.id,
       establishmentName: est.name,
       promoterName: est.promoter_name,
@@ -567,63 +207,22 @@ function generateSeedTourneeEvents(establishments: Establishment[]): AgentTourne
       arrondissement: est.arrondissement,
       quartier: est.quartier,
       address: est.address,
-      date: st.date,
-      timeStart: st.timeStart,
-      timeEnd: st.timeEnd,
-      type: st.type,
-      status: st.status,
-      priority: st.priority,
-      amountDue: st.amountDue || est.balance_due,
-      decibelMeasure: st.decibel || est.decibel_level,
-      notes: st.notes,
+      date: '2026-09-29',
+      timeStart: '08:30',
+      timeEnd: '10:00',
+      type: 'CONTROLE_ACOUSTIQUE',
+      status: 'EFFECTUE',
+      priority: 'HAUTE',
+      decibelMeasure: 79,
+      notes: 'Contrôle du limiteur sonore scellé. Relevé acoustique : 79 dB (conforme).',
       isSynced: true,
       createdAt: '2026-09-20T08:00:00Z',
       updatedAt: '2026-09-29T08:00:00Z'
-    });
-  });
-
-  // Annual renewal events N+1 for fully paid establishments (Business Rule test cases)
-  const paidEsts = establishments.filter(e => e.status === 'autorise_dgl' || e.balance_due === 0).slice(0, 5);
-  paidEsts.forEach((pe, pIdx) => {
-    // First installment date was in early 2026 (e.g. 2026-02-15, 2026-03-10, etc.)
-    const firstDate = pe.identified_date || '2026-03-15';
-    const [y, m, d] = firstDate.split('-');
-    const renewalYear = parseInt(y, 10) + 1;
-    const renewalDate = `${renewalYear}-${m}-${d}`;
-
-    pe.first_payment_date = firstDate;
-    pe.annual_renewal_date = renewalDate;
-
-    events.push({
-      id: `EVT-RENEW-N1-${String(pIdx + 1).padStart(3, '0')}`,
-      agentId: pe.identified_by.includes('08') ? 'SAA-PN-008' : (pe.identified_by.includes('05') ? 'SAA-PN-005' : 'SAA-PN-012'),
-      agentName: pe.identified_by,
-      agentBadge: pe.identified_by.includes('08') ? 'SAA-PN-008' : (pe.identified_by.includes('05') ? 'SAA-PN-005' : 'SAA-PN-012'),
-      establishmentId: pe.id,
-      establishmentName: pe.name,
-      promoterName: pe.promoter_name,
-      phone: pe.phone,
-      arrondissement: pe.arrondissement,
-      quartier: pe.quartier,
-      address: pe.address,
-      date: renewalDate,
-      timeStart: '09:00',
-      timeEnd: '10:30',
-      type: 'RENOUVELLEMENT_ANNUEL',
-      status: 'A_FAIRE',
-      priority: 'NORMALE',
-      amountDue: pe.total_due,
-      notes: `Échéance annuelle N+1 fixée au jour du premier acompte (${firstDate}) suite au paiement intégral des redevances d'exploitation.`,
-      isSynced: true,
-      createdAt: '2026-08-01T08:00:00Z',
-      updatedAt: '2026-09-29T08:00:00Z'
-    });
-  });
-
-  return events;
+    }
+  ];
 }
 
-// Storage Service Singleton
+// Storage Service Singleton with Real Supabase Synchronization
 class StorageService {
   private establishments: Establishment[] = [];
   private payments: TerrainPaymentRecord[] = [];
@@ -633,6 +232,7 @@ class StorageService {
   private tourneeEvents: AgentTourneeEvent[] = [];
   private offlineQueue: Array<{ action: string; payload: unknown; timestamp: string }> = [];
   private isOnline = true;
+  private isSyncing = false;
   private supabaseUrl = DEFAULT_SUPABASE_URL;
 
   constructor() {
@@ -641,6 +241,11 @@ class StorageService {
       window.addEventListener('online', () => this.handleNetworkChange(true));
       window.addEventListener('offline', () => this.handleNetworkChange(false));
       this.isOnline = navigator.onLine;
+
+      // Automatically trigger sync with Supabase in background
+      setTimeout(() => {
+        this.syncWithSupabase().catch(err => console.warn('[DDL-PN] Background sync error:', err));
+      }, 500);
     }
   }
 
@@ -654,7 +259,7 @@ class StorageService {
   public init() {
     if (typeof window === 'undefined') return;
 
-    // Load or seed establishments
+    // 1. Establishments cache
     const storedEsts = localStorage.getItem(LOCAL_STORAGE_KEYS.ESTABLISHMENTS);
     if (storedEsts) {
       try {
@@ -668,7 +273,7 @@ class StorageService {
       this.saveEstablishments();
     }
 
-    // Load or seed payments
+    // 2. Payments cache
     const storedPayments = localStorage.getItem(LOCAL_STORAGE_KEYS.PAYMENTS);
     if (storedPayments) {
       try {
@@ -682,7 +287,7 @@ class StorageService {
       this.savePayments();
     }
 
-    // Load or seed legal acts
+    // 3. Legal acts cache
     const storedActs = localStorage.getItem(LOCAL_STORAGE_KEYS.ACTS);
     if (storedActs) {
       try {
@@ -696,7 +301,7 @@ class StorageService {
       this.saveActs();
     }
 
-    // Load or seed subscriptions
+    // 4. Subscriptions
     const storedSubs = localStorage.getItem(LOCAL_STORAGE_KEYS.SUBSCRIPTIONS);
     if (storedSubs) {
       try {
@@ -710,7 +315,7 @@ class StorageService {
       this.saveSubscriptions();
     }
 
-    // Load or seed diplomas
+    // 5. Diplomas
     const storedDips = localStorage.getItem(LOCAL_STORAGE_KEYS.DIPLOMAS);
     if (storedDips) {
       try {
@@ -724,7 +329,7 @@ class StorageService {
       this.saveDiplomas();
     }
 
-    // Load or seed tournee events
+    // 6. Tournées events
     const storedTournees = localStorage.getItem(LOCAL_STORAGE_KEYS.TOURNEES_EVENTS);
     if (storedTournees) {
       try {
@@ -738,7 +343,7 @@ class StorageService {
       this.saveTournees();
     }
 
-    // Load offline queue
+    // 7. Offline queue
     const storedQueue = localStorage.getItem(LOCAL_STORAGE_KEYS.OFFLINE_QUEUE);
     if (storedQueue) {
       try {
@@ -748,39 +353,208 @@ class StorageService {
       }
     }
 
-    // Supabase URL
+    // 8. Supabase URL
     const savedUrl = localStorage.getItem(LOCAL_STORAGE_KEYS.SUPABASE_URL);
     if (savedUrl) {
       this.supabaseUrl = savedUrl;
     }
   }
 
+  // Save methods to cache
   private saveEstablishments() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.ESTABLISHMENTS, JSON.stringify(this.establishments));
   }
-
   private savePayments() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.PAYMENTS, JSON.stringify(this.payments));
   }
-
   private saveActs() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.ACTS, JSON.stringify(this.acts));
   }
-
   private saveSubscriptions() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.SUBSCRIPTIONS, JSON.stringify(this.subscriptions));
   }
-
   private saveDiplomas() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.DIPLOMAS, JSON.stringify(this.diplomas));
   }
-
   private saveTournees() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.TOURNEES_EVENTS, JSON.stringify(this.tourneeEvents));
   }
-
   private saveQueue() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.OFFLINE_QUEUE, JSON.stringify(this.offlineQueue));
+  }
+
+  private notifyDataUpdated() {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ddl_pn_data_updated'));
+    }
+  }
+
+  // --- Real Supabase Synchronizer ---
+  public async syncWithSupabase(): Promise<{ establishmentsCount: number; recordsCount: number }> {
+    if (this.isSyncing) return { establishmentsCount: this.establishments.length, recordsCount: this.payments.length };
+    this.isSyncing = true;
+
+    try {
+      console.log('[DDL-PN Supabase] Starting full bidirectional synchronisation...');
+
+      // 1. Fetch Agents
+      const { data: agentsData, error: agentsError } = await supabase
+        .from('agents')
+        .select('*');
+
+      const agentMap: Record<string, string> = {};
+      if (!agentsError && agentsData) {
+        agentsData.forEach((a: any) => {
+          agentMap[a.id] = a.nom_complet || `${a.prenom || ''} ${a.nom}`.trim() || 'Agent SAA';
+        });
+      }
+
+      // 2. Fetch Terrain Records
+      const { data: recordsData, error: recordsError } = await supabase
+        .from('terrain_records')
+        .select('*')
+        .order('record_date', { ascending: false });
+
+      if (recordsError) {
+        console.warn('[DDL-PN Supabase] Error fetching terrain records:', recordsError);
+      }
+
+      // 3. Fetch Establishments
+      const { data: estsData, error: estsError } = await supabase
+        .from('establishments')
+        .select('*')
+        .eq('is_archived', false)
+        .order('created_at', { ascending: false });
+
+      if (estsError) {
+        console.error('[DDL-PN Supabase] Error fetching establishments:', estsError);
+        throw estsError;
+      }
+
+      if (estsData && estsData.length > 0) {
+        // Group payments by establishment
+        const recordMap: Record<string, any[]> = {};
+        const paymentsList: TerrainPaymentRecord[] = [];
+
+        if (recordsData) {
+          recordsData.forEach((rec: any, idx: number) => {
+            if (!recordMap[rec.establishment_id]) recordMap[rec.establishment_id] = [];
+            recordMap[rec.establishment_id].push(rec);
+
+            const estMatch = estsData.find((e: any) => e.id === rec.establishment_id);
+            const estName = estMatch ? estMatch.name : 'Établissement DDL-PN';
+            const promoterName = estMatch ? (estMatch.owner_name || 'Exploitant') : 'Exploitant';
+            const arrCode = parseArrondissement(estMatch?.arrondissement, estMatch?.address);
+
+            paymentsList.push({
+              id: rec.id,
+              establishment_id: rec.establishment_id,
+              establishment_name: estName,
+              promoter_name: promoterName,
+              arrondissement: arrCode,
+              amount_paid: Number(rec.amount_paid) || 0,
+              total_fee: Number(rec.total_fee) || 0,
+              balance_remaining: Number(rec.remaining_balance) || 0,
+              installment_number: idx + 1,
+              payment_method: 'Espèces (Régie)',
+              transaction_ref: `REC-${rec.id.slice(0, 8).toUpperCase()}`,
+              receipt_reference: `REC-DDL-PN-2026-${rec.id.slice(0, 6).toUpperCase()}`,
+              record_date: rec.record_date || (rec.created_at ? rec.created_at.split('T')[0] : '2026-09-07'),
+              collected_by: (rec.agent_id && agentMap[rec.agent_id]) || 'Agent SAA Loubaki',
+              agent_badge: 'SAA-PN-008',
+              notes: rec.notes || 'Enregistrement de conformité et encaissement brigade SAA.'
+            });
+          });
+        }
+
+        // Map establishments
+        const mappedEstablishments: Establishment[] = estsData.map((e: any) => {
+          const arrCode = parseArrondissement(e.arrondissement, e.address);
+          const coords: [number, number] = (e.latitude && e.longitude)
+            ? [Number(e.latitude), Number(e.longitude)]
+            : getCoordinatesForArrondissement(arrCode, e.id);
+
+          const estRecords = recordMap[e.id] || [];
+          let totalDue = 0;
+          let amountPaid = 0;
+
+          if (estRecords.length > 0) {
+            totalDue = estRecords.reduce((sum: number, r: any) => sum + (Number(r.total_fee) || 0), 0);
+            amountPaid = estRecords.reduce((sum: number, r: any) => sum + (Number(r.amount_paid) || 0), 0);
+          } else {
+            const feeCalc = calculateEstablishmentFee('A2.1', 80, (e.regime_type as RegimeType) || 'INFORMEL');
+            totalDue = feeCalc.totalDue;
+            amountPaid = 0;
+          }
+
+          const balance = Math.max(0, totalDue - amountPaid);
+          let status: EstablishmentStatus = 'identifie';
+          if (balance === 0 && amountPaid > 0) {
+            status = 'autorise_dgl';
+          } else if (amountPaid > 0) {
+            status = 'attestation_depot';
+          }
+
+          // Extract quartier from address
+          let quartier = e.quartier || '';
+          if (!quartier && e.address) {
+            const parts = e.address.split(',');
+            if (parts.length > 0) quartier = parts[0].trim();
+          }
+          if (!quartier) quartier = 'Centre';
+
+          return {
+            id: e.id,
+            name: e.name,
+            promoter_name: e.owner_name || 'Exploitant non renseigné',
+            phone: e.phone || '',
+            arrondissement: arrCode,
+            quartier,
+            address: e.address || `${quartier}, Pointe-Noire`,
+            activity_type: e.activity_type || 'Débit de Boissons',
+            activity_code: 'A2.1',
+            regime_type: (e.regime_type as RegimeType) || 'INFORMEL',
+            surface_m2: 80,
+            filing_fee: 15000,
+            rate_per_sqm: 450,
+            total_due: totalDue,
+            amount_paid: amountPaid,
+            balance_due: balance,
+            status,
+            identified_by: (e.assigned_agent_id && agentMap[e.assigned_agent_id]) || 'Agent Brigade SAA',
+            identified_date: e.created_at ? e.created_at.split('T')[0] : '2026-09-07',
+            last_inspection_date: e.updated_at ? e.updated_at.split('T')[0] : '2026-09-07',
+            coordinates: coords,
+            notes: 'Établissement recensé dans la base centrale DDL-PN Supabase.',
+            installments_chosen: 2,
+            assigned_agent_id: e.assigned_agent_id || undefined,
+            created_at: e.created_at,
+            updated_at: e.updated_at
+          };
+        });
+
+        this.establishments = mappedEstablishments;
+        this.saveEstablishments();
+
+        if (paymentsList.length > 0) {
+          this.payments = paymentsList;
+          this.savePayments();
+        }
+
+        console.log(`[DDL-PN Supabase] Successfully loaded ${mappedEstablishments.length} establishments and ${paymentsList.length} payments.`);
+      }
+
+      this.notifyDataUpdated();
+      return {
+        establishmentsCount: this.establishments.length,
+        recordsCount: this.payments.length
+      };
+    } catch (err) {
+      console.error('[DDL-PN Supabase] Synchronization failed:', err);
+      throw err;
+    } finally {
+      this.isSyncing = false;
+    }
   }
 
   public getNetworkStatus() {
@@ -809,12 +583,69 @@ class StorageService {
     return [...this.offlineQueue];
   }
 
-  public flushOfflineQueue() {
-    if (this.offlineQueue.length === 0) return;
-    console.log(`[DDL-PN Sync] Flushing ${this.offlineQueue.length} offline actions to Supabase: ${this.supabaseUrl}`);
-    // Simulate instantaneous sync to central database
-    this.offlineQueue = [];
+  public async flushOfflineQueue() {
+    if (this.offlineQueue.length === 0) {
+      await this.syncWithSupabase();
+      return;
+    }
+
+    console.log(`[DDL-PN Sync] Processing ${this.offlineQueue.length} offline actions to Supabase...`);
+    const remainingQueue: typeof this.offlineQueue = [];
+
+    for (const item of this.offlineQueue) {
+      try {
+        if (item.action === 'CREATE_ESTABLISHMENT') {
+          const e = item.payload as Establishment;
+          await supabase.from('establishments').insert({
+            id: e.id.startsWith('EST-PN-') ? undefined : e.id,
+            name: e.name,
+            owner_name: e.promoter_name,
+            phone: e.phone,
+            address: e.address,
+            arrondissement: e.arrondissement,
+            quartier: e.quartier,
+            activity_type: e.activity_type,
+            regime_type: e.regime_type,
+            latitude: e.coordinates[0],
+            longitude: e.coordinates[1],
+            is_archived: false
+          });
+        } else if (item.action === 'RECORD_PAYMENT') {
+          const p = item.payload as TerrainPaymentRecord;
+          await supabase.from('terrain_records').insert({
+            establishment_id: p.establishment_id,
+            total_fee: p.total_fee,
+            amount_paid: p.amount_paid,
+            remaining_balance: p.balance_remaining,
+            record_date: p.record_date,
+            notes: p.notes,
+            status: 'SOUMIS'
+          });
+        } else if (item.action === 'UPDATE_ESTABLISHMENT') {
+          const { id, updates } = item.payload as { id: string; updates: Partial<Establishment> };
+          await supabase.from('establishments').update({
+            name: updates.name,
+            owner_name: updates.promoter_name,
+            phone: updates.phone,
+            address: updates.address,
+            arrondissement: updates.arrondissement,
+            quartier: updates.quartier,
+            activity_type: updates.activity_type,
+            regime_type: updates.regime_type,
+            latitude: updates.coordinates?.[0],
+            longitude: updates.coordinates?.[1],
+            updated_at: new Date().toISOString()
+          }).eq('id', id);
+        }
+      } catch (err) {
+        console.error('[DDL-PN Sync] Action failed, keeping in queue:', item, err);
+        remainingQueue.push(item);
+      }
+    }
+
+    this.offlineQueue = remainingQueue;
     this.saveQueue();
+    await this.syncWithSupabase();
   }
 
   // --- Establishments CRUD ---
@@ -837,7 +668,32 @@ class StorageService {
     };
     this.establishments.unshift(newEstablishment);
     this.saveEstablishments();
-    this.enqueueOfflineAction('CREATE_ESTABLISHMENT', newEstablishment);
+    this.notifyDataUpdated();
+
+    // Direct push to Supabase
+    supabase.from('establishments').insert({
+      name: newEstablishment.name,
+      owner_name: newEstablishment.promoter_name,
+      phone: newEstablishment.phone,
+      address: newEstablishment.address,
+      arrondissement: newEstablishment.arrondissement,
+      quartier: newEstablishment.quartier,
+      activity_type: newEstablishment.activity_type,
+      regime_type: newEstablishment.regime_type,
+      latitude: newEstablishment.coordinates[0],
+      longitude: newEstablishment.coordinates[1],
+      is_archived: false
+    }).then(({ data, error }) => {
+      if (error) {
+        console.warn('[DDL-PN Supabase] Insert failed, enqueuing offline:', error);
+        this.enqueueOfflineAction('CREATE_ESTABLISHMENT', newEstablishment);
+      } else {
+        console.log('[DDL-PN Supabase] Establishment pushed successfully to cloud:', data);
+      }
+    }).catch(() => {
+      this.enqueueOfflineAction('CREATE_ESTABLISHMENT', newEstablishment);
+    });
+
     return newEstablishment;
   }
 
@@ -852,7 +708,29 @@ class StorageService {
     };
     this.establishments[index] = updated;
     this.saveEstablishments();
-    this.enqueueOfflineAction('UPDATE_ESTABLISHMENT', { id, updates });
+    this.notifyDataUpdated();
+
+    // Push update to Supabase
+    supabase.from('establishments').update({
+      name: updates.name,
+      owner_name: updates.promoter_name,
+      phone: updates.phone,
+      address: updates.address,
+      arrondissement: updates.arrondissement,
+      quartier: updates.quartier,
+      activity_type: updates.activity_type,
+      regime_type: updates.regime_type,
+      latitude: updates.coordinates?.[0],
+      longitude: updates.coordinates?.[1],
+      updated_at: new Date().toISOString()
+    }).eq('id', id).then(({ error }) => {
+      if (error) {
+        this.enqueueOfflineAction('UPDATE_ESTABLISHMENT', { id, updates });
+      }
+    }).catch(() => {
+      this.enqueueOfflineAction('UPDATE_ESTABLISHMENT', { id, updates });
+    });
+
     return updated;
   }
 
@@ -861,7 +739,17 @@ class StorageService {
     this.establishments = this.establishments.filter(e => e.id !== id);
     if (this.establishments.length !== initialLen) {
       this.saveEstablishments();
-      this.enqueueOfflineAction('DELETE_ESTABLISHMENT', { id });
+      this.notifyDataUpdated();
+
+      // Soft delete in Supabase
+      supabase.from('establishments').update({
+        is_archived: true,
+        deleted_at: new Date().toISOString()
+      }).eq('id', id).then(({ error }) => {
+        if (error) {
+          this.enqueueOfflineAction('DELETE_ESTABLISHMENT', { id });
+        }
+      });
       return true;
     }
     return false;
@@ -886,11 +774,8 @@ class StorageService {
     const todayStr = new Date().toISOString().split('T')[0];
     const newAmountPaid = est.amount_paid + params.amount;
     const newBalance = Math.max(0, est.total_due - newAmountPaid);
-
-    // Track first installment date (first time any money was paid)
     const firstPaymentDate = est.first_payment_date || (est.amount_paid > 0 ? (est.identified_date || todayStr) : todayStr);
 
-    // Business Rule: "si un tenancier paie la totalité le renouvelement de paiement des frais d'exploitation se fera le jours ou il a donner son premier acompte mais l'année suivante."
     let annualRenewalDate: string | undefined = est.annual_renewal_date;
     let scheduledRenewalEvent: AgentTourneeEvent | undefined = undefined;
 
@@ -900,7 +785,6 @@ class StorageService {
       annualRenewalDate = `${renewalYear}-${m}-${d}`;
     }
 
-    // Update status if fully paid or first installment
     let newStatus = est.status;
     if (newBalance === 0) {
       if (est.status === 'identifie' || est.status === 'convoque' || est.status === 'mise_en_demeure') {
@@ -943,9 +827,25 @@ class StorageService {
 
     this.payments.unshift(newPayment);
     this.savePayments();
-    this.enqueueOfflineAction('RECORD_PAYMENT', newPayment);
+    this.notifyDataUpdated();
 
-    // If fully paid, automatically schedule the annual renewal milestone in the agent's Google Calendar!
+    // Push payment to Supabase
+    supabase.from('terrain_records').insert({
+      establishment_id: est.id,
+      total_fee: est.total_due,
+      amount_paid: params.amount,
+      remaining_balance: newBalance,
+      record_date: todayStr,
+      notes: params.notes || `Paiement ${params.payment_method} réf ${receiptRef}`,
+      status: 'SOUMIS'
+    }).then(({ error }) => {
+      if (error) {
+        this.enqueueOfflineAction('RECORD_PAYMENT', newPayment);
+      }
+    }).catch(() => {
+      this.enqueueOfflineAction('RECORD_PAYMENT', newPayment);
+    });
+
     if (annualRenewalDate) {
       scheduledRenewalEvent = this.addAgentEvent({
         agentId: params.agent_badge || 'SAA-PN-008',
@@ -973,7 +873,7 @@ class StorageService {
     return { payment: newPayment, establishment: updatedEst, renewalEvent: scheduledRenewalEvent };
   }
 
-  // --- Agent Google Calendar Tournées Operations ---
+  // --- Agent Tournées Operations ---
   public getAgentEvents(agentId?: string): AgentTourneeEvent[] {
     if (!agentId || agentId === 'ALL' || agentId === 'DIR-01' || agentId === 'SAA-CHEF') {
       return [...this.tourneeEvents];
@@ -993,7 +893,7 @@ class StorageService {
     };
     this.tourneeEvents.unshift(newEvent);
     this.saveTournees();
-    this.enqueueOfflineAction('CREATE_AGENT_EVENT', newEvent);
+    this.notifyDataUpdated();
     return newEvent;
   }
 
@@ -1008,7 +908,7 @@ class StorageService {
     };
     this.tourneeEvents[idx] = updated;
     this.saveTournees();
-    this.enqueueOfflineAction('UPDATE_AGENT_EVENT', { id, updates });
+    this.notifyDataUpdated();
     return updated;
   }
 
@@ -1017,7 +917,7 @@ class StorageService {
     this.tourneeEvents = this.tourneeEvents.filter(e => e.id !== id);
     if (this.tourneeEvents.length !== initialLen) {
       this.saveTournees();
-      this.enqueueOfflineAction('DELETE_AGENT_EVENT', { id });
+      this.notifyDataUpdated();
       return true;
     }
     return false;
@@ -1033,10 +933,8 @@ class StorageService {
     const est = this.getEstablishmentById(params.establishment_id);
     if (!est) throw new Error('Établissement introuvable');
 
-    // 1. Update establishment status
     this.updateEstablishment(est.id, { status: 'convoque' });
 
-    // 2. Issue official Convocation Act
     const refNum = `CONV-${String(this.acts.length + 140).padStart(3, '0')}/DDL-PN/SAA-2026`;
     const newAct = this.addAct({
       type: 'CONVOCATION',
@@ -1058,7 +956,6 @@ class StorageService {
       ]
     });
 
-    // 3. Add to agent Google Calendar
     const event = this.addAgentEvent({
       agentId: params.agent.badge,
       agentName: params.agent.name,
@@ -1096,8 +993,8 @@ class StorageService {
     };
     this.acts.unshift(newAct);
     this.saveActs();
+    this.notifyDataUpdated();
 
-    // Auto update status on establishment if mise en demeure or fermeture
     if (act.type === 'MISE_EN_DEMEURE') {
       this.updateEstablishment(act.establishment_id, { status: 'mise_en_demeure' });
     } else if (act.type === 'ARRETE_FERMETURE') {
@@ -1106,7 +1003,6 @@ class StorageService {
       this.updateEstablishment(act.establishment_id, { status: 'convoque' });
     }
 
-    this.enqueueOfflineAction('CREATE_LEGAL_ACT', newAct);
     return newAct;
   }
 
@@ -1122,7 +1018,7 @@ class StorageService {
     };
     this.subscriptions.unshift(newSub);
     this.saveSubscriptions();
-    this.enqueueOfflineAction('CREATE_SUBSCRIPTION', newSub);
+    this.notifyDataUpdated();
     return newSub;
   }
 
@@ -1137,7 +1033,7 @@ class StorageService {
     };
     this.diplomas.unshift(newDip);
     this.saveDiplomas();
-    this.enqueueOfflineAction('CREATE_DIPLOMA', newDip);
+    this.notifyDataUpdated();
     return newDip;
   }
 
@@ -1156,11 +1052,9 @@ class StorageService {
     const formalCount = this.establishments.filter(e => e.regime_type === 'FORMEL').length;
     const informalCount = totalEst - formalCount;
 
-    // Splits
     const shareTresor = Math.round(totalPaid * (TAXATION_RULES.revenue_split.tresor_public_percent / 100));
     const shareRegie = totalPaid - shareTresor;
 
-    // Arrondissement breakdown
     const byArrondissement = TERRITORIAL_REFERENTIAL.map(arr => {
       const arrEsts = this.establishments.filter(e => e.arrondissement === arr.code);
       const count = arrEsts.length;
@@ -1209,6 +1103,7 @@ class StorageService {
     this.saveSubscriptions();
     this.saveDiplomas();
     this.saveQueue();
+    this.notifyDataUpdated();
   }
 }
 
