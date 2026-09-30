@@ -388,6 +388,86 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                       </tbody>
                     </table>
                   </div>
+                ) : documentType === 'RAPPORT_TRIMESTRIEL_A4' ? (
+                  /* RAPPORT TRIMESTRIEL D'ACTIVITE OFFICIEL MINISTERE */
+                  <div className="space-y-6">
+                    <div className="text-center pb-2 border-b-2 border-[#006d2f]">
+                      <h2 className="text-lg font-black uppercase tracking-wide text-[#022448] font-republic">
+                        RAPPORT D'ACTIVITÉS DU {data.trimestre || '3ème TRIMESTRE'} ({data.year || '2026'})
+                      </h2>
+                      <p className="text-xs font-semibold text-slate-600 mt-0.5">
+                        Direction Départementale des Loisirs de Pointe-Noire • Période : {data.periodLabel || data.period || 'Exercice en cours'}
+                      </p>
+                    </div>
+
+                    {/* Section 1 : Introduction */}
+                    <div className="text-xs text-justify leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-200">
+                      <p className="font-bold text-[#022448] uppercase mb-1">1. Introduction & Contexte Général</p>
+                      <p className="text-slate-700">{data.introduction || 'Le présent rapport dresse le bilan des activités de la Direction Départementale des Loisirs de Pointe-Noire.'}</p>
+                    </div>
+
+                    {/* Section 2 : Tableau des Indicateurs PTA */}
+                    {data.indicators && data.indicators.length > 0 && (
+                      <div>
+                        <p className="font-bold text-xs text-[#022448] uppercase mb-1.5">2. Synthèse d'Exécution du Plan de Travail Annuel (PTA)</p>
+                        <table className="w-full text-[11px] border border-slate-300 text-left">
+                          <thead className="bg-[#022448] text-white">
+                            <tr>
+                              <th className="p-1.5 border">Indicateur / Activité Clé</th>
+                              <th className="p-1.5 border">Cible</th>
+                              <th className="p-1.5 border">Résultat Obtenu</th>
+                              <th className="p-1.5 border text-center">Statut</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {data.indicators.map((ind: any, i: number) => (
+                              <tr key={i} className="border-b border-slate-200">
+                                <td className="p-1.5 border font-semibold">{ind.name}</td>
+                                <td className="p-1.5 border font-mono-ref">{ind.target}</td>
+                                <td className="p-1.5 border font-bold text-slate-800">{ind.result}</td>
+                                <td className="p-1.5 border text-center font-bold text-[10px]">{ind.status}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* Section 3 : Activités par Service */}
+                    <div>
+                      <p className="font-bold text-xs text-[#022448] uppercase mb-1.5">3. Activités Programmées Réalisées par Service</p>
+                      <div className="grid grid-cols-2 gap-3 text-[11px]">
+                        <div className="p-2.5 bg-slate-50 rounded border">
+                          <p className="font-bold text-slate-900 uppercase text-[10px]">a. Service Administratif & Financier (SAFM)</p>
+                          <p className="text-slate-600 mt-1">{data.safmBilan || 'Continuité administrative et comptabilité de régie assurées.'}</p>
+                        </div>
+                        <div className="p-2.5 bg-emerald-50/50 rounded border border-emerald-200">
+                          <p className="font-bold text-emerald-950 uppercase text-[10px]">b. Service Assistance & Autorisation (SAA)</p>
+                          <p className="text-slate-600 mt-1">{data.saaBilan || 'Recensement, contrôle in situ et régularisation des établissements de loisirs.'}</p>
+                        </div>
+                        <div className="p-2.5 bg-blue-50/50 rounded border border-blue-200">
+                          <p className="font-bold text-blue-950 uppercase text-[10px]">c. Statistiques & Information (SSID)</p>
+                          <p className="text-slate-600 mt-1">{data.ssidBilan || 'Consolidation de la base de données et cartographie des opérateurs.'}</p>
+                        </div>
+                        <div className="p-2.5 bg-amber-50/50 rounded border border-amber-200">
+                          <p className="font-bold text-amber-950 uppercase text-[10px]">d. Promotion & Animation (SPA)</p>
+                          <p className="text-slate-600 mt-1">{data.spaBilan || 'Animation des loisirs sains et partenariats stratégiques.'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 4 : Recommandations & Conclusion */}
+                    <div className="grid grid-cols-2 gap-3 text-[11px]">
+                      <div className="p-2.5 bg-slate-50 rounded border">
+                        <p className="font-bold text-slate-900 uppercase text-[10px]">4. Difficultés & Contraintes</p>
+                        <p className="text-slate-600 mt-1">{data.difficultes || 'Insuffisance de moyens de transport et contraintes budgétaires.'}</p>
+                      </div>
+                      <div className="p-2.5 bg-slate-50 rounded border">
+                        <p className="font-bold text-slate-900 uppercase text-[10px]">5. Suggestions à la Hiérarchie</p>
+                        <p className="text-slate-600 mt-1">{data.recommandations || 'Arbitrage budgétaire minimal et validation des partenariats.'}</p>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   /* ATTESTATION DE DEPOT ET QUITTANCE OFFICIELLE */
                   <div>
