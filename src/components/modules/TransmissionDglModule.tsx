@@ -14,7 +14,7 @@ import {
 import { storageService } from '../../services/storageService';
 import { useSession } from '../../context/SessionContext';
 import { Establishment } from '../../types';
-import { PrintModal } from '../print/PrintModal';
+import { PrintModal, PrintDocumentType } from '../print/PrintModal';
 
 export const TransmissionDglModule: React.FC = () => {
   const { currentUser, triggerNotification } = useSession();
@@ -58,12 +58,12 @@ export const TransmissionDglModule: React.FC = () => {
   // Print modal
   const [printDoc, setPrintDoc] = useState<{
     isOpen: boolean;
-    type: 'BORDEREAU_DGL_A4';
+    type: PrintDocumentType;
     title: string;
     data: any;
   }>({
     isOpen: false,
-    type: 'BORDEREAU_DGL_A4',
+    type: 'SOIT_TRANSMIS_A4',
     title: '',
     data: null
   });
@@ -72,7 +72,7 @@ export const TransmissionDglModule: React.FC = () => {
     setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
   };
 
-  const handleCreateBatch = () => {
+  const handleCreateBatch = (format: 'SOIT_TRANSMIS' | 'BORDEREAU') => {
     if (selectedIds.length === 0) {
       triggerNotification('Veuillez sélectionner au moins un dossier soldé à transmettre.', 'warning');
       return;
@@ -88,19 +88,20 @@ export const TransmissionDglModule: React.FC = () => {
     });
 
     setEstablishments(storageService.getEstablishments());
-    triggerNotification(`Bordereau ${batchRef} généré pour ${selectedIds.length} dossiers !`, 'success');
+    triggerNotification(`Transmission ${batchRef} générée pour ${selectedIds.length} dossiers !`, 'success');
 
     const transmittedItems = establishments.filter(e => selectedIds.includes(e.id));
 
     setPrintDoc({
       isOpen: true,
-      type: 'BORDEREAU_DGL_A4',
-      title: `Bordereau d'Envoi Officiel - ${batchRef}`,
+      type: format === 'SOIT_TRANSMIS' ? 'SOIT_TRANSMIS_A4' : 'BORDEREAU_DGL_A4',
+      title: format === 'SOIT_TRANSMIS' ? `Lettre Soit Transmis - ${batchRef}` : `Bordereau Récapitulatif - ${batchRef}`,
       data: {
         reference_number: batchRef,
         count: selectedIds.length,
         items: transmittedItems,
-        signataire: currentUser.name,
+        transmission_message: `J’ai l’honneur de vous faire parvenir, pour toutes fins utiles et signature ministérielle, le bordereau récapitulatif ainsi que les ${selectedIds.length} dossiers d'agrément instruits et régularisés au titre de l'exercice 2026.`,
+        signataire: currentUser.role === 'DIRECTEUR' ? currentUser.name : 'Jean Richard NTSEKE NGOUAKA',
         date_emission: new Date().toISOString().split('T')[0]
       }
     });
@@ -126,14 +127,24 @@ export const TransmissionDglModule: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleCreateBatch}
-          disabled={selectedIds.length === 0}
-          className="bg-[#006d2f] hover:bg-[#005a26] disabled:opacity-50 text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 shadow transition"
-        >
-          <Printer className="w-4 h-4 text-amber-300" />
-          <span>Générer Bordereau d'Envoi ({selectedIds.length})</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => handleCreateBatch('SOIT_TRANSMIS')}
+            disabled={selectedIds.length === 0}
+            className="bg-[#022448] hover:bg-[#033468] disabled:opacity-50 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow transition"
+          >
+            <Printer className="w-3.5 h-3.5 text-amber-300" />
+            <span>Lettre Soit Transmis ({selectedIds.length})</span>
+          </button>
+          <button
+            onClick={() => handleCreateBatch('BORDEREAU')}
+            disabled={selectedIds.length === 0}
+            className="bg-[#006d2f] hover:bg-[#005a26] disabled:opacity-50 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow transition"
+          >
+            <Printer className="w-3.5 h-3.5 text-white" />
+            <span>Bordereau Récapitulatif</span>
+          </button>
+        </div>
       </div>
 
       {/* Grid: Ready Dossiers vs Historic Batches */}
@@ -210,9 +221,51 @@ export const TransmissionDglModule: React.FC = () => {
                   <span>Volume : <strong>{b.count} dossiers</strong></span>
                   <span className="font-mono-ref font-bold">{b.totalAmount.toLocaleString('fr-FR')} FCFA</span>
                 </div>
-                <div className="mt-1 text-[10px] text-slate-500 flex justify-between">
-                  <span>Date d'envoi : {b.date}</span>
-                  <span>Directeur : {b.signataire.split(' ')[0]}</span>
+                <div className="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between">
+                  <span className="text-[10px] text-slate-500">Signataire : {b.signataire}</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setPrintDoc({
+                          isOpen: true,
+                          type: 'SOIT_TRANSMIS_A4',
+                          title: `Lettre Soit Transmis - ${b.batchNumber}`,
+                          data: {
+                            reference_number: b.batchNumber,
+                            count: b.count,
+                            transmission_message: `J’ai l’honneur de vous faire parvenir, pour toutes fins utiles et signature ministérielle, le bordereau récapitulatif ainsi que les ${b.count} dossiers d'agrément instruits et régularisés au titre de l'exercice 2026.`,
+                            signataire: b.signataire,
+                            date_emission: b.date
+                          }
+                        });
+                      }}
+                      className="text-[#022448] hover:underline font-bold text-[11px] flex items-center gap-0.5"
+                    >
+                      <Printer className="w-3 h-3" />
+                      <span>Soit Transmis</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        const batchEsts = establishments.filter(e => e.dgl_transmission_batch === b.batchNumber || e.status === 'transmis_brazzaville' || e.status === 'autorise_dgl').slice(0, b.count);
+                        setPrintDoc({
+                          isOpen: true,
+                          type: 'BORDEREAU_DGL_A4',
+                          title: `Bordereau Récapitulatif - ${b.batchNumber}`,
+                          data: {
+                            reference_number: b.batchNumber,
+                            count: b.count,
+                            items: batchEsts,
+                            signataire: b.signataire,
+                            date_emission: b.date
+                          }
+                        });
+                      }}
+                      className="text-[#006d2f] hover:underline font-bold text-[11px] flex items-center gap-0.5"
+                    >
+                      <Printer className="w-3 h-3" />
+                      <span>Bordereau</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -224,7 +277,7 @@ export const TransmissionDglModule: React.FC = () => {
       <PrintModal
         isOpen={printDoc.isOpen}
         onClose={() => setPrintDoc(prev => ({ ...prev, isOpen: false }))}
-        documentType="BORDEREAU_DGL_A4"
+        documentType={printDoc.type}
         title={printDoc.title}
         data={printDoc.data}
       />

@@ -724,19 +724,21 @@ class StorageService {
     this.notifyDataUpdated();
 
     // Direct push to Supabase
-    supabase.from('establishments').insert({
-      name: newEstablishment.name,
-      owner_name: newEstablishment.promoter_name,
-      phone: newEstablishment.phone,
-      address: newEstablishment.address,
-      arrondissement: newEstablishment.arrondissement,
-      quartier: newEstablishment.quartier,
-      activity_type: newEstablishment.activity_type,
-      regime_type: newEstablishment.regime_type,
-      latitude: newEstablishment.coordinates[0],
-      longitude: newEstablishment.coordinates[1],
-      is_archived: false
-    }).then(({ data, error }) => {
+    Promise.resolve(
+      supabase.from('establishments').insert({
+        name: newEstablishment.name,
+        owner_name: newEstablishment.promoter_name,
+        phone: newEstablishment.phone,
+        address: newEstablishment.address,
+        arrondissement: newEstablishment.arrondissement,
+        quartier: newEstablishment.quartier,
+        activity_type: newEstablishment.activity_type,
+        regime_type: newEstablishment.regime_type,
+        latitude: newEstablishment.coordinates[0],
+        longitude: newEstablishment.coordinates[1],
+        is_archived: false
+      })
+    ).then(({ data, error }) => {
       if (error) {
         console.warn('[DDL-PN Supabase] Insert failed, enqueuing offline:', error);
         this.enqueueOfflineAction('CREATE_ESTABLISHMENT', newEstablishment);
@@ -764,19 +766,21 @@ class StorageService {
     this.notifyDataUpdated();
 
     // Push update to Supabase
-    supabase.from('establishments').update({
-      name: updates.name,
-      owner_name: updates.promoter_name,
-      phone: updates.phone,
-      address: updates.address,
-      arrondissement: updates.arrondissement,
-      quartier: updates.quartier,
-      activity_type: updates.activity_type,
-      regime_type: updates.regime_type,
-      latitude: updates.coordinates?.[0],
-      longitude: updates.coordinates?.[1],
-      updated_at: new Date().toISOString()
-    }).eq('id', id).then(({ error }) => {
+    Promise.resolve(
+      supabase.from('establishments').update({
+        name: updates.name,
+        owner_name: updates.promoter_name,
+        phone: updates.phone,
+        address: updates.address,
+        arrondissement: updates.arrondissement,
+        quartier: updates.quartier,
+        activity_type: updates.activity_type,
+        regime_type: updates.regime_type,
+        latitude: updates.coordinates?.[0],
+        longitude: updates.coordinates?.[1],
+        updated_at: new Date().toISOString()
+      }).eq('id', id)
+    ).then(({ error }) => {
       if (error) {
         this.enqueueOfflineAction('UPDATE_ESTABLISHMENT', { id, updates });
       }
@@ -883,15 +887,17 @@ class StorageService {
     this.notifyDataUpdated();
 
     // Push payment to Supabase
-    supabase.from('terrain_records').insert({
-      establishment_id: est.id,
-      total_fee: est.total_due,
-      amount_paid: params.amount,
-      remaining_balance: newBalance,
-      record_date: todayStr,
-      notes: params.notes || `Paiement ${params.payment_method} réf ${receiptRef}`,
-      status: 'SOUMIS'
-    }).then(({ error }) => {
+    Promise.resolve(
+      supabase.from('terrain_records').insert({
+        establishment_id: est.id,
+        total_fee: est.total_due,
+        amount_paid: params.amount,
+        remaining_balance: newBalance,
+        record_date: todayStr,
+        notes: params.notes || `Paiement ${params.payment_method} réf ${receiptRef}`,
+        status: 'SOUMIS'
+      })
+    ).then(({ error }) => {
       if (error) {
         this.enqueueOfflineAction('RECORD_PAYMENT', newPayment);
       }

@@ -15,8 +15,7 @@ import {
 import { storageService } from '../../services/storageService';
 import { useSession } from '../../context/SessionContext';
 import { TerrainPaymentRecord } from '../../types';
-import { TAXATION_RULES } from '../../constants/referential';
-import { PrintModal } from '../print/PrintModal';
+import { PrintModal, PrintDocumentType } from '../print/PrintModal';
 
 export const SafRegieRecettesModule: React.FC = () => {
   const { currentUser, triggerNotification } = useSession();
@@ -28,7 +27,7 @@ export const SafRegieRecettesModule: React.FC = () => {
   // Print modal
   const [printDoc, setPrintDoc] = useState<{
     isOpen: boolean;
-    type: 'TICKET_58MM';
+    type: PrintDocumentType;
     title: string;
     data: any;
   }>({
@@ -71,7 +70,24 @@ export const SafRegieRecettesModule: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              triggerNotification('Bordereau de versement au Trésorier Payeur Général préparé avec succès.', 'success');
+              setPrintDoc({
+                isOpen: true,
+                type: 'SOIT_TRANSMIS_A4',
+                title: `Bordereau de Versement Trésorier Payeur Général - 70%`,
+                data: {
+                  reference_number: `BORD-TRESOR-PN-${new Date().getFullYear()}-01`,
+                  transmission_message: `J’ai l’honneur de vous faire parvenir, pour toutes fins utiles et versement au compte du Trésor Public, le bordereau récapitulatif des recettes d'agrément et frais de dossier encaissés par la régie départementale, pour un montant total de reversement de ${stats.shareTresor.toLocaleString('fr-FR')} FCFA (70% des recettes globales).`,
+                  count: payments.length,
+                  items: payments.map(p => ({
+                    name: p.establishment_name,
+                    promoter_name: p.promoter_name,
+                    arrondissement: p.arrondissement,
+                    amount_paid: Math.round(p.amount_paid * 0.7)
+                  })),
+                  date_emission: new Date().toISOString().split('T')[0]
+                }
+              });
+              triggerNotification('Bordereau officiel de versement au Trésorier Payeur Général généré !', 'success');
             }}
             className="bg-[#022448] hover:bg-[#033468] text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow transition"
           >
@@ -237,11 +253,11 @@ export const SafRegieRecettesModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Thermal Ticket Modal */}
+      {/* Thermal Ticket & Official Bordereau Modal */}
       <PrintModal
         isOpen={printDoc.isOpen}
         onClose={() => setPrintDoc(prev => ({ ...prev, isOpen: false }))}
-        documentType="TICKET_58MM"
+        documentType={printDoc.type}
         title={printDoc.title}
         data={printDoc.data}
       />

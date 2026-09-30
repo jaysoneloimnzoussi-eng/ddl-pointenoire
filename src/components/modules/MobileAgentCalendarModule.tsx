@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
+  Calendar,
   Calendar as CalendarIcon,
   Clock,
   ChevronLeft,
@@ -39,7 +40,8 @@ import {
   Eye,
   Info,
   CalendarDays,
-  Smartphone
+  Smartphone,
+  LayoutDashboard
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { storageService } from '../../services/storageService';
@@ -51,6 +53,7 @@ import { OfficialRepublicLogo } from '../common/OfficialSeal';
 
 // Liste officielle des agents assermentés de terrain de la Brigade SAA (strictement issus de APP_USERS)
 const FIELD_AGENTS = APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'CHEF_SAA').map(u => ({
+  id: u.id,
   badge: u.badge,
   name: u.name,
   role: u.title,
