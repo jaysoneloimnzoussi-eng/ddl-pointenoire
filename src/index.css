@@ -25,44 +25,95 @@
   }
 }
 
-/* Print stylesheets for Official A4 and 58mm POS thermal tickets */
+/* ==========================================================================
+   ISOLATED REPUTABLE PRINT STYLESHEET (OFFICIAL A4 & 58MM POS TICKETS)
+   ========================================================================== */
 @media print {
-  body {
+  /* 1. Hide everything by default in the web application */
+  body * {
+    visibility: hidden;
+  }
+
+  /* 2. Hide specific interactive elements completely */
+  header,
+  footer,
+  aside,
+  nav,
+  button,
+  select,
+  input,
+  .no-print,
+  .no-print * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* 3. Reset root & body positioning for print */
+  html, body {
     background: white !important;
     color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
-  .no-print {
-    display: none !important;
-  }
-
-  .print-only {
+  #root,
+  main,
+  .min-h-screen {
+    margin: 0 !important;
+    padding: 0 !important;
     display: block !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  /* 4. Target ONLY printable sheets and make them visible and properly aligned */
+  .print-page-a4,
+  .print-page-a4 *,
+  .print-ticket-58mm,
+  .print-ticket-58mm *,
+  .printable-document,
+  .printable-document * {
+    visibility: visible !important;
   }
 
   .print-page-a4 {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 210mm !important;
     min-height: 297mm !important;
-    padding: 15mm 20mm !important;
+    padding: 12mm 16mm !important;
     margin: 0 auto !important;
     background: white !important;
     box-shadow: none !important;
+    border: none !important;
     page-break-after: always;
+    break-inside: avoid;
+    display: block !important;
   }
 
   .print-ticket-58mm {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 58mm !important;
     max-width: 58mm !important;
     padding: 2mm !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     font-size: 10px !important;
     line-height: 1.2 !important;
     background: white !important;
     box-shadow: none !important;
+    border: none !important;
+    display: block !important;
   }
 
   @page {
-    margin: 0.8cm;
+    size: A4 portrait;
+    margin: 8mm 8mm 8mm 8mm;
   }
 }
 

@@ -16,9 +16,11 @@ import { SafRegieRecettesModule } from './components/modules/SafRegieRecettesMod
 import { TitlesAndReceiptsModule } from './components/modules/TitlesAndReceiptsModule';
 import { LegalTextsAndSimulatorModule } from './components/modules/LegalTextsAndSimulatorModule';
 import { PtaTrackerModule } from './components/modules/PtaTrackerModule';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { AiAssistantModal } from './components/common/AiAssistantModal';
 import { RepublicTricolorBar, OfficialRepublicLogo } from './components/common/OfficialSeal';
 import { REPUBLIQUE_CONGO } from './constants/referential';
-import { AlertCircle, CheckCircle, Info, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, Info, X, Sparkles } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const {
@@ -29,6 +31,8 @@ const AppContent: React.FC = () => {
     activeNotification,
     clearNotification
   } = useSession();
+
+  const [isGlobalAiOpen, setIsGlobalAiOpen] = React.useState(false);
 
   // If not authenticated, render LoginPage
   if (!isAuthenticated) {
@@ -113,10 +117,32 @@ const AppContent: React.FC = () => {
         {/* Main Content Area */}
         <main className={`flex-1 overflow-y-auto ${isTabletBrigadeMode ? 'p-2 sm:p-3' : 'p-3 sm:p-6'} bg-[#f8fafd]`}>
           <div className="max-w-[1720px] mx-auto">
-            {renderActiveModule()}
+            <ErrorBoundary key={activeModule} fallbackTitle={`Erreur dans le module ${activeModule}`}>
+              {renderActiveModule()}
+            </ErrorBoundary>
           </div>
         </main>
       </div>
+
+      {/* Floating AI Assistant Trigger (Available Everywhere) */}
+      <button
+        onClick={() => setIsGlobalAiOpen(true)}
+        className="no-print fixed bottom-6 left-6 z-40 bg-gradient-to-r from-purple-700 via-[#022448] to-[#006d2f] text-white p-3 sm:px-4 sm:py-3 rounded-full shadow-2xl hover:scale-105 border-2 border-amber-400/50 flex items-center gap-2.5 transition group cursor-pointer animate-in fade-in"
+        title="Ouvrir l'Assistant IA Administratif & Juridique DDL-PN"
+      >
+        <div className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center font-black">
+          <Sparkles className="w-3.5 h-3.5" />
+        </div>
+        <span className="hidden sm:inline text-xs font-black tracking-tight font-republic">
+          Assistant IA DDL-PN
+        </span>
+      </button>
+
+      {/* Global AI Assistant Modal */}
+      <AiAssistantModal
+        isOpen={isGlobalAiOpen}
+        onClose={() => setIsGlobalAiOpen(false)}
+      />
 
       {/* Official Republic Footer */}
       <footer className="no-print bg-[#022448] text-white border-t border-[#033468] py-6 mt-12 text-xs">

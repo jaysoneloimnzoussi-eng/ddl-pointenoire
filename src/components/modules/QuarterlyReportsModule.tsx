@@ -19,121 +19,51 @@ import {
   Layers,
   ChevronRight,
   Send,
-  Plus
+  Plus,
+  Bot,
+  Scale,
+  Volume2,
+  Users,
+  MessageSquare
 } from 'lucide-react';
 import { storageService } from '../../services/storageService';
 import { useSession } from '../../context/SessionContext';
 import { REPUBLIQUE_CONGO, TERRITORIAL_REFERENTIAL } from '../../constants/referential';
 import { PrintModal } from '../print/PrintModal';
-
-interface TrimestreReportContent {
-  year: string;
-  trimestre: 'T1' | 'T2' | 'T3' | 'T4';
-  referenceNumber: string;
-  periodLabel: string;
-  introduction: string;
-  tempsForts: string[];
-  indicators: Array<{ name: string; target: string; result: string; status: 'ATTEINT' | 'EN_COURS' | 'REPORTE' }>;
-  safmBilan: string;
-  saaBilan: string;
-  ssidBilan: string;
-  spaBilan: string;
-  nonRealisees: string;
-  perspectives: string;
-  ceremonies: string;
-  difficultes: string;
-  recommandations: string;
-  conclusion: string;
-  dateSubmission: string;
-}
-
-const DEFAULT_REPORTS: Record<string, TrimestreReportContent> = {
-  '2026-T3': {
-    year: '2026',
-    trimestre: 'T3',
-    referenceNumber: 'RAP-DDL-PN-2026/T3',
-    periodLabel: '1er juillet — 30 septembre 2026',
-    introduction: `Le présent rapport dresse le bilan des activités du troisième trimestre 2026 de la Direction Départementale des Loisirs (DDL) de Pointe-Noire. Il fait suite au rapport du T2 qui avait consacré la production de la Fiche Technique des manques remise à Monsieur le Ministre le 17 juin 2026 et acté la nécessité d'un passage décisif du plaidoyer à l'action de terrain.`,
-    tempsForts: [
-      'Déploiement effectif de la Brigade SAA sur le terrain avec 117 établissements recensés et cartographiés.',
-      'Recouvrement électronique direct des acomptes in situ et émission de quittances thermiques 58mm.',
-      'Avancée des négociations pour les conventions de partenariat stratégique (Globaline, Institut Français, Wing Wah).',
-      'Poursuite des contrôles acoustiques contradictoires et apposition de scellés sur les limiteurs sonores.'
-    ],
-    indicators: [
-      { name: 'Contrôle qualité & Recensement SAA', target: '2 missions / Trimestre', result: '117 établissements inspectés', status: 'ATTEINT' },
-      { name: 'Recouvrement & Ventilation Trésor (70%)', target: 'Recouvrement continu', result: 'Enregistrements régie conformes', status: 'ATTEINT' },
-      { name: 'Conventions de partenariat stratégique', target: '3 conventions cibles', result: 'Projets finalisés avec Globaline & IFPN', status: 'EN_COURS' },
-      { name: 'Cartographie SIG et base numérique', target: '1 base consolidée', result: 'Base Supabase 100% opérationnelle', status: 'ATTEINT' },
-      { name: 'Activités loisirs sains scolaires & orphelins', target: 'Lancement effectif', result: 'Fiches projets prêtes (attente budget)', status: 'REPORTE' },
-      { name: 'Représentations institutionnelles', target: 'Selon agenda officiel', result: '15 août (Indépendance) & 27 sept (JMT)', status: 'ATTEINT' }
-    ],
-    safmBilan: `Le Service Administratif, Financier et du Matériel a assuré la tenue sans discontinuité des registres de présence, le suivi des courriers officiels et la comptabilité de la Régie des recettes selon la clé de répartition réglementaire (70% Trésor Public / 30% Régie Fonctionnement DDL).`,
-    saaBilan: `Le Service de l'Autorisation (SAA), sous la supervision de M. Jacques MATOKO, a mené les missions de contrôle in situ couvrant les 6 arrondissements de Pointe-Noire. 117 établissements de loisirs ont été traités, des convocations contradictoires ont été notifiées et des accords d'échelonnement ont été conclus avec les exploitants.`,
-    ssidBilan: `Le Service des Statistiques, de l'Information et de la Documentation a structuré la base de données numérique consolidée, permettant la géolocalisation précise des débits de boissons, lounges et établissements de nuit, et la production d'indicateurs fiables pour le PTA 2026.`,
-    spaBilan: `Le Service de la Promotion et Animation a exploité la méthode de la Table Analytique issue du séminaire de mai pour concevoir les fiches projets d'animation scolaire et sociale, tout en renforçant les contacts avec les partenaires stratégiques (Globaline, Institut Français).`,
-    nonRealisees: `Le lancement à grande échelle des concours scolaires de scrabble et des tournois sportifs inter-écoles reste suspendu au déblocage de l'enveloppe budgétaire opérationnelle ou à la signature définitive des conventions de sponsoring.`,
-    perspectives: `Pour le quatrième trimestre (T4 2026) : clôture annuelle du PTA 2026, intensification des missions de recouvrement du solde auprès des tenanciers, transmission du rapport annuel consolidé et poursuite du plaidoyer pour l'octroi d'un véhicule de service.`,
-    ceremonies: `Participation officielle du Directeur Départemental aux cérémonies du 66ème anniversaire de l'Indépendance Nationale (15 août 2026) et aux manifestations de la Journée Mondiale du Tourisme et des Loisirs (27 septembre 2026).`,
-    difficultes: `Persistance du manque de moyens de locomotion autonomes (absence de véhicule et de motos), locaux administratifs exigus ne garantissant pas la confidentialité des auditions, et conflits de compétence territoriaux avec les services municipaux.`,
-    recommandations: `1. Obtenir l'arbitrage ministériel sur l'allocation budgétaire minimale de 3 696 000 FCFA. 2. Affecter 5 agents fonctionnaires supplémentaires pour renforcer la Brigade SAA. 3. Finaliser la signature des conventions avec Globaline, l'Institut Français et Wing Wah.`,
-    conclusion: `Le troisième trimestre 2026 confirme la montée en puissance opérationnelle de la DDL-PN. Grâce à la digitalisation des procédures et à l'engagement des agents de terrain, la régulation des loisirs devient une réalité tangible à Pointe-Noire.`,
-    dateSubmission: '2026-09-30'
-  }
-};
+import { AiReportService, GeneratedReport } from '../../services/aiReportService';
+import { AiAssistantModal } from '../common/AiAssistantModal';
 
 export const QuarterlyReportsModule: React.FC = () => {
   const { currentUser, triggerNotification } = useSession();
   const [selectedTrimestre, setSelectedTrimestre] = useState<'T1' | 'T2' | 'T3' | 'T4'>('T3');
   const [selectedYear, setSelectedYear] = useState<string>('2026');
   const [activeTab, setActiveTab] = useState<'PREVIEW' | 'EDITOR'>('PREVIEW');
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiActionTarget, setAiActionTarget] = useState<string | null>(null);
 
   const stats = storageService.getSystemStats();
   const reportKey = `${selectedYear}-${selectedTrimestre}`;
 
-  // Report state with local storage persistence
-  const [reportsStore, setReportsStore] = useState<Record<string, TrimestreReportContent>>(() => {
-    const saved = localStorage.getItem('ddl_pn_quarterly_reports_store');
+  // Store reports with local storage persistence
+  const [reportsStore, setReportsStore] = useState<Record<string, GeneratedReport>>(() => {
+    const saved = localStorage.getItem('ddl_pn_exhaustive_quarterly_reports_store');
     if (saved) {
       try { return JSON.parse(saved); } catch {}
     }
-    return DEFAULT_REPORTS;
+    return {
+      '2026-T3': AiReportService.generateExhaustiveQuarterlyReport('2026', 'T3'),
+      '2026-T2': AiReportService.generateExhaustiveQuarterlyReport('2026', 'T2'),
+      '2026-T1': AiReportService.generateExhaustiveQuarterlyReport('2026', 'T1'),
+      '2026-T4': AiReportService.generateExhaustiveQuarterlyReport('2026', 'T4')
+    };
   });
 
-  const currentReport: TrimestreReportContent = useMemo(() => {
+  const currentReport: GeneratedReport = useMemo(() => {
     if (reportsStore[reportKey]) return reportsStore[reportKey];
-    return {
-      year: selectedYear,
-      trimestre: selectedTrimestre,
-      referenceNumber: `RAP-DDL-PN-${selectedYear}/${selectedTrimestre}`,
-      periodLabel: selectedTrimestre === 'T1' ? `1er janvier — 31 mars ${selectedYear}`
-        : selectedTrimestre === 'T2' ? `1er avril — 30 juin ${selectedYear}`
-        : selectedTrimestre === 'T3' ? `1er juillet — 30 septembre ${selectedYear}`
-        : `1er octobre — 31 décembre ${selectedYear}`,
-      introduction: `Rapport d'activités officiel du ${selectedTrimestre} ${selectedYear} de la Direction Départementale des Loisirs de Pointe-Noire.`,
-      tempsForts: [
-        'Continuité de la gestion administrative et suivi des dossiers.',
-        'Missions de contrôle et assainissement des loisirs à Pointe-Noire.'
-      ],
-      indicators: [
-        { name: 'Missions de contrôle qualité', target: '2 missions', result: 'Exécuté', status: 'ATTEINT' },
-        { name: 'Recouvrement régie', target: 'Selon barème', result: 'En cours', status: 'EN_COURS' }
-      ],
-      safmBilan: 'Gestion courante administrative et financière assurée.',
-      saaBilan: 'Traitement des dossiers et régularisation des exploitants de loisirs.',
-      ssidBilan: 'Mise à jour des statistiques départementales.',
-      spaBilan: 'Animation et sensibilisation aux loisirs sains.',
-      nonRealisees: 'Activités reportées faute de moyens logistiques.',
-      perspectives: 'Poursuite des objectifs du Plan de Travail Annuel.',
-      ceremonies: 'Représentation officielle de la DDL aux événements du département.',
-      difficultes: 'Absence de véhicule de service et contraintes budgétaires.',
-      recommandations: 'Allocation de moyens logistiques et validation des partenariats.',
-      conclusion: 'Le bilan trimestriel témoigne de la détermination du personnel de la DDL-PN.',
-      dateSubmission: new Date().toISOString().split('T')[0]
-    };
+    return AiReportService.generateExhaustiveQuarterlyReport(selectedYear, selectedTrimestre);
   }, [reportsStore, reportKey, selectedYear, selectedTrimestre]);
 
-  const [editForm, setEditForm] = useState<TrimestreReportContent>(currentReport);
+  const [editForm, setEditForm] = useState<GeneratedReport>(currentReport);
 
   // Sync edit form when changing trimester or year
   React.useEffect(() => {
@@ -146,9 +76,31 @@ export const QuarterlyReportsModule: React.FC = () => {
       [reportKey]: editForm
     };
     setReportsStore(updatedStore);
-    localStorage.setItem('ddl_pn_quarterly_reports_store', JSON.stringify(updatedStore));
-    triggerNotification(`Rapport ${selectedTrimestre} ${selectedYear} enregistré avec succès !`, 'success');
+    localStorage.setItem('ddl_pn_exhaustive_quarterly_reports_store', JSON.stringify(updatedStore));
+    triggerNotification(`Rapport exhaustif ${selectedTrimestre} ${selectedYear} enregistré avec succès !`, 'success');
     setActiveTab('PREVIEW');
+  };
+
+  const handleGenerateWithAi = () => {
+    const generated = AiReportService.generateExhaustiveQuarterlyReport(selectedYear, selectedTrimestre);
+    setEditForm(generated);
+    const updatedStore = {
+      ...reportsStore,
+      [reportKey]: generated
+    };
+    setReportsStore(updatedStore);
+    localStorage.setItem('ddl_pn_exhaustive_quarterly_reports_store', JSON.stringify(updatedStore));
+    triggerNotification(`Rapport officiel ${selectedTrimestre} ${selectedYear} généré et enrichi avec l'IA DDL-PN !`, 'success');
+  };
+
+  const handleEnrichSpecificSection = (sectionKey: keyof GeneratedReport, title: string, instruction: string) => {
+    const currentVal = String(editForm[sectionKey] || '');
+    const enriched = AiReportService.enrichSection(title, currentVal, instruction);
+    setEditForm(prev => ({
+      ...prev,
+      [sectionKey]: enriched
+    }));
+    triggerNotification(`Section "${title}" enrichie par l'IA !`, 'success');
   };
 
   const [printDoc, setPrintDoc] = useState<{
@@ -180,7 +132,7 @@ export const QuarterlyReportsModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 select-none">
       {/* Top Header */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
@@ -188,14 +140,14 @@ export const QuarterlyReportsModule: React.FC = () => {
             <span className="text-xs bg-[#006d2f] text-white font-bold px-2.5 py-0.5 rounded-full font-mono-ref">
               PTA {selectedYear} • MCAPNIT / DGL
             </span>
-            <span className="text-xs text-slate-500 font-medium">Générateur & Concepteur de Rapports Officiels</span>
+            <span className="text-xs text-slate-500 font-medium">Générateur & Concepteur de Rapports Officiels Longs</span>
           </div>
           <h2 className="text-lg sm:text-xl font-black text-[#022448] tracking-tight mt-1 flex items-center gap-2 font-republic">
             <FileBarChart className="w-5 h-5 text-[#006d2f]" />
-            <span>Rapports Trimestriels d'Activité & de Recouvrement</span>
+            <span>Rapports Trimestriels d'Activité & de Recouvrement (Format Ministériel)</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Concevez, rédigez et imprimez les rapports trimestriels officiels à soumettre à Monsieur le Directeur Départemental et au Ministère.
+            Rédigez, développez avec l'IA et imprimez les rapports complets à soumettre à Monsieur le Directeur Départemental Jean Richard NTSEKE NGOUAKA.
           </p>
         </div>
 
@@ -205,7 +157,7 @@ export const QuarterlyReportsModule: React.FC = () => {
           <select
             value={selectedYear}
             onChange={e => setSelectedYear(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-[#022448] outline-none"
+            className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-[#022448] outline-none cursor-pointer"
           >
             <option value="2025">Année 2025</option>
             <option value="2026">Année 2026</option>
@@ -256,6 +208,16 @@ export const QuarterlyReportsModule: React.FC = () => {
             </button>
           </div>
 
+          {/* AI Assistant Button */}
+          <button
+            onClick={() => setIsAiModalOpen(true)}
+            className="bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition cursor-pointer"
+            title="Ouvrir l'Assistant IA DDL-PN"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>Assistant IA</span>
+          </button>
+
           {/* Print A4 button */}
           <button
             onClick={handlePrintReport}
@@ -263,6 +225,40 @@ export const QuarterlyReportsModule: React.FC = () => {
           >
             <Printer className="w-3.5 h-3.5 text-amber-300" />
             <span>Imprimer Rapport A4</span>
+          </button>
+        </div>
+      </div>
+
+      {/* AI Assistant Quick Actions Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-[#022448] to-[#006d2f] text-white p-4 rounded-2xl border border-slate-700 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 font-black">
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="font-extrabold text-amber-300 block text-xs">
+              Générateur Intelligent IA DDL-PN
+            </span>
+            <p className="text-[11px] text-slate-200">
+              Générez instantanément des rapports longs, exhaustifs et structurés intégrant les 118 établissements, les 4 services et la ventilation Trésor (70%) / Régie (30%).
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 shrink-0 self-stretch md:self-auto">
+          <button
+            onClick={handleGenerateWithAi}
+            className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-lg text-xs flex items-center gap-1.5 shadow transition cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Générer Rapport Complet Exhaustif</span>
+          </button>
+          <button
+            onClick={() => setIsAiModalOpen(true)}
+            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-amber-300" />
+            <span>Poser une consigne à l'IA</span>
           </button>
         </div>
       </div>
@@ -302,8 +298,8 @@ export const QuarterlyReportsModule: React.FC = () => {
 
       {/* TAB CONTENT: PREVIEW OR EDITOR */}
       {activeTab === 'PREVIEW' ? (
-        /* OFFICIAL REPORT PREVIEW (A4 STRUCTURED DOCUMENT) */
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-8">
+        /* OFFICIAL REPORT PREVIEW (EXHAUSTIVE A4 STRUCTURED DOCUMENT) */
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-10 shadow-sm space-y-8">
           {/* Official Document Banner */}
           <div className="border-b pb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
@@ -311,9 +307,9 @@ export const QuarterlyReportsModule: React.FC = () => {
                 <span className="text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded font-mono-ref">
                   {currentReport.referenceNumber}
                 </span>
-                <span className="text-xs text-slate-500">Document Officiel de Gouvernance</span>
+                <span className="text-xs text-slate-500">Document Officiel de Gouvernance & de Tutelle</span>
               </div>
-              <h3 className="text-lg sm:text-xl font-black text-[#022448] font-republic mt-2 uppercase tracking-wide">
+              <h3 className="text-lg sm:text-2xl font-black text-[#022448] font-republic mt-2 uppercase tracking-wide">
                 Rapport d'Activités du {selectedTrimestre === 'T1' ? 'Premier' : selectedTrimestre === 'T2' ? 'Deuxième' : selectedTrimestre === 'T3' ? 'Troisième' : 'Quatrième'} Trimestre {selectedYear}
               </h3>
               <p className="text-xs text-slate-600 mt-1">
@@ -330,43 +326,56 @@ export const QuarterlyReportsModule: React.FC = () => {
           {/* 1. Introduction */}
           <div className="space-y-3">
             <h4 className="text-sm font-black text-[#022448] font-republic uppercase border-l-4 border-[#006d2f] pl-2.5">
-              1. Introduction & Contexte
+              1. Introduction & Contexte Institutionnel
             </h4>
-            <p className="text-xs text-slate-700 leading-relaxed text-justify bg-slate-50/70 p-4 rounded-xl border border-slate-200">
+            <div className="text-xs text-slate-700 leading-relaxed text-justify bg-slate-50 p-4 rounded-xl border border-slate-200 whitespace-pre-line">
               {currentReport.introduction}
-            </p>
+            </div>
           </div>
+
+          {/* Cadre Juridique */}
+          {currentReport.cadreJuridique && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-black text-[#022448] font-republic uppercase border-l-4 border-[#022448] pl-2.5 flex items-center gap-2">
+                <Scale className="w-4 h-4 text-[#022448]" />
+                <span>2. Cadre Légal & Réglementaire Opposable</span>
+              </h4>
+              <div className="text-xs text-slate-700 leading-relaxed bg-blue-50/40 p-4 rounded-xl border border-blue-200 whitespace-pre-line">
+                {currentReport.cadreJuridique}
+              </div>
+            </div>
+          )}
 
           {/* Temps Forts */}
           <div className="space-y-3">
             <h4 className="text-sm font-black text-[#022448] font-republic uppercase border-l-4 border-amber-600 pl-2.5">
-              Temps Forts du Trimestre
+              3. Faits Marquants & Temps Forts du Trimestre
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {currentReport.tempsForts.map((tf, i) => (
-                <div key={i} className="p-3 bg-white border border-slate-200 rounded-xl flex items-start gap-2 text-xs shadow-2xs">
+                <div key={i} className="p-3.5 bg-white border border-slate-200 rounded-xl flex items-start gap-2.5 text-xs shadow-2xs">
                   <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0 text-[10px]">
                     {i + 1}
                   </span>
-                  <p className="text-slate-700">{tf}</p>
+                  <p className="text-slate-700 leading-relaxed">{tf}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* 2. Tableau de bord des Indicateurs PTA */}
+          {/* Tableau de bord des Indicateurs PTA */}
           <div className="space-y-3">
             <h4 className="text-sm font-black text-[#022448] font-republic uppercase border-l-4 border-[#022448] pl-2.5">
-              2. Synthèse du Bilan Trimestriel — Tableau de Bord PTA {selectedYear}
+              4. Synthèse d'Exécution du Plan de Travail Annuel (PTA {selectedYear})
             </h4>
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left border border-slate-300 rounded-xl overflow-hidden">
                 <thead className="bg-[#022448] text-white">
                   <tr>
-                    <th className="p-2.5 border">Indicateur PTA {selectedYear}</th>
-                    <th className="p-2.5 border">Cible</th>
+                    <th className="p-2.5 border">Indicateur Clé PTA {selectedYear}</th>
+                    <th className="p-2.5 border">Cible Annuelle</th>
                     <th className="p-2.5 border">Résultat {selectedTrimestre} {selectedYear}</th>
-                    <th className="p-2.5 border text-center">Statut</th>
+                    <th className="p-2.5 border text-center">Statut d'Exécution</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -395,39 +404,44 @@ export const QuarterlyReportsModule: React.FC = () => {
             </div>
           </div>
 
-          {/* 3. Activités par Service */}
+          {/* Activités par Service */}
           <div className="space-y-3">
             <h4 className="text-sm font-black text-[#022448] font-republic uppercase border-l-4 border-indigo-700 pl-2.5">
-              3. Activités Programmées Réalisées par Service
+              5. Bilan Détaillé d'Exécution par Service Départemental
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
                 <p className="font-extrabold text-[#022448] uppercase">a. Service Administratif, Financier et du Matériel (SAFM)</p>
-                <p className="text-slate-700 leading-relaxed text-justify">{currentReport.safmBilan}</p>
+                <div className="text-slate-700 leading-relaxed text-justify whitespace-pre-line">{currentReport.safmBilan}</div>
               </div>
 
               <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-200 space-y-1.5">
-                <p className="font-extrabold text-emerald-950 uppercase">b. Service Assistance & Autorisation (SAA)</p>
-                <p className="text-slate-700 leading-relaxed text-justify">{currentReport.saaBilan}</p>
+                <p className="font-extrabold text-emerald-950 uppercase">b. Service Assistance & Autorisation (SAA — Jacques MATOKO)</p>
+                <div className="text-slate-700 leading-relaxed text-justify whitespace-pre-line">{currentReport.saaBilan}</div>
               </div>
 
               <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-200 space-y-1.5">
-                <p className="font-extrabold text-blue-950 uppercase">c. Service des Statistiques, Information & Documentation</p>
-                <p className="text-slate-700 leading-relaxed text-justify">{currentReport.ssidBilan}</p>
+                <p className="font-extrabold text-blue-950 uppercase">c. Service des Statistiques, Information & Documentation (SSID)</p>
+                <div className="text-slate-700 leading-relaxed text-justify whitespace-pre-line">{currentReport.ssidBilan}</div>
               </div>
 
               <div className="p-4 bg-amber-50/50 rounded-xl border border-amber-200 space-y-1.5">
                 <p className="font-extrabold text-amber-950 uppercase">d. Service de la Promotion et Animation (SPA)</p>
-                <p className="text-slate-700 leading-relaxed text-justify">{currentReport.spaBilan}</p>
+                <div className="text-slate-700 leading-relaxed text-justify whitespace-pre-line">{currentReport.spaBilan}</div>
               </div>
             </div>
           </div>
 
-          {/* 4. Tableau Financier Territorial */}
+          {/* Bilan Territorial & Décompte par Arrondissement */}
           <div className="space-y-3">
             <h4 className="text-sm font-black text-[#022448] font-republic uppercase border-l-4 border-emerald-700 pl-2.5">
-              4. Bilan Financier du Recouvrement par Arrondissement (70% Trésor / 30% Régie)
+              6. Décompte & Recouvrement par Arrondissement (Clé 70% Trésor / 30% Régie)
             </h4>
+            {currentReport.bilanTerritorial && (
+              <div className="text-xs text-slate-700 leading-relaxed bg-emerald-50/30 p-3.5 rounded-xl border border-emerald-200 whitespace-pre-line mb-3">
+                {currentReport.bilanTerritorial}
+              </div>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left border">
                 <thead className="bg-[#022448] text-white">
@@ -462,16 +476,45 @@ export const QuarterlyReportsModule: React.FC = () => {
             </div>
           </div>
 
-          {/* 5, 6, 7. Perspectives & Recommandations */}
+          {/* Police Acoustique & Partenariats */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="p-4 bg-slate-50 rounded-xl border space-y-1.5">
-              <p className="font-bold text-slate-900 uppercase">5. Difficultés & Risques Persistants</p>
-              <p className="text-slate-700 leading-relaxed text-justify">{currentReport.difficultes}</p>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+              <p className="font-extrabold text-[#022448] uppercase flex items-center gap-1.5">
+                <Volume2 className="w-4 h-4 text-blue-600" />
+                <span>7. Police Acoustique & Contrôles Sonométriques</span>
+              </p>
+              <div className="text-slate-700 leading-relaxed text-justify whitespace-pre-line">{currentReport.policeAcoustique || 'Contrôles in situ effectués sous seuil limite de 80 dB.'}</div>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-xl border space-y-1.5">
-              <p className="font-bold text-slate-900 uppercase">6. Suggestions Prioritaires à la Hiérarchie</p>
-              <p className="text-slate-700 leading-relaxed text-justify">{currentReport.recommandations}</p>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+              <p className="font-extrabold text-[#022448] uppercase flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-amber-600" />
+                <span>8. Partenariats Stratégiques (Globaline, IFPN, Wing Wah)</span>
+              </p>
+              <div className="text-slate-700 leading-relaxed text-justify whitespace-pre-line">{currentReport.partenariats || 'Conventions en cours de formalisation.'}</div>
+            </div>
+          </div>
+
+          {/* Difficultés & Recommandations */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+              <p className="font-bold text-slate-900 uppercase">9. Difficultés Rencontrées & Risques Persistants</p>
+              <div className="text-slate-700 leading-relaxed text-justify whitespace-pre-line">{currentReport.difficultes}</div>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+              <p className="font-bold text-slate-900 uppercase">10. Suggestions Prioritaires à Monsieur le Directeur</p>
+              <div className="text-slate-700 leading-relaxed text-justify whitespace-pre-line">{currentReport.recommandations}</div>
+            </div>
+          </div>
+
+          {/* Conclusion */}
+          <div className="space-y-2 text-xs">
+            <h4 className="font-bold text-slate-900 uppercase border-l-4 border-purple-700 pl-2">
+              11. Conclusion & Perspectives
+            </h4>
+            <div className="text-slate-700 leading-relaxed text-justify bg-slate-50 p-4 rounded-xl border border-slate-200 whitespace-pre-line">
+              {currentReport.conclusion}
             </div>
           </div>
 
@@ -493,19 +536,27 @@ export const QuarterlyReportsModule: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* INTERACTIVE REPORT EDITOR */
+        /* INTERACTIVE REPORT EDITOR WITH IA ASSISTANCE PER SECTION */
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
-          <div className="flex items-center justify-between border-b pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4">
             <div>
               <h3 className="text-base font-black text-[#022448] font-republic uppercase">
                 Édition du Rapport Trimestriel ({selectedTrimestre} {selectedYear})
               </h3>
               <p className="text-xs text-slate-500">
-                Personnalisez les textes, chiffres et constats du rapport. Les modifications s'enregistrent automatiquement dans votre espace.
+                Personnalisez chaque section du rapport ou utilisez les boutons IA pour enrichir le texte.
               </p>
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleGenerateWithAi}
+                className="px-3 py-2 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>Régénérer Tout avec l'IA</span>
+              </button>
               <button
                 type="button"
                 onClick={handleSaveReport}
@@ -517,28 +568,71 @@ export const QuarterlyReportsModule: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-4 text-xs">
+          <div className="space-y-5 text-xs">
             {/* Introduction */}
             <div>
-              <label className="block font-bold text-slate-800 uppercase mb-1">
-                1. Introduction & Contexte du Trimestre
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-slate-800 uppercase">
+                  1. Introduction & Contexte du Trimestre
+                </label>
+                <button
+                  type="button"
+                  onClick={() => handleEnrichSpecificSection('introduction', 'Introduction', 'allonger et détailler le contexte')}
+                  className="text-[11px] text-purple-700 hover:text-purple-900 font-bold flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Enrichir avec l'IA</span>
+                </button>
+              </div>
               <textarea
-                rows={3}
+                rows={4}
                 value={editForm.introduction}
                 onChange={e => setEditForm({ ...editForm, introduction: e.target.value })}
                 className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl font-sans focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none"
               />
             </div>
 
+            {/* Cadre Juridique */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-slate-800 uppercase">
+                  2. Cadre Légal & Réglementaire Opposable
+                </label>
+                <button
+                  type="button"
+                  onClick={() => handleEnrichSpecificSection('cadreJuridique', 'Cadre Légal', 'ajouter les lois et décrets')}
+                  className="text-[11px] text-purple-700 hover:text-purple-900 font-bold flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Enrichir les Visas</span>
+                </button>
+              </div>
+              <textarea
+                rows={3}
+                value={editForm.cadreJuridique}
+                onChange={e => setEditForm({ ...editForm, cadreJuridique: e.target.value })}
+                className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white outline-none"
+              />
+            </div>
+
             {/* Services Bilan */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block font-bold text-slate-800 uppercase mb-1">
-                  Service Administratif & Financier (SAFM)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-800 uppercase">
+                    Service Administratif & Financier (SAFM)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleEnrichSpecificSection('safmBilan', 'SAFM', 'détailler la comptabilité de régie et le personnel')}
+                    className="text-[11px] text-purple-700 font-bold flex items-center gap-0.5"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>IA</span>
+                  </button>
+                </div>
                 <textarea
-                  rows={3}
+                  rows={4}
                   value={editForm.safmBilan}
                   onChange={e => setEditForm({ ...editForm, safmBilan: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white outline-none"
@@ -546,11 +640,21 @@ export const QuarterlyReportsModule: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-emerald-900 uppercase mb-1">
-                  Service Assistance & Autorisation (SAA) — Terrain
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-emerald-900 uppercase">
+                    Service Assistance & Autorisation (SAA) — Jacques MATOKO
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleEnrichSpecificSection('saaBilan', 'SAA', 'détailler les opérations de brigade in situ et convocations')}
+                    className="text-[11px] text-emerald-700 font-bold flex items-center gap-0.5"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>IA</span>
+                  </button>
+                </div>
                 <textarea
-                  rows={3}
+                  rows={4}
                   value={editForm.saaBilan}
                   onChange={e => setEditForm({ ...editForm, saaBilan: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-emerald-300 rounded-xl focus:bg-white outline-none"
@@ -558,11 +662,21 @@ export const QuarterlyReportsModule: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-blue-900 uppercase mb-1">
-                  Service Statistiques & Documentation (SSID)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-blue-900 uppercase">
+                    Service Statistiques & Documentation (SSID)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleEnrichSpecificSection('ssidBilan', 'SSID', 'détailler la cartographie SIG et la base Supabase')}
+                    className="text-[11px] text-blue-700 font-bold flex items-center gap-0.5"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>IA</span>
+                  </button>
+                </div>
                 <textarea
-                  rows={3}
+                  rows={4}
                   value={editForm.ssidBilan}
                   onChange={e => setEditForm({ ...editForm, ssidBilan: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-blue-300 rounded-xl focus:bg-white outline-none"
@@ -570,14 +684,71 @@ export const QuarterlyReportsModule: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-amber-900 uppercase mb-1">
-                  Service Promotion & Animation (SPA)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-amber-900 uppercase">
+                    Service Promotion & Animation (SPA)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleEnrichSpecificSection('spaBilan', 'SPA', 'détailler les partenariats Globaline et IFPN')}
+                    className="text-[11px] text-amber-700 font-bold flex items-center gap-0.5"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>IA</span>
+                  </button>
+                </div>
                 <textarea
-                  rows={3}
+                  rows={4}
                   value={editForm.spaBilan}
                   onChange={e => setEditForm({ ...editForm, spaBilan: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-amber-300 rounded-xl focus:bg-white outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Police acoustique & Partenariats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-800 uppercase">
+                    Police Acoustique & Nuisances Sonores
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleEnrichSpecificSection('policeAcoustique', 'Police Acoustique', 'détailler les mesures de décibels et mises en demeure')}
+                    className="text-[11px] text-purple-700 font-bold flex items-center gap-0.5"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>IA</span>
+                  </button>
+                </div>
+                <textarea
+                  rows={3}
+                  value={editForm.policeAcoustique}
+                  onChange={e => setEditForm({ ...editForm, policeAcoustique: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white outline-none"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-800 uppercase">
+                    Partenariats Stratégiques (Globaline, IFPN, Wing Wah)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleEnrichSpecificSection('partenariats', 'Partenariats', 'détailler les conventions de sponsoring')}
+                    className="text-[11px] text-purple-700 font-bold flex items-center gap-0.5"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>IA</span>
+                  </button>
+                </div>
+                <textarea
+                  rows={3}
+                  value={editForm.partenariats}
+                  onChange={e => setEditForm({ ...editForm, partenariats: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white outline-none"
                 />
               </div>
             </div>
@@ -598,7 +769,7 @@ export const QuarterlyReportsModule: React.FC = () => {
 
               <div>
                 <label className="block font-bold text-slate-800 uppercase mb-1">
-                  Recommandations & Suggestions à la Hiérarchie
+                  Recommandations & Plaidoyer à Monsieur le Directeur
                 </label>
                 <textarea
                   rows={3}
@@ -609,37 +780,23 @@ export const QuarterlyReportsModule: React.FC = () => {
               </div>
             </div>
 
-            {/* Perspectives & Conclusion */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block font-bold text-slate-800 uppercase mb-1">
-                  Perspectives pour le Trimestre Suivant
-                </label>
-                <textarea
-                  rows={3}
-                  value={editForm.perspectives}
-                  onChange={e => setEditForm({ ...editForm, perspectives: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-800 uppercase mb-1">
-                  Conclusion Officielle
-                </label>
-                <textarea
-                  rows={3}
-                  value={editForm.conclusion}
-                  onChange={e => setEditForm({ ...editForm, conclusion: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white outline-none"
-                />
-              </div>
+            {/* Conclusion */}
+            <div>
+              <label className="block font-bold text-slate-800 uppercase mb-1">
+                Conclusion Officielle
+              </label>
+              <textarea
+                rows={3}
+                value={editForm.conclusion}
+                onChange={e => setEditForm({ ...editForm, conclusion: e.target.value })}
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white outline-none"
+              />
             </div>
 
             <div className="pt-4 border-t flex items-center justify-between">
               <button
                 type="button"
-                onClick={() => setEditForm(DEFAULT_REPORTS['2026-T3'])}
+                onClick={() => setEditForm(AiReportService.generateExhaustiveQuarterlyReport(selectedYear, selectedTrimestre))}
                 className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -658,6 +815,18 @@ export const QuarterlyReportsModule: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* AI Assistant Modal */}
+      <AiAssistantModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        onInsertText={text => {
+          setEditForm(prev => ({
+            ...prev,
+            introduction: prev.introduction + '\n\n' + text
+          }));
+        }}
+      />
 
       {/* Print Modal */}
       <PrintModal

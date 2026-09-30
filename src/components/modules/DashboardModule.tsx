@@ -68,7 +68,8 @@ export const DashboardModule: React.FC = () => {
 
   // Filtered dataset
   const filteredEsts = useMemo(() => {
-    return establishments.filter(e => {
+    return (establishments || []).filter(e => {
+      if (!e) return false;
       if (selectedArrondissement !== 'ALL' && e.arrondissement !== selectedArrondissement) return false;
       if (selectedRegime !== 'ALL' && e.regime_type !== selectedRegime) return false;
       return true;
@@ -78,10 +79,10 @@ export const DashboardModule: React.FC = () => {
   // Statistics aggregated on filtered data
   const filteredMetrics = useMemo(() => {
     const total = filteredEsts.length;
-    const totalDue = filteredEsts.reduce((acc, curr) => acc + curr.total_due, 0);
-    const totalPaid = filteredEsts.reduce((acc, curr) => acc + curr.amount_paid, 0);
-    const totalBalance = filteredEsts.reduce((acc, curr) => acc + curr.balance_due, 0);
-    const soldeCount = filteredEsts.filter(e => e.balance_due === 0 || e.status === 'autorise_dgl').length;
+    const totalDue = filteredEsts.reduce((acc, curr) => acc + (curr.total_due || 0), 0);
+    const totalPaid = filteredEsts.reduce((acc, curr) => acc + (curr.amount_paid || 0), 0);
+    const totalBalance = filteredEsts.reduce((acc, curr) => acc + (curr.balance_due || 0), 0);
+    const soldeCount = filteredEsts.filter(e => (e.balance_due || 0) === 0 || e.status === 'autorise_dgl').length;
     const formelCount = filteredEsts.filter(e => e.regime_type === 'FORMEL').length;
     const informelCount = total - formelCount;
     const rate = totalDue > 0 ? (totalPaid / totalDue) * 100 : 0;
@@ -104,12 +105,14 @@ export const DashboardModule: React.FC = () => {
       map.set(c.code, { label: c.label, count: 0, paid: 0, due: 0 });
     });
 
-    establishments.forEach(e => {
-      const entry = map.get(e.activity_code) || { label: e.activity_type, count: 0, paid: 0, due: 0 };
+    (establishments || []).forEach(e => {
+      if (!e) return;
+      const code = e.activity_code || 'A2.1';
+      const entry = map.get(code) || { label: e.activity_type || 'Activité de Loisirs', count: 0, paid: 0, due: 0 };
       entry.count += 1;
-      entry.paid += e.amount_paid;
-      entry.due += e.total_due;
-      map.set(e.activity_code, entry);
+      entry.paid += e.amount_paid || 0;
+      entry.due += e.total_due || 0;
+      map.set(code, entry);
     });
 
     return Array.from(map.entries()).map(([code, val]) => ({
@@ -132,19 +135,22 @@ export const DashboardModule: React.FC = () => {
       map.set(k, { total: 0, count: 0 });
     });
 
-    payments.forEach(p => {
+    (payments || []).forEach(p => {
+      if (!p) return;
       const monthKey = p.record_date?.slice(0, 7) || '2026-09';
       if (map.has(monthKey)) {
         const item = map.get(monthKey)!;
-        item.total += p.amount_paid;
+        item.total += p.amount_paid || 0;
         item.count += 1;
       }
     });
 
     return Array.from(map.entries()).map(([k, val], idx) => {
-      const monthIndex = parseInt(k.split('-')[1], 10) - 1;
+      const monthParts = k.split('-');
+      const monthIndex = monthParts.length > 1 ? parseInt(monthParts[1], 10) - 1 : 8;
+      const safeMonthName = monthNames[monthIndex] || 'Mois';
       return {
-        month: `${monthNames[monthIndex]} 2026`,
+        month: `${safeMonthName} 2026`,
         total: val.total > 0 ? val.total : (idx + 1) * 1100000,
         count: val.count > 0 ? val.count : (idx + 1) * 8,
         color: idx === 5 ? '#006d2f' : '#0284c7'
@@ -164,14 +170,16 @@ export const DashboardModule: React.FC = () => {
       { key: 'mise_en_demeure', label: 'Infractions / Sanctions', color: 'bg-red-600', textColor: 'text-red-700' }
     ];
 
+    const estList = establishments || [];
     return statuses.map(s => {
-      const count = establishments.filter(e => {
+      const count = estList.filter(e => {
+        if (!e) return false;
         if (s.key === 'mise_en_demeure') {
           return e.status === 'mise_en_demeure' || e.status === 'fermeture_administrative';
         }
         return e.status === s.key;
       }).length;
-      const pct = establishments.length > 0 ? (count / establishments.length) * 100 : 0;
+      const pct = estList.length > 0 ? (count / estList.length) * 100 : 0;
       return { ...s, count, pct: Number(pct.toFixed(1)) };
     });
   }, [establishments]);
@@ -179,22 +187,36 @@ export const DashboardModule: React.FC = () => {
   // Agent Performance Roster calculated directly from database records
   const agentPerformance = useMemo(() => {
     const fieldUsers = APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'CHEF_SAA');
+    const estList = establishments || [];
+    const payList = payments || [];
+    const actList = acts || [];
+
     return fieldUsers.map(ag => {
       // Real establishments identified by this agent
-      const agEsts = establishments.filter(
-        e => e.identified_by.includes(ag.name) || e.identified_by.includes(ag.badge)
-      );
+      const agEsts = estList.filter(e => {
+        if (!e) return false;
+        const byName = e.identified_by ? e.identified_by.toLowerCase().includes(ag.name.toLowerCase().split(' ')[0]) : false;
+        const byBadge = e.identified_by ? e.identified_by.includes(ag.badge) : false;
+        const byId = e.assigned_agent_id === ag.id;
+        return byName || byBadge || byId;
+      });
+
       // Real payments collected by this agent
-      const agPayments = payments.filter(
-        p => p.collected_by.includes(ag.name) || p.collected_by.includes(ag.badge) || p.agent_badge === ag.badge
-      );
-      const encaisses = agPayments.reduce((acc, curr) => acc + curr.amount_paid, 0);
+      const agPayments = payList.filter(p => {
+        if (!p) return false;
+        const byName = p.collected_by ? p.collected_by.toLowerCase().includes(ag.name.toLowerCase().split(' ')[0]) : false;
+        const byBadge = p.collected_by ? p.collected_by.includes(ag.badge) : false;
+        const byAgentBadge = p.agent_badge === ag.badge;
+        return byName || byBadge || byAgentBadge;
+      });
+      const encaisses = agPayments.reduce((acc, curr) => acc + (curr.amount_paid || 0), 0);
+
       // Real convocations issued
-      const agConvocations = acts.filter(
-        a => a.type === 'CONVOCATION' && (a.agent_notificateur?.includes(ag.name) || a.agent_notificateur?.includes(ag.badge))
+      const agConvocations = actList.filter(
+        a => a && a.type === 'CONVOCATION' && ((a.agent_notificateur && a.agent_notificateur.includes(ag.name)) || (a.agent_notificateur && a.agent_notificateur.includes(ag.badge)))
       ).length;
 
-      const totalDue = agEsts.reduce((acc, curr) => acc + curr.total_due, 0);
+      const totalDue = agEsts.reduce((acc, curr) => acc + (curr.total_due || 0), 0);
       const conformite = totalDue > 0 ? Math.round((encaisses / totalDue) * 100) : 75;
 
       return {
@@ -208,21 +230,21 @@ export const DashboardModule: React.FC = () => {
           : ag.badge === 'SAA-PN-005'
           ? 'Arrondissements 3 Tié-Tié & 6 Ngoyo'
           : 'Arrondissements 4 Louandjili & 5 Mongo-Mpoukou',
-        recenses: agEsts.length > 0 ? agEsts.length : Math.round(establishments.length / fieldUsers.length),
-        encaisses: encaisses > 0 ? encaisses : Math.round(stats.totalPaid / fieldUsers.length),
-        convocations: agConvocations > 0 ? agConvocations : Math.round(acts.filter(a => a.type === 'CONVOCATION').length / fieldUsers.length),
-        conformite: stats.recoveryRate
+        recenses: agEsts.length > 0 ? agEsts.length : Math.round(estList.length / fieldUsers.length),
+        encaisses: encaisses > 0 ? encaisses : Math.round((stats?.totalPaid || 0) / fieldUsers.length),
+        convocations: agConvocations > 0 ? agConvocations : Math.round(actList.filter(a => a?.type === 'CONVOCATION').length / fieldUsers.length),
+        conformite: stats?.recoveryRate || 0
       };
     });
   }, [establishments, payments, acts, stats]);
 
   // Urgent relances: mise en demeure or convocation
-  const urgentActs = acts.filter(a => a.type === 'MISE_EN_DEMEURE' || a.type === 'CONVOCATION');
-  const recentPayments = payments.slice(0, 6);
+  const urgentActs = (acts || []).filter(a => a && (a.type === 'MISE_EN_DEMEURE' || a.type === 'CONVOCATION'));
+  const recentPayments = (payments || []).slice(0, 6);
 
   // Maximum values for graph scaling
-  const maxArrPaid = Math.max(...stats.byArrondissement.map(a => a.paid), 1);
-  const maxMonthPaid = Math.max(...monthlyTimeline.map(m => m.total), 1);
+  const maxArrPaid = Math.max(...(stats?.byArrondissement?.map(a => a.paid) || [1]), 1);
+  const maxMonthPaid = Math.max(...(monthlyTimeline?.map(m => m.total) || [1]), 1);
 
   return (
     <div className="space-y-6 select-none">
