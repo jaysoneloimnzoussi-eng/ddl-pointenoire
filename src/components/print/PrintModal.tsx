@@ -5,6 +5,7 @@ import { REPUBLIQUE_CONGO } from '../../constants/referential';
 
 export type PrintDocumentType =
   | 'ATTESTATION_A4'
+  | 'SOIT_TRANSMIS_A4'
   | 'TICKET_58MM'
   | 'ACTE_JURIDIQUE_A4'
   | 'DIPLOME_HONNEUR_A4'
@@ -350,43 +351,82 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                       </p>
                     </div>
                   </div>
-                ) : documentType === 'BORDEREAU_DGL_A4' ? (
-                  <div>
-                    <h2 className="text-center text-xl font-extrabold uppercase tracking-wide text-[#022448] font-republic mb-2 underline decoration-amber-500 underline-offset-8">
-                      BORDEREAU D'ENVOI OFFICIEL
-                    </h2>
-                    <p className="text-center text-xs font-semibold text-slate-600 mb-6">
-                      Transmission des dossiers d'agrément instruits pour signature ministérielle
-                    </p>
-
-                    <div className="bg-slate-50 border border-slate-300 p-4 rounded-lg my-4 text-xs">
-                      <p><span className="font-bold">À :</span> Madame la Directrice Générale des Loisirs (DGL - Brazzaville)</p>
-                      <p><span className="font-bold">De :</span> Le Directeur Départemental des Loisirs de Pointe-Noire</p>
-                      <p><span className="font-bold">Objet :</span> Transmission de {data.count || 'dossiers'} dossiers régularisés et soldés (PTA 2026)</p>
+                ) : documentType === 'SOIT_TRANSMIS_A4' || documentType === 'BORDEREAU_DGL_A4' ? (
+                  /* SOIT TRANSMIS & BORDEREAU CENTRAL MINISTERE BRAZZAVILLE */
+                  <div className="space-y-6 text-sm">
+                    {/* Destination & Calling Header */}
+                    <div className="flex justify-end">
+                      <div className="w-80 text-right font-serif">
+                        <p className="font-bold text-slate-800 text-xs uppercase">
+                          Le Directeur Départemental des Loisirs de Pointe-Noire
+                        </p>
+                        <div className="my-3 text-center sm:text-right">
+                          <p className="text-xs font-serif italic text-slate-600">A</p>
+                          <p className="font-serif italic text-base font-bold text-[#022448] tracking-wide">
+                            Madame La Directrice Générale Des Loisirs.
+                          </p>
+                          <p className="text-xs font-serif font-bold text-slate-700">- Brazzaville -</p>
+                        </div>
+                      </div>
                     </div>
 
-                    <table className="w-full text-xs border border-slate-300 my-4 text-left">
-                      <thead className="bg-[#022448] text-white">
-                        <tr>
-                          <th className="p-2 border border-slate-400">N°</th>
-                          <th className="p-2 border border-slate-400">Établissement</th>
-                          <th className="p-2 border border-slate-400">Promoteur</th>
-                          <th className="p-2 border border-slate-400">Arrondissement</th>
-                          <th className="p-2 border border-slate-400">Montant Reversé</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(data.items || []).slice(0, 8).map((it: any, i: number) => (
-                          <tr key={i} className="border-b border-slate-200">
-                            <td className="p-2 border border-slate-300 font-bold">{i + 1}</td>
-                            <td className="p-2 border border-slate-300 font-semibold">{it.name}</td>
-                            <td className="p-2 border border-slate-300">{it.promoter_name}</td>
-                            <td className="p-2 border border-slate-300">{it.arrondissement}</td>
-                            <td className="p-2 border border-slate-300 font-mono-ref font-bold">{it.amount_paid?.toLocaleString('fr-FR')} FCFA</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    {/* Objet */}
+                    <div className="border-b-2 border-slate-300 pb-2">
+                      <p className="text-sm font-serif">
+                        <span className="font-extrabold text-[#022448] uppercase underline underline-offset-4">Objet :</span>{' '}
+                        <span className="font-bold text-slate-900">Soit transmis.</span>
+                      </p>
+                    </div>
+
+                    {/* Salutation & Body */}
+                    <div className="text-sm leading-relaxed space-y-4 font-serif text-slate-800 my-8">
+                      <p className="font-bold">Madame la Directrice Générale,</p>
+
+                      <p className="text-justify indent-8 leading-loose">
+                        {data.transmission_message ||
+                          data.motif ||
+                          (data.items && data.items.length > 0
+                            ? `J’ai l’honneur de vous faire parvenir, pour toutes fins utiles et signature ministérielle, le bordereau récapitulatif ainsi que les dossiers d'agrément instruits et régularisés (${data.count || data.items.length} établissements) au titre du Plan de Travail Annuel (PTA 2026).`
+                            : 'J’ai l’honneur de vous faire parvenir, pour toutes fins utiles le rapport d’activités et de sensibilisation des établissements de loisirs de Pointe-Noire.')}
+                      </p>
+
+                      <p className="text-justify indent-8 pt-4">
+                        Je vous prie de recevoir, Madame la Directrice Générale, l’expression de mon plus grand respect/-
+                      </p>
+                    </div>
+
+                    {/* Optional table if multiple dossiers are attached */}
+                    {data.items && data.items.length > 0 && (
+                      <div className="my-4 pt-2">
+                        <p className="text-xs font-bold uppercase text-[#022448] mb-2 font-mono-ref">
+                          Bordereau Récapitulatif des Pièces Jointes :
+                        </p>
+                        <table className="w-full text-xs border border-slate-300 text-left">
+                          <thead className="bg-[#022448] text-white text-[11px]">
+                            <tr>
+                              <th className="p-2 border border-slate-400">N°</th>
+                              <th className="p-2 border border-slate-400">Établissement</th>
+                              <th className="p-2 border border-slate-400">Promoteur / Gérant</th>
+                              <th className="p-2 border border-slate-400">Arrondissement</th>
+                              <th className="p-2 border border-slate-400 text-right">Redevance Versée</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {data.items.slice(0, 8).map((it: any, i: number) => (
+                              <tr key={i} className="border-b border-slate-200">
+                                <td className="p-2 border border-slate-300 font-bold">{i + 1}</td>
+                                <td className="p-2 border border-slate-300 font-semibold">{it.name || it.establishment_name}</td>
+                                <td className="p-2 border border-slate-300">{it.promoter_name}</td>
+                                <td className="p-2 border border-slate-300">{it.arrondissement}</td>
+                                <td className="p-2 border border-slate-300 font-mono-ref font-bold text-right text-emerald-800">
+                                  {(it.amount_paid || it.total_fee || 0).toLocaleString('fr-FR')} FCFA
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 ) : documentType === 'RAPPORT_TRIMESTRIEL_A4' ? (
                   /* RAPPORT TRIMESTRIEL D'ACTIVITE OFFICIEL MINISTERE */
@@ -505,53 +545,55 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                     )}
                   </div>
                 ) : (
-                  /* ATTESTATION DE DEPOT ET QUITTANCE OFFICIELLE */
-                  <div>
-                    <h2 className="text-center text-xl font-extrabold uppercase tracking-wide text-[#006d2f] font-republic mb-2 underline decoration-amber-500 underline-offset-8">
-                      ATTESTATION PROVISOIRE DE CONFORMITÉ & QUITTANCE
-                    </h2>
-                    <p className="text-center text-xs font-semibold text-slate-600 mb-6">
-                      Dossier d'agrément en cours d'instruction - Régie des Recettes
-                    </p>
-
-                    <div className="border-2 border-emerald-700/40 p-5 rounded-lg my-6 bg-emerald-50/20 text-sm space-y-2">
-                      <p>La Direction Départementale des Loisirs de Pointe-Noire atteste que l’établissement ci-après désigné :</p>
-                      <p className="text-xl font-extrabold text-[#022448] uppercase tracking-wide pt-1">
-                        {data.establishment_name || data.name}
-                      </p>
-                      <p className="text-xs text-slate-700">Exploitant / Promotrice : <span className="font-bold">{data.promoter_name}</span></p>
-                      <p className="text-xs text-slate-700">Arrondissement : <span className="font-bold">{data.arrondissement}</span> • Adresse : {data.address || 'Pointe-Noire'}</p>
-                      <p className="text-xs text-slate-700">Activité récréative : <span className="font-bold">{data.activity_type}</span> ({data.surface_m2 || 80} m² déclarés)</p>
+                  /* ATTESTATION DE DEPOT OFFICIELLE DDL-PN */
+                  <div className="space-y-8 my-6">
+                    <div className="text-center my-6">
+                      <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-widest text-[#022448] font-republic underline decoration-slate-400 underline-offset-8">
+                        ATTESTATION DE DEPOT
+                      </h1>
                     </div>
 
-                    <div className="bg-slate-50 border border-slate-300 p-4 rounded text-xs space-y-1.5 my-4">
-                      <div className="flex justify-between font-bold">
-                        <span>Montant total de la redevance légale :</span>
-                        <span className="font-mono-ref font-extrabold">{(data.total_fee || data.total_due || 0).toLocaleString('fr-FR')} FCFA</span>
+                    <div className="text-sm sm:text-base text-justify leading-loose space-y-6 font-serif text-slate-900 px-2 sm:px-6">
+                      <p className="indent-8">
+                        Par la présente, je soussigné, Directeur Départemental des Loisirs de Pointe-Noire, atteste que{' '}
+                        <strong className="font-bold text-[#022448]">
+                          {data.promoter_title || 'Monsieur/Madame'} {data.promoter_name || 'l’Exploitant'}
+                        </strong>{' '}
+                        a déposé un dossier en cours d’étude pour solliciter une autorisation d’exploitation d’un{' '}
+                        <strong className="font-bold">
+                          {data.activity_type || 'établissement de loisirs'}
+                        </strong>{' '}
+                        dénommé{' '}
+                        <strong className="font-extrabold uppercase text-[#022448] tracking-wide">
+                          « {data.establishment_name || data.name} »
+                        </strong>, ayant pour adresse{' '}
+                        <span className="italic font-medium">
+                          {data.address || data.quartier || 'Pointe-Noire'}
+                        </span>.
+                      </p>
+
+                      <p className="indent-8 pt-4 font-semibold text-slate-800">
+                        En foi de quoi la présente attestation lui est établie pour servir et valoir ce que de droit. /-
+                      </p>
+                    </div>
+
+                    {/* Financial & Renewal metadata strip for administrative traceability */}
+                    <div className="mt-8 p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5 font-mono-ref max-w-xl mx-auto">
+                      <div className="flex justify-between text-slate-700">
+                        <span>Réf. Quittance de Dépôt :</span>
+                        <strong className="text-[#022448]">{data.receipt_reference || 'REC-DDL-PN-2026'}</strong>
                       </div>
-                      <div className="flex justify-between text-emerald-800 font-bold border-t pt-1">
-                        <span>Somme encaissée et enregistrée en régie :</span>
-                        <span className="font-mono-ref text-sm font-extrabold">{(data.amount_paid || data.amount || 0).toLocaleString('fr-FR')} FCFA</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Solde résiduel dû :</span>
-                        <span className="font-mono-ref">{(data.balance_remaining ?? data.balance_due ?? 0).toLocaleString('fr-FR')} FCFA</span>
-                      </div>
-                      <div className="flex justify-between text-slate-500 text-[10px]">
-                        <span>Quittance N° :</span>
-                        <span className="font-mono-ref font-bold">{data.receipt_reference || 'REC-DDL-PN-2026-000'}</span>
+                      <div className="flex justify-between text-emerald-800 font-bold border-t border-slate-200 pt-1">
+                        <span>Acompte enregistré en Régie :</span>
+                        <span>{(data.amount_paid || data.amount || 0).toLocaleString('fr-FR')} FCFA</span>
                       </div>
                       {(data.annual_renewal_scheduled_date || data.annual_renewal_date) && (
-                        <div className="mt-2 pt-1.5 border-t border-slate-300 flex justify-between items-center text-amber-900 font-bold bg-amber-50/80 p-2 rounded">
-                          <span>📅 Échéance légale de renouvellement annuel N+1 :</span>
-                          <span className="font-mono-ref text-xs font-black">{data.annual_renewal_scheduled_date || data.annual_renewal_date} (jour anniversaire du 1er acompte)</span>
+                        <div className="flex justify-between text-amber-900 text-[11px] border-t border-slate-200 pt-1 font-sans">
+                          <span>📅 Échéance Annuelle N+1 :</span>
+                          <strong className="font-mono-ref">{data.annual_renewal_scheduled_date || data.annual_renewal_date}</strong>
                         </div>
                       )}
                     </div>
-
-                    <p className="text-xs text-justify leading-relaxed text-slate-700 italic my-4">
-                      La présente attestation est délivrée pour valoir ce que de droit sous réserve de la validation acoustique in situ par la Brigade SAA et de la signature finale de l'arrêté ministériel par la Direction Générale des Loisirs à Brazzaville.
-                    </p>
                   </div>
                 )}
 
@@ -571,12 +613,16 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                   </div>
 
                   <div className="text-center font-serif">
-                    <p className="font-bold text-slate-900">Pour l'Autorité Administrative,</p>
-                    <p className="text-[11px] text-slate-600 italic">Le Directeur Départemental</p>
+                    <p className="text-xs text-slate-600 mb-1">
+                      Fait à Pointe – Noire, le {data.record_date || data.date_emission || new Date().toLocaleDateString('fr-FR')}
+                    </p>
+                    <p className="font-bold text-slate-900">Le Directeur Départemental des Loisirs de Pointe-Noire,</p>
                     <div className="h-12 flex items-center justify-center text-slate-400 text-xs italic font-serif">
                       [Signature officielle et Cachet]
                     </div>
-                    <p className="font-extrabold text-[#022448] text-xs">Jean Richard NTSEKE NGOUAKA</p>
+                    <p className="font-extrabold text-[#022448] text-sm tracking-wide uppercase">
+                      NTSEKE NGOUAKA Jean Richard
+                    </p>
                   </div>
                 </div>
               </div>
