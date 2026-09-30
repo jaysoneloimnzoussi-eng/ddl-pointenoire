@@ -21,7 +21,8 @@ import {
   Bell,
   RefreshCw,
   Menu,
-  LogOut
+  LogOut,
+  Shield
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { APP_USERS, REPUBLIQUE_CONGO } from '../../constants/referential';
@@ -216,6 +217,23 @@ export const RepublicHeader: React.FC = () => {
               </span>
             )}
           </button>
+
+          {/* Quick Return to Admin Jacques MATOKO if in Agent session */}
+          {currentUser.role === 'AGENT_SAA' && (
+            <button
+              onClick={() => {
+                switchUserById('ADMIN-MATOKO');
+                setActiveModule('MOD-01');
+                triggerNotification('Session rétablie : Administrateur Jacques MATOKO', 'success');
+              }}
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#850404] to-red-900 text-white shadow-sm hover:from-red-700 hover:to-red-800 border border-amber-400/40 transition cursor-pointer"
+              title="Retourner immédiatement à la session Administrateur"
+            >
+              <Shield className="w-3.5 h-3.5 text-amber-300" />
+              <span className="hidden md:inline">👑 Espace Admin (Jacques MATOKO)</span>
+              <span className="md:hidden">👑 Admin</span>
+            </button>
+          )}
 
           {/* Official Role Switcher Dropdown */}
           <div className="relative">

@@ -26,7 +26,11 @@ import { PrintModal, PrintDocumentType } from '../print/PrintModal';
 
 export const FieldRecensementModule: React.FC = () => {
   const { currentUser, triggerNotification } = useSession();
-  const [establishments, setEstablishments] = useState<Establishment[]>(() => storageService.getEstablishments());
+  const [establishments, setEstablishments] = useState<Establishment[]>(() => storageService.getEstablishmentsForUser(currentUser));
+
+  useEffect(() => {
+    setEstablishments(storageService.getEstablishmentsForUser(currentUser));
+  }, [currentUser]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedArrondissement, setSelectedArrondissement] = useState<string>('ALL');
   const [selectedRegime, setSelectedRegime] = useState<string>('ALL');
@@ -129,7 +133,7 @@ export const FieldRecensementModule: React.FC = () => {
       notes: newForm.notes
     });
 
-    setEstablishments(storageService.getEstablishments());
+    setEstablishments(storageService.getEstablishmentsForUser(currentUser));
     setIsAddModalOpen(false);
     triggerNotification(`Établissement « ${created.name} » recensé avec succès (ID: ${created.id}).`, 'success');
   };
@@ -148,7 +152,7 @@ export const FieldRecensementModule: React.FC = () => {
       notes: paymentNotes
     });
 
-    setEstablishments(storageService.getEstablishments());
+    setEstablishments(storageService.getEstablishmentsForUser(currentUser));
     setPaymentModalEst(null);
     triggerNotification(`Encaissement de ${payment.amount_paid.toLocaleString('fr-FR')} FCFA validé (Réf: ${payment.receipt_reference})`, 'success');
 

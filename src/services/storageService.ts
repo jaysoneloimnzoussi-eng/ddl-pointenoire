@@ -181,25 +181,59 @@ function generateSeedDiplomas(): SpaHonorDiploma[] {
   ];
 }
 
-function generateSeedTourneeEvents(establishments: Establishment[]): AgentTourneeEvent[] {
-  const est = establishments[0] || {
-    id: 'EST-PN-001',
-    name: 'Espace Loisirs',
-    promoter_name: 'Gérant',
-    phone: '+242 06 000 00 00',
-    arrondissement: '1_LUMUMBA' as ArrondissementCode,
-    quartier: 'Centre',
-    address: 'Pointe-Noire',
-    balance_due: 50000,
-    decibel_level: 79
-  };
+export function getAgentForEstablishment(est: Establishment, usersList: AppUser[] = APP_USERS): AppUser {
+  const fieldAgents = usersList.filter(u => u.role === 'AGENT_SAA' || u.role === 'CHEF_SPA');
+  if (fieldAgents.length === 0) return usersList[0];
 
-  return [
-    {
-      id: 'EVT-TOUR-2026-001',
-      agentId: 'SAA-PN-008',
-      agentName: 'Agent SAA Loubaki',
-      agentBadge: 'SAA-PN-008',
+  // Explicit match by assigned_agent_id
+  if (est.assigned_agent_id) {
+    const match = fieldAgents.find(a => a.id === est.assigned_agent_id);
+    if (match) return match;
+  }
+  // Explicit match by identified_by
+  if (est.identified_by) {
+    const match = fieldAgents.find(a =>
+      est.identified_by.toLowerCase().includes(a.name.toLowerCase().split(' ')[0]) ||
+      est.identified_by.toLowerCase().includes(a.badge.toLowerCase())
+    );
+    if (match) return match;
+  }
+
+  // Stable deterministic hash partition by establishment ID
+  let hash = 0;
+  for (let i = 0; i < est.id.length; i++) {
+    hash = (hash * 31 + est.id.charCodeAt(i)) >>> 0;
+  }
+  return fieldAgents[hash % fieldAgents.length];
+}
+
+function generateSeedTourneeEvents(establishments: Establishment[]): AgentTourneeEvent[] {
+  const fieldAgents = APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'CHEF_SPA');
+  const events: AgentTourneeEvent[] = [];
+
+  const types: AgentTourneeEvent['type'][] = [
+    'CONVOCATION',
+    'ENCAISSEMENT_ACOMPTE',
+    'CONTROLE_ACOUSTIQUE',
+    'RECENSEMENT_IN_SITU',
+    'RENOUVELLEMENT_ANNUEL',
+    'NOTIFICATION_MISE_EN_DEMEURE'
+  ];
+
+  establishments.forEach((est, idx) => {
+    const assignedAgent = getAgentForEstablishment(est, APP_USERS);
+    const dayOffset = (idx % 7);
+    const eventDate = new Date(2026, 8, 25 + dayOffset).toISOString().split('T')[0];
+    const type = types[idx % types.length];
+    const hour = 8 + (idx % 8);
+    const timeStart = `${String(hour).padStart(2, '0')}:00`;
+    const timeEnd = `${String(hour + 1).padStart(2, '0')}:00`;
+
+    events.push({
+      id: `EVT-AUTO-${est.id}-${idx}`,
+      agentId: assignedAgent.id,
+      agentName: assignedAgent.name,
+      agentBadge: assignedAgent.badge,
       establishmentId: est.id,
       establishmentName: est.name,
       promoterName: est.promoter_name,
@@ -207,19 +241,23 @@ function generateSeedTourneeEvents(establishments: Establishment[]): AgentTourne
       arrondissement: est.arrondissement,
       quartier: est.quartier,
       address: est.address,
-      date: '2026-09-29',
-      timeStart: '08:30',
-      timeEnd: '10:00',
-      type: 'CONTROLE_ACOUSTIQUE',
-      status: 'EFFECTUE',
-      priority: 'HAUTE',
-      decibelMeasure: 79,
-      notes: 'Contrôle du limiteur sonore scellé. Relevé acoustique : 79 dB (conforme).',
+      date: eventDate,
+      timeStart,
+      timeEnd,
+      type,
+      status: idx % 3 === 0 ? 'EFFECTUE' : (idx % 3 === 1 ? 'A_FAIRE' : 'EN_COURS'),
+      priority: idx % 4 === 0 ? 'URGENTE' : 'NORMALE',
+      amountDue: est.balance_due || est.total_due,
+      notes: type === 'CONVOCATION'
+        ? 'Convocation pour régularisation administrative et paiement des droits régie DDL.'
+        : (type === 'ENCAISSEMENT_ACOMPTE' ? 'Rendez-vous convenu avec la tenancière pour recouvrement de l\'acompte.' : 'Visite de contrôle de conformité brigade SAA.'),
       isSynced: true,
       createdAt: '2026-09-20T08:00:00Z',
       updatedAt: '2026-09-29T08:00:00Z'
-    }
-  ];
+    });
+  });
+
+  return events;
 }
 
 // Storage Service Singleton with Real Supabase Synchronization
@@ -653,6 +691,21 @@ class StorageService {
     return [...this.establishments];
   }
 
+  public getEstablishmentsForUser(user: AppUser): Establishment[] {
+    if (user.role === 'ADMIN' || user.role === 'DIRECTEUR') {
+      return [...this.establishments];
+    }
+    return this.establishments.filter(est => {
+      const assigned = getAgentForEstablishment(est, APP_USERS);
+      return (
+        assigned.id === user.id ||
+        assigned.badge === user.badge ||
+        (est.assigned_agent_id && est.assigned_agent_id === user.id) ||
+        (est.identified_by && est.identified_by.toLowerCase().includes(user.name.toLowerCase().split(' ')[0]))
+      );
+    });
+  }
+
   public getEstablishmentById(id: string): Establishment | undefined {
     return this.establishments.find(e => e.id === id);
   }
@@ -880,6 +933,18 @@ class StorageService {
     }
     return this.tourneeEvents.filter(
       e => e.agentId === agentId || e.agentBadge === agentId || e.agentName.includes(agentId)
+    );
+  }
+
+  public getAgentEventsForUser(user: AppUser): AgentTourneeEvent[] {
+    if (user.role === 'ADMIN' || user.role === 'DIRECTEUR') {
+      return [...this.tourneeEvents];
+    }
+    return this.tourneeEvents.filter(
+      e =>
+        e.agentId === user.id ||
+        e.agentBadge === user.badge ||
+        e.agentName.toLowerCase().includes(user.name.toLowerCase().split(' ')[0])
     );
   }
 

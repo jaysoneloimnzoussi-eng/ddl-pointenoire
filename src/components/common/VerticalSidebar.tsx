@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
+  Shield,
   Building2,
   X
 } from 'lucide-react';
@@ -81,6 +82,7 @@ export const VerticalSidebar: React.FC = () => {
     isTabletBrigadeMode,
     setIsTabletBrigadeMode,
     currentUser,
+    switchUserById,
     logout
   } = useSession();
 
@@ -163,6 +165,29 @@ export const VerticalSidebar: React.FC = () => {
 
         {/* Scrollable List of Modules according to role */}
         <div className="flex-1 overflow-y-auto py-3 px-2 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
+          {/* Quick Return to Admin Button if logged in as agent */}
+          {currentUser.role === 'AGENT_SAA' && (
+            <div className="mb-3 px-1">
+              <button
+                onClick={() => {
+                  switchUserById('ADMIN-MATOKO');
+                  setActiveModule('MOD-01');
+                  setIsMobileSidebarOpen(false);
+                }}
+                className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2.5'} bg-gradient-to-r from-red-900 via-[#850404] to-red-950 hover:from-red-800 hover:to-red-900 text-white font-bold text-xs rounded-xl shadow-md border border-amber-400/40 transition cursor-pointer group`}
+                title="👑 Retourner à la session Administrateur (Jacques MATOKO)"
+              >
+                <Shield className="w-4 h-4 text-amber-300 shrink-0 group-hover:scale-110 transition-transform" />
+                {!isSidebarCollapsed && (
+                  <div className="text-left leading-tight">
+                    <span className="block text-[11px] font-black text-amber-300">Espace Admin</span>
+                    <span className="block text-[9px] text-white/80 font-normal">Jacques MATOKO</span>
+                  </div>
+                )}
+              </button>
+            </div>
+          )}
+
           {(currentUser.role === 'AGENT_SAA'
             ? [
                 {

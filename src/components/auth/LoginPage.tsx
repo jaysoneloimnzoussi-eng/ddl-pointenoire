@@ -256,36 +256,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   </div>
                 </button>
 
-                {/* 2. DIRECTEUR DEPARTEMENTAL */}
-                <button
-                  type="button"
-                  onClick={handleDirectLoginAsDirector}
-                  disabled={isLoading}
-                  className="w-full text-left p-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white shadow-sm hover:shadow-md transition border border-slate-700 flex items-center justify-between group cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-blue-600/30 border border-blue-400/40 flex items-center justify-center shrink-0 text-blue-300">
-                      <Building2 className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-white font-republic">
-                          Jean Richard NTSEKE NGOUAKA
-                        </span>
-                        <span className="text-[9px] bg-blue-500/30 text-blue-200 border border-blue-400/30 px-1.5 py-0.5 rounded uppercase font-bold">
-                          Directeur
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-300">
-                        Directeur Départemental des Loisirs de Pointe-Noire (DDL-PN)
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 text-slate-300 font-semibold text-[11px] group-hover:text-white transition">
-                    <span>Accéder</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </div>
-                </button>
+
 
                 {/* 3. AGENT DE TERRAIN SAA (GOOGLE CALENDAR INTERFACE) */}
                 <div className="p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200">

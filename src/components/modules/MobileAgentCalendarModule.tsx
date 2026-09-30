@@ -66,17 +66,28 @@ const FIELD_AGENTS = APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 
 }));
 
 export const MobileAgentCalendarModule: React.FC = () => {
-  const { currentUser, switchUserById, triggerNotification } = useSession();
+  const { currentUser, switchUserById, setActiveModule, triggerNotification } = useSession();
 
   // Selected agent for private field session (defaults to current user if SAA, or first field agent)
   const [activeAgentBadge, setActiveAgentBadge] = useState<string>(() => {
-    const found = FIELD_AGENTS.find(a => a.badge === currentUser.badge);
-    return found ? found.badge : 'SAA-PN-008'; // Default Guy-Serge LOUBAKI
+    const found = FIELD_AGENTS.find(a => a.badge === currentUser.badge || a.name === currentUser.name || a.id === currentUser.id);
+    return found ? found.badge : (FIELD_AGENTS[0]?.badge || 'SAA-PN-315');
   });
 
+  useEffect(() => {
+    const found = FIELD_AGENTS.find(a => a.badge === currentUser.badge || a.name === currentUser.name || a.id === currentUser.id);
+    if (found) {
+      setActiveAgentBadge(found.badge);
+    }
+  }, [currentUser]);
+
   const currentAgent = useMemo(() => {
-    return FIELD_AGENTS.find(a => a.badge === activeAgentBadge) || FIELD_AGENTS[1];
-  }, [activeAgentBadge]);
+    if (currentUser.role === 'AGENT_SAA') {
+      const found = FIELD_AGENTS.find(a => a.badge === currentUser.badge || a.name === currentUser.name || a.id === currentUser.id);
+      if (found) return found;
+    }
+    return FIELD_AGENTS.find(a => a.badge === activeAgentBadge) || FIELD_AGENTS[0];
+  }, [currentUser, activeAgentBadge]);
 
   // Calendar Date State (Default date of exercise: 2026-09-29)
   const [currentDateStr, setCurrentDateStr] = useState<string>('2026-09-29');
@@ -84,9 +95,17 @@ export const MobileAgentCalendarModule: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Events from storage
-  const [events, setEvents] = useState<AgentTourneeEvent[]>(() => storageService.getAgentEvents());
-  const establishments = storageService.getEstablishments();
+  // Filter establishments strictly per agent (or all 117 for Admin)
+  const establishments = useMemo(() => {
+    return storageService.getEstablishmentsForUser(currentUser);
+  }, [currentUser]);
+
+  // Events from storage strictly filtered for this user
+  const [events, setEvents] = useState<AgentTourneeEvent[]>(() => storageService.getAgentEventsForUser(currentUser));
+
+  useEffect(() => {
+    setEvents(storageService.getAgentEventsForUser(currentUser));
+  }, [currentUser]);
 
   // Network & Sync State
   const [isRealOnline, setIsRealOnline] = useState<boolean>(navigator.onLine);
@@ -108,6 +127,11 @@ export const MobileAgentCalendarModule: React.FC = () => {
 
   // Form states
   const [targetEstId, setTargetEstId] = useState<string>(establishments[0]?.id || '');
+  useEffect(() => {
+    if (establishments.length > 0 && !establishments.some(e => e.id === targetEstId)) {
+      setTargetEstId(establishments[0].id);
+    }
+  }, [establishments, targetEstId]);
   const [paymentAmount, setPaymentAmount] = useState<number>(50000);
   const [paymentMethod, setPaymentMethod] = useState<TerrainPaymentRecord['payment_method']>('MTN Mobile Money');
   const [payerName, setPayerName] = useState<string>('');
@@ -200,7 +224,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
   }, [isMeasuringSound]);
 
   const reloadEvents = () => {
-    setEvents(storageService.getAgentEvents());
+    setEvents(storageService.getAgentEventsForUser(currentUser));
     setOfflineQueue(storageService.getOfflineQueue());
   };
 
@@ -214,14 +238,25 @@ export const MobileAgentCalendarModule: React.FC = () => {
     }, 900);
   };
 
-  // Filtered Events
+  // Filtered Events strictly isolated for field agents
   const filteredEvents = useMemo(() => {
     return events.filter(evt => {
-      // Scope filter: only active agent or all brigade
-      const matchAgent =
-        agentScope === 'ALL_BRIGADE' ||
-        evt.agentBadge === activeAgentBadge ||
-        evt.agentId === activeAgentBadge;
+      // For AGENT_SAA: strictly their own events
+      if (currentUser.role === 'AGENT_SAA') {
+        const matchAgent =
+          evt.agentBadge === currentUser.badge ||
+          evt.agentId === currentUser.id ||
+          evt.agentName.toLowerCase().includes(currentUser.name.toLowerCase().split(' ')[0]);
+        if (!matchAgent) return false;
+      } else {
+        // For Admin: respect agentScope selection
+        if (agentScope !== 'ALL_BRIGADE') {
+          const matchAgent =
+            evt.agentBadge === activeAgentBadge ||
+            evt.agentId === activeAgentBadge;
+          if (!matchAgent) return false;
+        }
+      }
 
       // Type filter
       const matchType = activeFilters[evt.type] !== false;
@@ -234,9 +269,9 @@ export const MobileAgentCalendarModule: React.FC = () => {
         evt.quartier.toLowerCase().includes(searchQuery.toLowerCase()) ||
         evt.phone.includes(searchQuery);
 
-      return matchAgent && matchType && matchSearch;
+      return matchType && matchSearch;
     });
-  }, [events, activeAgentBadge, agentScope, activeFilters, searchQuery]);
+  }, [events, currentUser, activeAgentBadge, agentScope, activeFilters, searchQuery]);
 
   // Events of the current day
   const currentDayEvents = useMemo(() => {
@@ -729,24 +764,24 @@ export const MobileAgentCalendarModule: React.FC = () => {
       </header>
 
       {/* ========================================================
-          2. AGENT DAILY STATUS BANNER (Individual stats)
+          2. AGENT DAILY STATUS BANNER (Individual stats + Admin switch)
          ======================================================== */}
       <div className="bg-[#022448] text-white px-4 py-2 border-b border-[#033468] flex flex-wrap items-center justify-between gap-3 text-xs select-none">
         <div className="flex items-center gap-2">
           <UserCheck className="w-4 h-4 text-amber-300 shrink-0" />
           <span className="font-bold text-amber-300">
-            Espace Terrain Individuel :
+            {currentUser.role === 'ADMIN' ? '👑 Supervision Centrale Administrateur :' : 'Espace Terrain Privé :'}
           </span>
           <span className="font-extrabold text-white">
-            {currentAgent.name}
+            {currentUser.name}
           </span>
           <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded font-mono-ref text-slate-200">
-            {currentAgent.role} • {currentAgent.zone}
+            {establishments.length} établissement{establishments.length > 1 ? 's' : ''} géré{establishments.length > 1 ? 's' : ''}
           </span>
         </div>
 
-        {/* Individual Daily Metrics */}
-        <div className="flex items-center gap-4 text-[11px] font-mono-ref">
+        {/* Individual Daily Metrics & Admin Switch */}
+        <div className="flex items-center gap-3 text-[11px] font-mono-ref">
           <div className="flex items-center gap-1.5">
             <span className="text-slate-300">Encaissé Aujourd'hui :</span>
             <span className="font-black text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/40">
@@ -755,30 +790,50 @@ export const MobileAgentCalendarModule: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-slate-300">Convocations émises :</span>
+            <span className="text-slate-300">Convocations :</span>
             <span className="font-bold text-purple-300 bg-purple-950/60 px-1.5 py-0.5 rounded">
               {agentDailyStats.convocationsCount}
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-300">Tournées restantes :</span>
-            <span className="font-bold text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded">
-              {agentDailyStats.pendingTournees}
-            </span>
-          </div>
+          {currentUser.role === 'ADMIN' ? (
+            <>
+              {/* Scope Toggle: Only Me / All Brigade (Only for Admin) */}
+              <button
+                onClick={() => setAgentScope(prev => prev === 'ONLY_ME' ? 'ALL_BRIGADE' : 'ONLY_ME')}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+                  agentScope === 'ONLY_ME'
+                    ? 'bg-blue-600 text-white border-blue-400'
+                    : 'bg-white/10 text-slate-300 border-white/20 hover:bg-white/20'
+                }`}
+              >
+                {agentScope === 'ONLY_ME' ? 'Vue Agent individuel' : 'Supervision Toute la brigade'}
+              </button>
 
-          {/* Scope Toggle: Only Me / All Brigade */}
-          <button
-            onClick={() => setAgentScope(prev => prev === 'ONLY_ME' ? 'ALL_BRIGADE' : 'ONLY_ME')}
-            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition ${
-              agentScope === 'ONLY_ME'
-                ? 'bg-blue-600 text-white border-blue-400'
-                : 'bg-white/10 text-slate-300 border-white/20 hover:bg-white/20'
-            }`}
-          >
-            {agentScope === 'ONLY_ME' ? 'Mon planning seul' : 'Toute la brigade'}
-          </button>
+              <button
+                type="button"
+                onClick={() => setActiveModule('MOD-01')}
+                className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold rounded-lg text-xs flex items-center gap-1 border border-amber-400/40 transition cursor-pointer"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Commandement (MOD-01)</span>
+              </button>
+            </>
+          ) : (
+            /* Golden Button for Field Agents to switch to Admin Jacques MATOKO */
+            <button
+              type="button"
+              onClick={() => {
+                switchUserById('ADMIN-MATOKO');
+                setActiveModule('MOD-01');
+                triggerNotification('Session Administrateur activée : Jacques MATOKO', 'success');
+              }}
+              className="px-3 py-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-lg text-xs flex items-center gap-1.5 shadow transition cursor-pointer"
+            >
+              <Shield className="w-3.5 h-3.5 text-slate-950" />
+              <span>👑 Retour Espace Administrateur (Jacques MATOKO)</span>
+            </button>
+          )}
         </div>
       </div>
 
