@@ -1,5 +1,5 @@
 import { Establishment, TerrainPaymentRecord, OfficialLegalAct, SpaMerchantSubscription, SpaHonorDiploma, ArrondissementCode, RegimeType, EstablishmentStatus, AgentTourneeEvent, AppUser } from '../types';
-import { TERRITORIAL_REFERENTIAL, ACTIVITY_CATEGORIES, TAXATION_RULES } from '../constants/referential';
+import { TERRITORIAL_REFERENTIAL, ACTIVITY_CATEGORIES, TAXATION_RULES, APP_USERS } from '../constants/referential';
 import { supabase } from './supabaseClient';
 
 const LOCAL_STORAGE_KEYS = {
