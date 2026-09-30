@@ -18,6 +18,7 @@ import { LegalTextsAndSimulatorModule } from './components/modules/LegalTextsAnd
 import { PtaTrackerModule } from './components/modules/PtaTrackerModule';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AiAssistantModal } from './components/common/AiAssistantModal';
+import { PublicVerificationView } from './components/common/PublicVerificationView';
 import { RepublicTricolorBar, OfficialRepublicLogo } from './components/common/OfficialSeal';
 import { REPUBLIQUE_CONGO } from './constants/referential';
 import { AlertCircle, CheckCircle, Info, X, Sparkles } from 'lucide-react';
@@ -33,6 +34,38 @@ const AppContent: React.FC = () => {
   } = useSession();
 
   const [isGlobalAiOpen, setIsGlobalAiOpen] = React.useState(false);
+  const [verificationData, setVerificationData] = React.useState<{
+    isOpen: boolean;
+    ref: string;
+    etab?: string;
+    date?: string;
+  }>({
+    isOpen: false,
+    ref: ''
+  });
+
+  // Listen for hash verification on page load or QR code scan
+  React.useEffect(() => {
+    const handleHashCheck = () => {
+      const hash = window.location.hash;
+      if (hash.includes('#/verify') || hash.includes('#verify')) {
+        const urlParams = new URLSearchParams(hash.split('?')[1] || '');
+        const ref = urlParams.get('ref') || 'DDL-PN-2026';
+        const etab = urlParams.get('etab') || '';
+        const date = urlParams.get('date') || '';
+        setVerificationData({
+          isOpen: true,
+          ref,
+          etab,
+          date
+        });
+      }
+    };
+
+    handleHashCheck();
+    window.addEventListener('hashchange', handleHashCheck);
+    return () => window.removeEventListener('hashchange', handleHashCheck);
+  }, []);
 
   // If not authenticated, render LoginPage
   if (!isAuthenticated) {
@@ -143,6 +176,19 @@ const AppContent: React.FC = () => {
         isOpen={isGlobalAiOpen}
         onClose={() => setIsGlobalAiOpen(false)}
       />
+
+      {/* Public QR Code Authentication Modal */}
+      {verificationData.isOpen && (
+        <PublicVerificationView
+          refCode={verificationData.ref}
+          establishmentName={verificationData.etab}
+          date={verificationData.date}
+          onClose={() => {
+            setVerificationData(prev => ({ ...prev, isOpen: false }));
+            window.location.hash = '';
+          }}
+        />
+      )}
 
       {/* Official Republic Footer */}
       <footer className="no-print bg-[#022448] text-white border-t border-[#033468] py-6 mt-12 text-xs">

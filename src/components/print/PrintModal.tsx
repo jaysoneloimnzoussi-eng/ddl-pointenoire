@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, Printer, Download, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { X, Printer, Download, CheckCircle2, ShieldCheck, QrCode } from 'lucide-react';
 import { OfficialRepublicLogo, RepublicTricolorBar } from '../common/OfficialSeal';
+import { OfficialVerifiableQrCode } from '../common/OfficialVerifiableQrCode';
 import { REPUBLIQUE_CONGO } from '../../constants/referential';
 
 export type PrintDocumentType =
@@ -163,19 +164,25 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                 )}
               </div>
 
-              {/* QR Verification Placeholder */}
+              {/* Verifiable QR Code on POS Ticket */}
               <div className="text-center pt-2 border-t border-dashed border-black my-2">
-                <div className="w-20 h-20 mx-auto border border-black p-1 flex flex-col items-center justify-center bg-slate-50">
-                  <div className="grid grid-cols-4 gap-1 w-14 h-14">
-                    {Array.from({ length: 16 }).map((_, i) => (
-                      <div key={i} className={`w-2.5 h-2.5 ${i % 2 === 0 || i === 5 || i === 10 ? 'bg-black' : 'bg-transparent'}`} />
-                    ))}
-                  </div>
-                  <span className="text-[6px] font-bold mt-0.5">VÉRIFIÉ DDL-PN</span>
-                </div>
+                <OfficialVerifiableQrCode
+                  data={{
+                    ref: data.receipt_reference || data.receiptReference || 'REC-DDL-PN-2026',
+                    type: 'QUITTANCE_POS_58MM',
+                    establishment_name: data.establishment_name || data.name,
+                    promoter_name: data.promoter_name,
+                    date: data.record_date,
+                    amount: data.amount_paid || data.amount,
+                    arrondissement: data.arrondissement
+                  }}
+                  size={62}
+                  showDetails={false}
+                  className="mx-auto"
+                />
                 <p className="text-[7.5px] mt-1 font-semibold uppercase">Scanner pour contrôle authenticité</p>
                 <p className="text-[7px] text-slate-600">Agent SAA : {data.collected_by || 'Agent Assermenté'}</p>
-                <p className="text-[6.5px] mt-1 italic">Conserver ce ticket pour toute vérification contradictoire.</p>
+                <p className="text-[6.5px] mt-0.5 italic">Conserver ce ticket pour toute vérification contradictoire.</p>
               </div>
             </div>
           ) : documentType === 'DIPLOME_HONNEUR_A4' ? (
@@ -235,9 +242,22 @@ export const PrintModal: React.FC<PrintModalProps> = ({
 
                 <div className="mt-12 flex items-end justify-between max-w-xl mx-auto pt-6 text-xs">
                   <div className="text-left font-mono-ref">
+                    <OfficialVerifiableQrCode
+                      data={{
+                        ref: data.reference_number || 'DIP-HONNEUR-DDLPN-2026',
+                        type: 'DIPLOME_HONNEUR_LOISIRS_SAINS',
+                        establishment_name: data.establishment_name || data.name,
+                        promoter_name: data.promoter_name,
+                        date: data.award_date,
+                        arrondissement: data.arrondissement
+                      }}
+                      size={70}
+                      showDetails={false}
+                      className="mb-1"
+                    />
                     <p className="font-bold">N° Enregistrement :</p>
                     <p className="text-amber-800 font-bold">{data.reference_number || 'DIP-HONNEUR-DDLPN-2026'}</p>
-                    <p className="text-[10px] text-slate-500 mt-1">Fait à Pointe-Noire, le {data.award_date || new Date().toISOString().split('T')[0]}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Fait à Pointe-Noire, le {data.award_date || new Date().toISOString().split('T')[0]}</p>
                   </div>
 
                   <div className="flex flex-col items-center">
@@ -270,7 +290,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                   </p>
                   <div className="w-16 h-0.5 bg-amber-500 mx-auto my-1.5" />
                   <p className="font-bold text-[10px] uppercase text-[#022448]">
-                    MINISTÈRE DE LA CULTURE, DES ARTS, DU TOURISME ET DES LOISIRS
+                    MINISTÈRE DE LA CULTURE, DES ARTS, DU PATRIMOINE NATIONAL ET DE L’INDUSTRIE TOURISTIQUE
                   </p>
                   <div className="w-10 h-0.5 bg-slate-300 mx-auto my-1" />
                   <p className="font-semibold text-[9.5px]">DIRECTION GÉNÉRALE DES LOISIRS</p>
@@ -278,7 +298,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                     DIRECTION DÉPARTEMENTALE DES LOISIRS DE POINTE-NOIRE
                   </p>
                   <p className="text-[8.5px] font-mono-ref text-slate-500 mt-1">
-                    B.P. 1288 Pointe-Noire • Tél: +242 06 600 00 01
+                    SERVICE ASSISTANCE ET AUTORISATION
                   </p>
                 </div>
 
@@ -288,17 +308,31 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                   <RepublicTricolorBar className="w-24 mt-2 h-1" />
                 </div>
 
-                {/* Right: Date & Reference */}
-                <div className="text-right w-64 font-serif text-xs">
+                {/* Right: Date, Reference & Real Verifiable QR Code Header */}
+                <div className="text-right w-72 font-serif text-xs flex flex-col items-end">
                   <p className="italic text-slate-600">Pointe-Noire, le {data.date_emission || data.record_date || new Date().toISOString().split('T')[0]}</p>
-                  <p className="font-mono-ref font-bold text-slate-900 mt-2 text-[11px]">
+                  <p className="font-mono-ref font-bold text-slate-900 mt-1 text-[11px]">
                     N° {data.reference_number || data.receipt_reference || 'REF-DDL-PN-2026/01'}
                   </p>
                   {data.type && (
-                    <span className="inline-block mt-2 px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-bold rounded border border-red-300 uppercase">
+                    <span className="inline-block my-1 px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-bold rounded border border-red-300 uppercase">
                       {data.type.replace(/_/g, ' ')}
                     </span>
                   )}
+                  <div className="mt-1">
+                    <OfficialVerifiableQrCode
+                      data={{
+                        ref: data.reference_number || data.receipt_reference || 'REF-DDL-PN-2026',
+                        type: documentType,
+                        establishment_name: data.establishment_name || data.name,
+                        promoter_name: data.promoter_name,
+                        date: data.date_emission || data.record_date,
+                        arrondissement: data.arrondissement
+                      }}
+                      size={68}
+                      showDetails={false}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -600,11 +634,18 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                 {/* Signatures & Seals Section */}
                 <div className="mt-14 pt-6 border-t border-slate-300 flex items-end justify-between text-xs">
                   <div className="text-left font-mono-ref text-[11px]">
-                    <div className="w-16 h-16 border border-slate-400 p-1 flex items-center justify-center bg-slate-50 mb-1">
-                      <ShieldCheck className="w-10 h-10 text-[#006d2f]" />
-                    </div>
-                    <p className="font-bold text-slate-700">Code Sécurisé : DDL-CG-2026</p>
-                    <p className="text-[10px] text-slate-500">Document certifié conforme</p>
+                    <OfficialVerifiableQrCode
+                      data={{
+                        ref: data.reference_number || data.receipt_reference || 'CERT-DDL-PN-2026',
+                        type: documentType,
+                        establishment_name: data.establishment_name || data.name,
+                        promoter_name: data.promoter_name,
+                        date: data.date_emission || data.record_date,
+                        arrondissement: data.arrondissement
+                      }}
+                      size={72}
+                      showDetails={true}
+                    />
                   </div>
 
                   <div className="flex flex-col items-center">
