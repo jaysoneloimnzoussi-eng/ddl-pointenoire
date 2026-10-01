@@ -1099,6 +1099,69 @@ class StorageService {
     return { event, act: newAct };
   }
 
+  public miseEnDemeureEstablishment(params: {
+    establishment_id: string;
+    delaiJours: number;
+    motif: string;
+    agent: AppUser;
+  }): { event: AgentTourneeEvent; act: OfficialLegalAct } {
+    const est = this.getEstablishmentById(params.establishment_id);
+    if (!est) throw new Error('Établissement introuvable');
+
+    this.updateEstablishment(est.id, { status: 'mise_en_demeure' });
+
+    const today = new Date();
+    const expiryDate = new Date();
+    expiryDate.setDate(today.getDate() + params.delaiJours);
+    const expiryDateStr = expiryDate.toISOString().split('T')[0];
+
+    const refNum = `MED-${String(this.acts.length + 80).padStart(3, '0')}/DDL-PN/SAA-2026`;
+    const newAct = this.addAct({
+      type: 'MISE_EN_DEMEURE',
+      reference_number: refNum,
+      establishment_id: est.id,
+      establishment_name: est.name,
+      promoter_name: est.promoter_name,
+      arrondissement: est.arrondissement,
+      address: est.address,
+      date_emission: today.toISOString().split('T')[0],
+      delai_huitaine_date: expiryDateStr,
+      motif: params.motif,
+      signataire_nom: 'Jean Richard NTSEKE NGOUAKA',
+      signataire_titre: 'Directeur Départemental des Loisirs de Pointe-Noire',
+      agent_notificateur: `${params.agent.name} (${params.agent.badge})`,
+      visa_lois: [
+        'Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs',
+        'Loi N° 13-2011 du 17 mai 2011 portant organisation administrative de la République du Congo',
+        `Délai d'exécution impératif de ${params.delaiJours === 3 ? '72 heures' : 'huitaine'} sous peine de scellement et fermeture immédiate`
+      ]
+    });
+
+    const event = this.addAgentEvent({
+      agentId: params.agent.badge,
+      agentName: params.agent.name,
+      agentBadge: params.agent.badge,
+      establishmentId: est.id,
+      establishmentName: est.name,
+      promoterName: est.promoter_name,
+      phone: est.phone,
+      arrondissement: est.arrondissement,
+      quartier: est.quartier,
+      address: est.address,
+      date: expiryDateStr,
+      timeStart: '09:00',
+      timeEnd: '10:00',
+      type: 'NOTIFICATION_MISE_EN_DEMEURE',
+      status: 'A_FAIRE',
+      priority: 'URGENTE',
+      amountDue: est.balance_due,
+      notes: `Échéance Mise en Demeure N° ${refNum} (${params.delaiJours === 3 ? '72h' : 'Huitaine'}). Vérification paiement ou fermeture administrative.`,
+      isSynced: this.isOnline
+    });
+
+    return { event, act: newAct };
+  }
+
   // --- Legal Acts ---
   public getActs(): OfficialLegalAct[] {
     return [...this.acts];

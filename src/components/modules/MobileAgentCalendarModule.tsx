@@ -46,18 +46,22 @@ import {
 import { useSession } from '../../context/SessionContext';
 import { storageService } from '../../services/storageService';
 import { supabase, isSupabaseConfigured } from '../../services/supabaseClient';
-import { AgentTourneeEvent, Establishment, TerrainPaymentRecord, AppUser } from '../../types';
+import { AgentTourneeEvent, Establishment, TerrainPaymentRecord, AppUser, RegimeType } from '../../types';
 import { APP_USERS, TERRITORIAL_REFERENTIAL } from '../../constants/referential';
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
 import { OfficialRepublicLogo } from '../common/OfficialSeal';
 
-// Liste officielle des agents assermentés de terrain de la Brigade SAA (strictement issus de APP_USERS)
-const FIELD_AGENTS = APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'CHEF_SAA').map(u => ({
+// Liste officielle des agents et commandement de la Brigade SAA (strictement issus de APP_USERS)
+const FIELD_AGENTS = APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'CHEF_SAA' || u.role === 'ADMIN' || u.role === 'DIRECTEUR').map(u => ({
   id: u.id,
   badge: u.badge,
   name: u.name,
   role: u.title,
-  zone: u.badge === 'SAA-PN-001'
+  zone: u.role === 'ADMIN'
+    ? 'Commandement Central & Supervision SAA - Tous Arrondissements'
+    : u.role === 'DIRECTEUR'
+    ? 'Cabinet de Direction Départementale'
+    : u.badge === 'SAA-PN-001'
     ? 'Commandement Central Brigade SAA - Tous Arrondissements'
     : u.badge === 'SAA-PN-008'
     ? 'Arrondissements 1 Lumumba & 2 Mvou-Mvou'
@@ -65,7 +69,8 @@ const FIELD_AGENTS = APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 
     ? 'Arrondissements 3 Tié-Tié & 6 Ngoyo'
     : 'Arrondissements 4 Louandjili & 5 Mongo-Mpoukou',
   phone: u.phone,
-  avatar: u.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+  avatar: u.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+  userRole: u.role
 }));
 
 export const MobileAgentCalendarModule: React.FC = () => {
@@ -123,10 +128,41 @@ export const MobileAgentCalendarModule: React.FC = () => {
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
   const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false);
   const [isConvocationModalOpen, setIsConvocationModalOpen] = useState(false);
+  const [isMiseEnDemeureModalOpen, setIsMiseEnDemeureModalOpen] = useState(false);
+  const [isRegisterEstModalOpen, setIsRegisterEstModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isSoundMeterModalOpen, setIsSoundMeterModalOpen] = useState(false);
   const [isOfflineQueueModalOpen, setIsOfflineQueueModalOpen] = useState(false);
   const [isAgentLoginModalOpen, setIsAgentLoginModalOpen] = useState(false);
+
+  // Auto-hide completed today toggle (Automatic disappearance after payment)
+  const [hideCompletedToday, setHideCompletedToday] = useState(true);
+
+  // Mise en Demeure form states
+  const [medEstId, setMedEstId] = useState<string>('');
+  const [medDelaiJours, setMedDelaiJours] = useState<number>(3); // 3 (72h) or 8
+  const [medMotif, setMedMotif] = useState<string>(
+    'Non-respect réitéré des délais de versement des redevances d’exploitation des loisirs, absence de titre d’agrément officiel et défaut de conciliation.'
+  );
+
+  // New Establishment field registration states
+  const [newEstForm, setNewEstForm] = useState({
+    name: '',
+    promoter_name: '',
+    phone: '+242 06 ',
+    arrondissement: '1_LUMUMBA' as any,
+    quartier: 'Centre-Ville',
+    address: '',
+    activity_code: 'A2.1',
+    regime_type: 'INFORMEL' as RegimeType,
+    surface_m2: 60,
+    total_due: 150000,
+    programBureauPassage: true,
+    bureauPassageDate: '2026-10-02',
+    bureauPassageTime: '10:00',
+    bureauPassageOffice: 'Bureau N° 3 — Service Agrément et Assainissement (SAA)',
+    bureauPassageMotif: 'Présentation physique, régularisation administrative et dépôt du dossier d\'agrément'
+  });
 
   // Form states
   const [targetEstId, setTargetEstId] = useState<string>(establishments[0]?.id || '');
@@ -276,11 +312,17 @@ export const MobileAgentCalendarModule: React.FC = () => {
     });
   }, [events, currentUser, activeAgentBadge, agentScope, activeFilters, searchQuery]);
 
-  // Events of the current day
+  // Events of the current day (with automatic disappearance of completed tournées once acompte is paid)
   const currentDayEvents = useMemo(() => {
     return filteredEvents
       .filter(e => e.date === currentDateStr)
+      .filter(e => !hideCompletedToday || e.status !== 'EFFECTUE')
       .sort((a, b) => a.timeStart.localeCompare(b.timeStart));
+  }, [filteredEvents, currentDateStr, hideCompletedToday]);
+
+  const completedTodayEvents = useMemo(() => {
+    return filteredEvents
+      .filter(e => e.date === currentDateStr && e.status === 'EFFECTUE');
   }, [filteredEvents, currentDateStr]);
 
   // Agent daily statistics
@@ -405,7 +447,27 @@ export const MobileAgentCalendarModule: React.FC = () => {
       notes: paymentNotes || `Acompte négocié et perçu in situ par ${currentAgent.name}`
     });
 
-    // Schedule next appointment if balance remains and agreement was reached with tenancière
+    // 1. Mark existing event(s) for this establishment on the current date as EFFECTUE
+    const matchingTodayEvents = events.filter(
+      evt => evt.establishmentId === est.id && evt.date === currentDateStr && evt.status !== 'EFFECTUE'
+    );
+    matchingTodayEvents.forEach(evt => {
+      storageService.updateAgentEvent(evt.id, {
+        status: 'EFFECTUE',
+        amountCollected: Number(paymentAmount),
+        notes: `${evt.notes || ''} [Acompte perçu in situ le ${currentDateStr} : ${Number(paymentAmount).toLocaleString('fr-FR')} FCFA. Prochain RDV solde : ${nextAppointmentDate || 'N/A'}]`
+      });
+    });
+
+    if (selectedEvent && selectedEvent.establishmentId === est.id) {
+      storageService.updateAgentEvent(selectedEvent.id, {
+        status: 'EFFECTUE',
+        amountCollected: Number(paymentAmount)
+      });
+      setSelectedEvent(null);
+    }
+
+    // 2. Schedule next appointment if balance remains and agreement was reached with tenancière
     if (remainingAfterThis > 0 && scheduleNextRdv && nextAppointmentDate) {
       storageService.addAgentEvent({
         agentId: currentAgent.badge,
@@ -469,12 +531,12 @@ export const MobileAgentCalendarModule: React.FC = () => {
       );
     } else if (remainingAfterThis > 0 && scheduleNextRdv && nextAppointmentDate) {
       triggerNotification(
-        `Acompte de ${paymentAmount.toLocaleString('fr-FR')} FCFA perçu. Nouveau reste dû : ${remainingAfterThis.toLocaleString('fr-FR')} FCFA. Rendez-vous convenu avec la tenancière fixé au ${nextAppointmentDate} à ${nextAppointmentTime} enregistré dans votre Google Agenda !`,
+        `🎉 Acompte de ${Number(paymentAmount).toLocaleString('fr-FR')} FCFA validé ! ${est.name} a disparu de vos tournées du jour et réapparaîtra automatiquement sur votre Google Agenda le ${nextAppointmentDate} à ${nextAppointmentTime || '10:00'} pour le versement du solde (${remainingAfterThis.toLocaleString('fr-FR')} FCFA).`,
         'success'
       );
     } else {
       triggerNotification(
-        `Acompte de ${paymentAmount.toLocaleString('fr-FR')} FCFA validé. Reçu N° ${result.payment.receipt_reference}. Reste dû : ${result.establishment.balance_due.toLocaleString('fr-FR')} FCFA.`,
+        `Acompte de ${Number(paymentAmount).toLocaleString('fr-FR')} FCFA validé. Reçu N° ${result.payment.receipt_reference}. Reste dû : ${result.establishment.balance_due.toLocaleString('fr-FR')} FCFA.`,
         'success'
       );
     }
@@ -493,6 +555,128 @@ export const MobileAgentCalendarModule: React.FC = () => {
         annual_renewal_scheduled_date: result.establishment.annual_renewal_date
       }
     });
+  };
+
+  // Perform Mise en Demeure for insolvable establishments
+  const handleDeliverMiseEnDemeure = (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetId = medEstId || targetEstId;
+    const est = establishments.find(x => x.id === targetId);
+    if (!est) return;
+
+    const matchedUser: AppUser = {
+      id: currentAgent.badge,
+      name: currentAgent.name,
+      badge: currentAgent.badge,
+      role: (currentAgent as any).userRole || 'AGENT_SAA',
+      title: currentAgent.role,
+      service: 'Service Agrément et Assainissement (SAA)',
+      phone: currentAgent.phone,
+      email: `${currentAgent.badge.toLowerCase()}@ddlpn.gouv.cg`
+    };
+
+    const result = storageService.miseEnDemeureEstablishment({
+      establishment_id: est.id,
+      delaiJours: medDelaiJours,
+      motif: medMotif,
+      agent: matchedUser
+    });
+
+    reloadEvents();
+    setIsMiseEnDemeureModalOpen(false);
+    triggerNotification(
+      `⚖️ Mise en Demeure N° ${result.act.reference_number} (${medDelaiJours === 3 ? '72h' : 'Huitaine'}) délivrée ! Échéance positionnée au ${result.event.date} sur l'Agenda.`,
+      'warning'
+    );
+
+    setPrintDoc({
+      isOpen: true,
+      type: 'ACTE_JURIDIQUE_A4',
+      title: `Mise en Demeure Officielle - ${result.act.reference_number}`,
+      data: result.act
+    });
+  };
+
+  // Register New Establishment directly from Google Agenda
+  const handleRegisterNewEstablishment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEstForm.name.trim()) {
+      triggerNotification('Veuillez renseigner le nom de l’établissement.', 'error');
+      return;
+    }
+
+    const arrInfo = TERRITORIAL_REFERENTIAL.find(a => a.code === newEstForm.arrondissement);
+    const coords: [number, number] = arrInfo?.sig_coordinates || [-4.7938, 11.8569];
+    const totalDue = Number(newEstForm.total_due) || 150000;
+
+    const createdEst = storageService.addEstablishment({
+      name: newEstForm.name.trim(),
+      promoter_name: newEstForm.promoter_name.trim() || 'Promoteur non renseigné',
+      phone: newEstForm.phone.trim(),
+      arrondissement: newEstForm.arrondissement,
+      quartier: newEstForm.quartier,
+      address: newEstForm.address.trim() || `${newEstForm.quartier}, Pointe-Noire`,
+      activity_type: newEstForm.activity_code.startsWith('A1') ? 'Loisirs Nocturnes & Festifs' : 'Loisirs Diurnes & Récréatifs',
+      activity_code: newEstForm.activity_code,
+      regime_type: newEstForm.regime_type,
+      surface_m2: Number(newEstForm.surface_m2) || 60,
+      filing_fee: 50000,
+      rate_per_sqm: newEstForm.regime_type === 'FORMEL' ? 1000 : 0,
+      total_due: totalDue,
+      amount_paid: 0,
+      balance_due: totalDue,
+      status: newEstForm.programBureauPassage ? 'convoque' : 'identifie',
+      identified_by: `${currentAgent.name} (${currentAgent.badge})`,
+      identified_date: new Date().toISOString().split('T')[0],
+      coordinates: coords,
+      decibel_level: 78,
+      has_acoustic_limiter: false,
+      installments_chosen: 2,
+      assigned_agent_id: currentAgent.badge,
+      notes: 'Recensement direct Google Agenda SAA'
+    });
+
+    // If programBureauPassage is checked, create convocation event on Google Agenda
+    if (newEstForm.programBureauPassage) {
+      const matchedUser: AppUser = {
+        id: currentAgent.badge,
+        name: currentAgent.name,
+        badge: currentAgent.badge,
+        role: (currentAgent as any).userRole || 'AGENT_SAA',
+        title: currentAgent.role,
+        service: 'Service Agrément et Assainissement (SAA)',
+        phone: currentAgent.phone,
+        email: `${currentAgent.badge.toLowerCase()}@ddlpn.gouv.cg`
+      };
+
+      const result = storageService.convoquerEstablishment({
+        establishment_id: createdEst.id,
+        date: newEstForm.bureauPassageDate,
+        timeStart: newEstForm.bureauPassageTime,
+        motif: `Convocation nouvellement recensé : ${newEstForm.bureauPassageMotif} (${newEstForm.bureauPassageOffice})`,
+        agent: matchedUser
+      });
+
+      setPrintDoc({
+        isOpen: true,
+        type: 'ACTE_JURIDIQUE_A4',
+        title: `Convocation de Présentation au Bureau - ${result.act.reference_number}`,
+        data: result.act
+      });
+
+      triggerNotification(
+        `✅ Nouvel établissement "${createdEst.name}" enregistré ! Convocation pour comparution au bureau programmée au ${newEstForm.bureauPassageDate} à ${newEstForm.bureauPassageTime}.`,
+        'success'
+      );
+    } else {
+      triggerNotification(
+        `✅ Nouvel établissement "${createdEst.name}" recensé et enregistré avec succès sur le terrain !`,
+        'success'
+      );
+    }
+
+    reloadEvents();
+    setIsRegisterEstModalOpen(false);
   };
 
   // Perform Convocation
@@ -885,22 +1069,42 @@ export const MobileAgentCalendarModule: React.FC = () => {
                     <button
                       onClick={() => {
                         setIsCreateMenuOpen(false);
-                        setIsConvocationModalOpen(true);
+                        setIsRegisterEstModalOpen(true);
                       }}
-                      className="w-full px-3 py-2 text-left hover:bg-purple-50 text-purple-900 font-semibold flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left hover:bg-emerald-50 text-[#006d2f] font-bold flex items-center gap-2"
                     >
-                      <FileCheck2 className="w-4 h-4 text-purple-700" />
-                      <span>Convoquer un tenancier</span>
+                      <Plus className="w-4 h-4 text-[#006d2f]" />
+                      <span>+ Recenser Nouvel Établissement</span>
                     </button>
                     <button
                       onClick={() => {
                         setIsCreateMenuOpen(false);
                         setIsPaymentModalOpen(true);
                       }}
-                      className="w-full px-3 py-2 text-left hover:bg-emerald-50 text-[#006d2f] font-semibold flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left hover:bg-emerald-50 text-slate-800 font-semibold flex items-center gap-2"
                     >
                       <Coins className="w-4 h-4 text-[#006d2f]" />
                       <span>Encaisser un acompte in situ</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsCreateMenuOpen(false);
+                        setIsMiseEnDemeureModalOpen(true);
+                      }}
+                      className="w-full px-3 py-2 text-left hover:bg-red-50 text-red-900 font-semibold flex items-center gap-2"
+                    >
+                      <Shield className="w-4 h-4 text-red-700" />
+                      <span>Mise en Demeure (Insolvable / 72h)</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsCreateMenuOpen(false);
+                        setIsConvocationModalOpen(true);
+                      }}
+                      className="w-full px-3 py-2 text-left hover:bg-purple-50 text-purple-900 font-semibold flex items-center gap-2"
+                    >
+                      <FileCheck2 className="w-4 h-4 text-purple-700" />
+                      <span>Convoquer un tenancier au bureau</span>
                     </button>
                     <button
                       onClick={() => {
@@ -927,22 +1131,30 @@ export const MobileAgentCalendarModule: React.FC = () => {
               </div>
 
               {/* Quick Action Buttons */}
-              <div className="grid grid-cols-2 gap-1.5 text-xs font-semibold">
+              <div className="grid grid-cols-3 gap-1.5 text-[11px] font-semibold">
                 <button
-                  onClick={() => setIsConvocationModalOpen(true)}
-                  className="p-2 bg-purple-50 text-purple-800 border border-purple-200 rounded-lg hover:bg-purple-100 flex items-center justify-center gap-1 transition shadow-2xs"
-                  title="Délivrer une convocation contradictoire"
+                  onClick={() => setIsRegisterEstModalOpen(true)}
+                  className="p-1.5 bg-emerald-50 text-[#006d2f] border border-emerald-200 rounded-lg hover:bg-emerald-100 flex flex-col items-center justify-center gap-0.5 transition shadow-2xs"
+                  title="Enregistrer un nouvel établissement et programmer sa présentation au bureau"
                 >
-                  <FileCheck2 className="w-3.5 h-3.5 text-purple-700" />
-                  <span>Convoquer</span>
+                  <Plus className="w-3.5 h-3.5 text-[#006d2f]" />
+                  <span>+ Nouveau</span>
                 </button>
                 <button
                   onClick={() => setIsPaymentModalOpen(true)}
-                  className="p-2 bg-emerald-50 text-[#006d2f] border border-emerald-200 rounded-lg hover:bg-emerald-100 flex items-center justify-center gap-1 transition shadow-2xs"
-                  title="Encaisser un acompte in situ avec renouvellement N+1"
+                  className="p-1.5 bg-amber-50 text-amber-900 border border-amber-200 rounded-lg hover:bg-amber-100 flex flex-col items-center justify-center gap-0.5 transition shadow-2xs"
+                  title="Encaisser un acompte in situ"
                 >
                   <Coins className="w-3.5 h-3.5 text-[#006d2f]" />
-                  <span>Encaisser</span>
+                  <span>Acompte</span>
+                </button>
+                <button
+                  onClick={() => setIsMiseEnDemeureModalOpen(true)}
+                  className="p-1.5 bg-red-50 text-red-900 border border-red-200 rounded-lg hover:bg-red-100 flex flex-col items-center justify-center gap-0.5 transition shadow-2xs"
+                  title="Mise en demeure pour espace insolvable"
+                >
+                  <Shield className="w-3.5 h-3.5 text-red-700" />
+                  <span>Demeure</span>
                 </button>
               </div>
 
@@ -1060,15 +1272,34 @@ export const MobileAgentCalendarModule: React.FC = () => {
            ======================================================== */}
         <main className="flex-1 overflow-y-auto bg-white flex flex-col">
           {/* Subheader / Day Title */}
-          <div className="p-3 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2">
+          <div className="p-3 border-b border-slate-200 bg-slate-50/50 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-blue-600" />
               <h3 className="font-extrabold text-sm sm:text-base text-[#022448]">
                 {viewMode === 'SEMAINE' ? `Semaine du ${weekDays[0].dayNum} au ${weekDays[6].dayNum} ${monthYearTitle}` : formattedDateTitle}
               </h3>
               <span className="text-xs bg-blue-50 text-blue-800 font-mono-ref px-2 py-0.5 rounded font-bold">
-                {currentDayEvents.length} intervention(s)
+                {currentDayEvents.length} active(s)
               </span>
+
+              {/* Auto disappearance toggle button */}
+              <button
+                type="button"
+                onClick={() => setHideCompletedToday(prev => !prev)}
+                className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer ${
+                  hideCompletedToday
+                    ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                    : 'bg-slate-100 text-slate-700 border-slate-300'
+                }`}
+                title="Lorsque l'agent encaisse un acompte, l'établissement disparaît de la journée en cours et réapparaît au jour convenu pour le solde."
+              >
+                <span className={`w-2 h-2 rounded-full ${hideCompletedToday ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                <span>
+                  {hideCompletedToday
+                    ? `Disparition auto après acompte : ACTIF (${completedTodayEvents.length} soldé/masqué)`
+                    : `Afficher aussi les ${completedTodayEvents.length} tournée(s) déjà encaissée(s)`}
+                </span>
+              </button>
             </div>
 
             {/* Mobile quick actions */}
@@ -1525,7 +1756,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
 
             {/* Actions for Field Agents */}
             <div className="space-y-2 pt-2 border-t">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {/* Encaisser Acompte */}
                 <button
                   onClick={() => {
@@ -1533,10 +1764,10 @@ export const MobileAgentCalendarModule: React.FC = () => {
                     setPaymentAmount(selectedEvent.amountDue || 50000);
                     setIsPaymentModalOpen(true);
                   }}
-                  className="p-2.5 bg-[#006d2f] hover:bg-[#005a26] text-white font-bold rounded-lg flex items-center justify-center gap-1.5 shadow"
+                  className="p-2 bg-[#006d2f] hover:bg-[#005a26] text-white font-bold rounded-lg flex items-center justify-center gap-1 shadow text-xs"
                 >
-                  <Coins className="w-4 h-4" />
-                  <span>Encaisser Acompte</span>
+                  <Coins className="w-3.5 h-3.5" />
+                  <span>Encaisser</span>
                 </button>
 
                 {/* Convoquer */}
@@ -1545,10 +1776,22 @@ export const MobileAgentCalendarModule: React.FC = () => {
                     setTargetEstId(selectedEvent.establishmentId);
                     setIsConvocationModalOpen(true);
                   }}
-                  className="p-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-lg flex items-center justify-center gap-1.5 shadow"
+                  className="p-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-lg flex items-center justify-center gap-1 shadow text-xs"
                 >
-                  <FileCheck2 className="w-4 h-4" />
-                  <span>Délivrer Convocation</span>
+                  <FileCheck2 className="w-3.5 h-3.5" />
+                  <span>Convoquer</span>
+                </button>
+
+                {/* Mise en Demeure */}
+                <button
+                  onClick={() => {
+                    setMedEstId(selectedEvent.establishmentId);
+                    setIsMiseEnDemeureModalOpen(true);
+                  }}
+                  className="p-2 bg-red-700 hover:bg-red-800 text-white font-bold rounded-lg flex items-center justify-center gap-1 shadow text-xs"
+                >
+                  <Shield className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Mise en Demeure</span>
                 </button>
               </div>
 
@@ -1888,6 +2131,344 @@ export const MobileAgentCalendarModule: React.FC = () => {
                 >
                   <Printer className="w-4 h-4" />
                   <span>Délivrer & Imprimer Convocation A4</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          7B. MODAL: MISE EN DEMEURE POUR ESPACE INSOLVABLE (72h)
+         ======================================================== */}
+      {isMiseEnDemeureModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 animate-in fade-in">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-5 border border-slate-200 text-xs max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b pb-3 mb-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-red-600" />
+                <div>
+                  <h3 className="text-base font-extrabold text-red-950 font-republic">
+                    Délivrer une Mise en Demeure Officielle
+                  </h3>
+                  <p className="text-[10px] text-slate-500">
+                    Police des Loisirs • Procédure contradictoire exécutoire
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setIsMiseEnDemeureModalOpen(false)} className="text-slate-400 font-bold p-1">✕</button>
+            </div>
+
+            <form onSubmit={handleDeliverMiseEnDemeure} className="space-y-3.5">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Établissement insolvable concerné *</label>
+                <select
+                  value={medEstId || targetEstId}
+                  onChange={e => setMedEstId(e.target.value)}
+                  className="w-full p-2 border border-slate-300 rounded-lg font-bold text-slate-800 bg-white"
+                >
+                  {establishments.map(est => (
+                    <option key={est.id} value={est.id}>
+                      {est.name} — Reste dû : {est.balance_due.toLocaleString('fr-FR')} FCFA ({est.arrondissement})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Délai d'exécution légal *</label>
+                  <select
+                    value={medDelaiJours}
+                    onChange={e => setMedDelaiJours(Number(e.target.value))}
+                    className="w-full p-2 border border-slate-300 rounded-lg font-bold text-red-900 bg-red-50/50"
+                  >
+                    <option value={3}>72 Heures (Urgence / Défaut réitéré)</option>
+                    <option value={8}>Huitaine (8 Jours francs)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Agent / Notificateur</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={`${currentAgent.name} (${currentAgent.badge})`}
+                    className="w-full p-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-600 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Motif réglementaire de la mise en demeure *</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={medMotif}
+                  onChange={e => setMedMotif(e.target.value)}
+                  className="w-full p-2 border border-slate-300 rounded-lg font-medium"
+                  placeholder="Préciser les manquements constatés..."
+                />
+              </div>
+
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-[11px] text-red-900 space-y-1">
+                <span className="font-extrabold flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+                  Effet automatique sur l'Agenda Google :
+                </span>
+                <p>
+                  L'échéance de {medDelaiJours === 3 ? '72 heures' : '8aine'} sera automatiquement positionnée dans l'Agenda Google de la brigade pour vérification du paiement ou exécution de l'arrêté de fermeture administrative.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setIsMiseEnDemeureModalOpen(false)}
+                  className="px-3 py-1.5 border rounded-lg font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white font-bold rounded-lg shadow flex items-center gap-1.5"
+                >
+                  <Shield className="w-4 h-4 text-amber-300" />
+                  <span>Délivrer & Imprimer l'Acte A4</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          7C. MODAL: RECENSER UN NOUVEL ÉTABLISSEMENT SUR LE TERRAIN
+              ET PROGRAMMER SON PASSAGE AU BUREAU DDL-PN
+         ======================================================== */}
+      {isRegisterEstModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 animate-in fade-in">
+          <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full p-5 border border-slate-200 text-xs max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b pb-3 mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-[#006d2f] flex items-center justify-center font-bold">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-[#022448] font-republic">
+                    Recensement d'un Nouvel Établissement
+                  </h3>
+                  <p className="text-[10px] text-slate-500">
+                    Saisie in situ par {currentAgent.name} ({currentAgent.badge})
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setIsRegisterEstModalOpen(false)} className="text-slate-400 font-bold p-1">✕</button>
+            </div>
+
+            <form onSubmit={handleRegisterNewEstablishment} className="space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Nom de l'Établissement *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Bar Dancing Le Triomphe"
+                    value={newEstForm.name}
+                    onChange={e => setNewEstForm({ ...newEstForm, name: e.target.value })}
+                    className="w-full p-2 border border-slate-300 rounded-lg font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Promoteur / Gérant *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: M. Jean-Pierre MABIALA"
+                    value={newEstForm.promoter_name}
+                    onChange={e => setNewEstForm({ ...newEstForm, promoter_name: e.target.value })}
+                    className="w-full p-2 border border-slate-300 rounded-lg font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Téléphone Promoteur *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newEstForm.phone}
+                    onChange={e => setNewEstForm({ ...newEstForm, phone: e.target.value })}
+                    className="w-full p-2 border border-slate-300 rounded-lg font-mono-ref font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Arrondissement *</label>
+                  <select
+                    value={newEstForm.arrondissement}
+                    onChange={e => {
+                      const arrCode = e.target.value as any;
+                      const arrInfo = TERRITORIAL_REFERENTIAL.find(a => a.code === arrCode);
+                      const defQ = arrInfo?.quartiers[0] || 'Centre-Ville';
+                      setNewEstForm({
+                        ...newEstForm,
+                        arrondissement: arrCode,
+                        quartier: defQ
+                      });
+                    }}
+                    className="w-full p-2 border border-slate-300 rounded-lg font-bold text-slate-800 bg-white"
+                  >
+                    {TERRITORIAL_REFERENTIAL.map(a => (
+                      <option key={a.code} value={a.code}>{a.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Quartier (lié à l'Arr.) *</label>
+                  <select
+                    value={newEstForm.quartier}
+                    onChange={e => setNewEstForm({ ...newEstForm, quartier: e.target.value })}
+                    className="w-full p-2 border border-slate-300 rounded-lg font-semibold text-slate-800 bg-white"
+                  >
+                    {(TERRITORIAL_REFERENTIAL.find(a => a.code === newEstForm.arrondissement)?.quartiers || []).map(q => (
+                      <option key={q} value={q}>{q}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Adresse précise / Repère terrain</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Face Marché Tié-Tié, Rue de la Paix"
+                  value={newEstForm.address}
+                  onChange={e => setNewEstForm({ ...newEstForm, address: e.target.value })}
+                  className="w-full p-2 border border-slate-300 rounded-lg"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Régime Fiscal *</label>
+                  <select
+                    value={newEstForm.regime_type}
+                    onChange={e => setNewEstForm({ ...newEstForm, regime_type: e.target.value as any })}
+                    className="w-full p-2 border border-slate-300 rounded-lg font-bold"
+                  >
+                    <option value="INFORMEL">Secteur Informel (Forfait annuel)</option>
+                    <option value="FORMEL">Secteur Formel (Tarif m²)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Surface exploitée (m²)</label>
+                  <input
+                    type="number"
+                    value={newEstForm.surface_m2}
+                    onChange={e => setNewEstForm({ ...newEstForm, surface_m2: Number(e.target.value) })}
+                    className="w-full p-2 border border-slate-300 rounded-lg font-mono-ref"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Redevance Estimée (FCFA) *</label>
+                  <input
+                    type="number"
+                    value={newEstForm.total_due}
+                    onChange={e => setNewEstForm({ ...newEstForm, total_due: Number(e.target.value) })}
+                    className="w-full p-2 border border-slate-300 rounded-lg font-mono-ref font-bold text-amber-900 bg-amber-50"
+                  />
+                </div>
+              </div>
+
+              {/* CONVOCATION PROGRAMMATION BOX (KEY USER REQUIREMENT) */}
+              <div className="p-3.5 bg-purple-50/80 border-2 border-purple-300 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-purple-950 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={newEstForm.programBureauPassage}
+                      onChange={e => setNewEstForm({ ...newEstForm, programBureauPassage: e.target.checked })}
+                      className="w-4 h-4 rounded text-purple-700 focus:ring-purple-500"
+                    />
+                    <span>📅 Programmer le passage pour venir se présenter au bureau DDL-PN</span>
+                  </label>
+                  <span className="text-[10px] font-mono-ref font-black bg-purple-200 text-purple-900 px-2 py-0.5 rounded">
+                    CONVOCATION
+                  </span>
+                </div>
+
+                {newEstForm.programBureauPassage && (
+                  <div className="space-y-2.5 pt-2 border-t border-purple-200/60 animate-in fade-in">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="font-bold text-purple-900 block mb-1 text-[11px]">
+                          Date de comparution au bureau *
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          value={newEstForm.bureauPassageDate}
+                          onChange={e => setNewEstForm({ ...newEstForm, bureauPassageDate: e.target.value })}
+                          className="w-full p-2 bg-white border border-purple-300 rounded-lg font-semibold text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-bold text-purple-900 block mb-1 text-[11px]">
+                          Heure du rendez-vous *
+                        </label>
+                        <input
+                          type="time"
+                          required
+                          value={newEstForm.bureauPassageTime}
+                          onChange={e => setNewEstForm({ ...newEstForm, bureauPassageTime: e.target.value })}
+                          className="w-full p-2 bg-white border border-purple-300 rounded-lg font-semibold text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-purple-900 block mb-1 text-[11px]">
+                        Lieu / Bureau de convocation
+                      </label>
+                      <input
+                        type="text"
+                        value={newEstForm.bureauPassageOffice}
+                        onChange={e => setNewEstForm({ ...newEstForm, bureauPassageOffice: e.target.value })}
+                        className="w-full p-2 bg-white border border-purple-300 rounded-lg text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-purple-900 block mb-1 text-[11px]">
+                        Motif officiel de la présentation au bureau
+                      </label>
+                      <input
+                        type="text"
+                        value={newEstForm.bureauPassageMotif}
+                        onChange={e => setNewEstForm({ ...newEstForm, bureauPassageMotif: e.target.value })}
+                        className="w-full p-2 bg-white border border-purple-300 rounded-lg text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setIsRegisterEstModalOpen(false)}
+                  className="px-3 py-1.5 border rounded-lg font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#006d2f] hover:bg-emerald-800 text-white font-bold rounded-lg shadow flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-amber-300" />
+                  <span>Enregistrer & Programmer au Calendrier SAA</span>
                 </button>
               </div>
             </form>
