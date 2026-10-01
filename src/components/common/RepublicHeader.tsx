@@ -108,18 +108,17 @@ export const RepublicHeader: React.FC = () => {
       {/* Main Official Banner */}
       <div className="max-w-[1920px] mx-auto px-3 sm:px-5 py-2.5 flex items-center justify-between gap-4">
         {/* Left: Mobile hamburger + Coat of Arms + Official Titles */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5">
+        <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
           {/* Sidebar Toggle Button */}
           <button
             onClick={() => {
-              // On desktop toggle collapse, on mobile toggle open
               if (window.innerWidth >= 1024) {
                 setIsSidebarCollapsed(prev => !prev);
               } else {
                 setIsMobileSidebarOpen(prev => !prev);
               }
             }}
-            className="p-2 rounded-lg bg-slate-100 hover:bg-[#022448] text-slate-700 hover:text-white transition flex items-center justify-center border border-slate-200"
+            className="p-2 rounded-lg bg-slate-100 hover:bg-[#022448] text-slate-700 hover:text-white transition flex items-center justify-center border border-slate-200 shrink-0"
             title="Ouvrir / Réduire le menu vertical"
             aria-label="Menu"
           >
@@ -127,29 +126,29 @@ export const RepublicHeader: React.FC = () => {
           </button>
 
           {/* Official Coat of Arms Logo */}
-          <OfficialRepublicLogo size="sm" className="shrink-0" />
+          <OfficialRepublicLogo size="sm" className="shrink-0 hidden xs:flex sm:flex" />
 
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#006d2f] font-republic">
+          <div className="min-w-0 truncate">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest text-[#006d2f] font-republic truncate">
                 {REPUBLIQUE_CONGO.nom}
               </span>
               <span className="text-[9px] text-slate-400 font-medium hidden md:inline">• {REPUBLIQUE_CONGO.devise}</span>
-              <span className="text-[9px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-mono-ref font-bold">
+              <span className="text-[8px] sm:text-[9px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 rounded font-mono-ref font-bold shrink-0">
                 PTA 2026
               </span>
             </div>
-            <h1 className="text-sm sm:text-base font-extrabold text-[#022448] tracking-tight leading-tight">
+            <h1 className="text-xs sm:text-base font-extrabold text-[#022448] tracking-tight leading-tight truncate">
               DIRECTION DÉPARTEMENTALE DES LOISIRS DE POINTE-NOIRE
             </h1>
-            <p className="text-[10px] text-slate-500 font-medium hidden lg:block">
+            <p className="text-[9px] sm:text-[10px] text-slate-500 font-medium hidden lg:block truncate">
               {REPUBLIQUE_CONGO.ministere} ({REPUBLIQUE_CONGO.ministere_abreviation})
             </p>
           </div>
         </div>
 
         {/* Right: Clock, Network, Role Switcher, Tablet Mode */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5 min-w-0 shrink-0">
           {/* Time display */}
           <div className="hidden xl:flex flex-col items-end text-right pr-2 border-r border-slate-200">
             <span className="text-[11px] font-mono-ref font-semibold text-slate-700">{currentTime}</span>
@@ -157,7 +156,7 @@ export const RepublicHeader: React.FC = () => {
           </div>
 
           {/* Offline/Supabase Status Indicator */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded text-[11px]">
+          <div className="hidden sm:flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded text-[11px]">
             {networkStatus.isOnline ? (
               <span className="flex items-center gap-1 text-emerald-700 font-medium">
                 <Wifi className="w-3.5 h-3.5 text-emerald-600" />
@@ -259,7 +258,7 @@ export const RepublicHeader: React.FC = () => {
             </button>
 
             {userDropdownOpen && (
-              <div className="absolute right-0 mt-1 w-72 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50">
+              <div className="absolute right-0 mt-1 w-[calc(100vw-1rem)] max-w-[18rem] sm:w-72 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50">
                 <div className="px-3 py-1.5 border-b border-slate-100 bg-slate-50">
                   <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                     Changer d'utilisateur assermenté

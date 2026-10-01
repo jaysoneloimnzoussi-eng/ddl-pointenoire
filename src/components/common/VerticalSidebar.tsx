@@ -109,7 +109,7 @@ export const VerticalSidebar: React.FC = () => {
       <aside
         className={`fixed lg:sticky top-0 lg:top-[69px] left-0 z-50 lg:z-30 h-screen lg:h-[calc(100vh-69px)] bg-[#022448] text-white flex flex-col border-r border-[#033468] shadow-xl transition-all duration-300 select-none ${
           isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        } ${isSidebarCollapsed ? 'w-20' : 'w-72 sm:w-76'}`}
+        } ${isSidebarCollapsed ? 'w-20' : 'w-[85vw] max-w-[18rem] sm:w-72'}`}
       >
         {/* Tricolor Mini Top Bar */}
         <RepublicTricolorBar />
@@ -219,7 +219,7 @@ export const VerticalSidebar: React.FC = () => {
                     onClick={() => handleSelectModule(item.id)}
                     title={`${item.id} : ${item.label}`}
                     className={`w-full flex items-center rounded-lg transition-all duration-150 group relative text-left ${
-                      isSidebarCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2'
+                      isSidebarCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5 min-h-[44px]'
                     } ${
                       isActive
                         ? 'bg-[#006d2f] text-white font-bold shadow-md ring-1 ring-amber-400/60 border-l-4 border-amber-400'

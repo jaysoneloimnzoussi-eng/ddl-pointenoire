@@ -38,23 +38,24 @@ export const PrintModal: React.FC<PrintModalProps> = ({
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 sm:p-6 overflow-y-auto print:p-0 print:bg-white print:static">
       <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-300 print:border-none print:shadow-none print:max-w-none print:max-h-none print:w-full">
         {/* Modal Controls (Hidden in print) */}
-        <div className="no-print bg-slate-900 text-white px-5 py-3 flex items-center justify-between border-b border-slate-700">
-          <div className="flex items-center gap-2.5">
-            <Printer className="w-5 h-5 text-amber-400" />
-            <div>
-              <h3 className="text-sm font-bold tracking-tight">{title}</h3>
-              <p className="text-[11px] text-slate-400 font-mono-ref">
+        <div className="no-print bg-slate-900 text-white px-3 sm:px-5 py-3 flex items-center justify-between border-b border-slate-700">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Printer className="w-5 h-5 text-amber-400 shrink-0" />
+            <div className="min-w-0">
+              <h3 className="text-xs sm:text-sm font-bold tracking-tight truncate max-w-[160px] sm:max-w-xs md:max-w-none">{title}</h3>
+              <p className="text-[11px] text-slate-400 font-mono-ref hidden sm:block">
                 Format : {documentType === 'TICKET_58MM' ? 'Ticket Thermique POS 58mm' : 'Format Officiel A4 Républicain'}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handlePrint}
-              className="bg-[#006d2f] hover:bg-[#005a26] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition"
+              className="bg-[#006d2f] hover:bg-[#005a26] text-white px-2 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Imprimer maintenant</span>
+              <span className="hidden sm:inline">Imprimer maintenant</span>
+              <span className="sm:hidden">Imprimer</span>
             </button>
             <button
               onClick={onClose}
@@ -65,8 +66,8 @@ export const PrintModal: React.FC<PrintModalProps> = ({
           </div>
         </div>
 
-        {/* Printable Content Area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-100 print:bg-white print:p-0 flex justify-center">
+        {/* Printable Content Area — overflow-x-auto allows A4 preview to scroll horizontally on phones */}
+        <div className="flex-1 overflow-y-auto overflow-x-auto p-2 sm:p-4 md:p-8 bg-slate-100 print:bg-white print:p-0 flex justify-center">
           {documentType === 'TICKET_58MM' ? (
             /* 58mm Thermal Ticket Rendering */
             <div className="print-ticket-58mm w-[58mm] bg-white p-3 font-mono-ref text-[11px] leading-tight text-black border border-dashed border-slate-300 shadow print:shadow-none print:border-none">

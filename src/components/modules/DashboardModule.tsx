@@ -629,7 +629,7 @@ export const DashboardModule: React.FC = () => {
                     />
                   </div>
 
-                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500">
+                  <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
                     <span>
                       Formels : <strong className="text-blue-700 font-mono-ref">{arr.formels}</strong> • Informels : <strong className="text-amber-700 font-mono-ref">{arr.informels}</strong>
                     </span>
@@ -728,9 +728,9 @@ export const DashboardModule: React.FC = () => {
           <div className="space-y-2.5">
             {statusFunnel.map((step, idx) => (
               <div key={idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 flex items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2.5 min-w-[180px]">
-                  <div className={`w-3 h-3 rounded-full ${step.color}`} />
-                  <span className="font-bold text-slate-800">{step.label}</span>
+                <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:flex-none sm:min-w-[180px]">
+                  <div className={`w-3 h-3 rounded-full shrink-0 ${step.color}`} />
+                  <span className="font-bold text-slate-800 truncate sm:whitespace-normal">{step.label}</span>
                 </div>
 
                 <div className="flex-1 bg-slate-200 h-2 rounded-full overflow-hidden hidden sm:block">
@@ -771,7 +771,7 @@ export const DashboardModule: React.FC = () => {
                     <span className="font-mono-ref text-[10px] font-bold bg-white border border-slate-200 text-slate-700 px-1.5 py-0.2 rounded">
                       {cat.code}
                     </span>
-                    <span className="font-bold text-slate-800 truncate max-w-[220px]">{cat.label}</span>
+                    <span className="font-bold text-slate-800 truncate max-w-[120px] sm:max-w-[220px]">{cat.label}</span>
                   </div>
                   <div className="flex items-center gap-2 font-mono-ref">
                     <span className="font-black text-slate-900">{cat.count} locaux</span>
@@ -810,9 +810,9 @@ export const DashboardModule: React.FC = () => {
           <div className="space-y-3">
             {paymentMethodStats.map(m => (
               <div key={m.name} className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
-                <div className="flex items-center justify-between text-xs mb-1.5">
+                <div className="flex items-center justify-between text-xs mb-1.5 gap-1 flex-wrap">
                   <span className="font-bold text-slate-800">{m.name}</span>
-                  <div className="flex items-center gap-2 font-mono-ref">
+                  <div className="flex flex-wrap items-center gap-2 font-mono-ref">
                     <span className="text-slate-600 font-semibold">{m.count} reçus</span>
                     <span className="font-black text-slate-900">{m.total.toLocaleString('fr-FR')} FCFA</span>
                     <span className="bg-white border border-slate-200 text-[#006d2f] font-bold px-1.5 py-0.5 rounded text-[10px]">
@@ -846,7 +846,7 @@ export const DashboardModule: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="bg-indigo-50/60 border border-indigo-100 p-3.5 rounded-xl text-center">
-                <div className="text-2xl font-black text-indigo-950 font-mono-ref">{filteredMetrics.limiterCount}</div>
+                <div className="text-xl sm:text-2xl font-black text-indigo-950 font-mono-ref">{filteredMetrics.limiterCount}</div>
                 <div className="text-xs font-semibold text-indigo-800 mt-0.5">Limiteurs Acoustiques Installés</div>
                 <div className="text-[10px] text-indigo-600 font-mono-ref mt-1">
                   {Math.round((filteredMetrics.limiterCount / (filteredMetrics.total || 1)) * 100)}% du parc actif
@@ -854,7 +854,7 @@ export const DashboardModule: React.FC = () => {
               </div>
 
               <div className="bg-amber-50/60 border border-amber-100 p-3.5 rounded-xl text-center">
-                <div className="text-2xl font-black text-amber-950 font-mono-ref">{urgentActs.length}</div>
+                <div className="text-xl sm:text-2xl font-black text-amber-950 font-mono-ref">{urgentActs.length}</div>
                 <div className="text-xs font-semibold text-amber-800 mt-0.5">Mises en Demeure / Convocations</div>
                 <div className="text-[10px] text-amber-700 font-mono-ref mt-1">Délai strict 72 heures</div>
               </div>
@@ -1092,7 +1092,7 @@ export const DashboardModule: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1 text-xs text-slate-500">
             <span>Règle d'or renouvellement N+1 active sur toutes les quittances soldées</span>
             <span className="font-mono-ref font-bold text-[#006d2f]">70% Trésor / 30% Régie DDL</span>
           </div>
