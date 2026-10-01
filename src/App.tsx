@@ -16,6 +16,7 @@ import { SafRegieRecettesModule } from './components/modules/SafRegieRecettesMod
 import { TitlesAndReceiptsModule } from './components/modules/TitlesAndReceiptsModule';
 import { LegalTextsAndSimulatorModule } from './components/modules/LegalTextsAndSimulatorModule';
 import { PtaTrackerModule } from './components/modules/PtaTrackerModule';
+import { AdminPersonnelModule } from './components/modules/AdminPersonnelModule';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AiAssistantModal } from './components/common/AiAssistantModal';
 import { PublicVerificationView } from './components/common/PublicVerificationView';
@@ -100,6 +101,8 @@ const AppContent: React.FC = () => {
         return <LegalTextsAndSimulatorModule />;
       case 'MOD-13':
         return <PtaTrackerModule />;
+      case 'MOD-14':
+        return <AdminPersonnelModule />;
       default:
         return <DashboardModule />;
     }

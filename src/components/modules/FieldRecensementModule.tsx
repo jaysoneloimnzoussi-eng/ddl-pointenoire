@@ -41,6 +41,7 @@ export const FieldRecensementModule: React.FC = () => {
 
   // New identification modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isCustomQuartier, setIsCustomQuartier] = useState(false);
   const [newForm, setNewForm] = useState({
     name: '',
     promoter_name: '',
@@ -577,15 +578,17 @@ export const FieldRecensementModule: React.FC = () => {
                     onChange={e => {
                       const arr = e.target.value as ArrondissementCode;
                       const arrInfo = TERRITORIAL_REFERENTIAL.find(a => a.code === arr);
+                      const defaultQ = arrInfo?.quartiers[0] || 'Centre';
+                      setIsCustomQuartier(false);
                       setNewForm({
                         ...newForm,
                         arrondissement: arr,
-                        quartier: arrInfo?.quartiers[0] || 'Centre',
+                        quartier: defaultQ,
                         lat: arrInfo?.sig_coordinates[0] || -4.7938,
                         lng: arrInfo?.sig_coordinates[1] || 11.8569
                       });
                     }}
-                    className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-[#006d2f]"
+                    className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-[#006d2f] text-xs font-semibold bg-white"
                   >
                     {TERRITORIAL_REFERENTIAL.map(a => (
                       <option key={a.code} value={a.code}>{a.name}</option>
@@ -593,14 +596,40 @@ export const FieldRecensementModule: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Quartier *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newForm.quartier}
-                    onChange={e => setNewForm({ ...newForm, quartier: e.target.value })}
-                    className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-[#006d2f]"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700 block">
+                      Quartier ({TERRITORIAL_REFERENTIAL.find(a => a.code === newForm.arrondissement)?.name.split(' ')[2] || 'Arrondissement'}) *
+                    </label>
+                    <span className="text-[10px] text-emerald-700 font-bold">Référentiel officiel</span>
+                  </div>
+                  <select
+                    value={isCustomQuartier ? 'AUTRE' : newForm.quartier}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (val === 'AUTRE') {
+                        setIsCustomQuartier(true);
+                      } else {
+                        setIsCustomQuartier(false);
+                        setNewForm({ ...newForm, quartier: val });
+                      }
+                    }}
+                    className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-[#006d2f] text-xs font-semibold bg-white cursor-pointer"
+                  >
+                    {(TERRITORIAL_REFERENTIAL.find(a => a.code === newForm.arrondissement)?.quartiers || []).map(q => (
+                      <option key={q} value={q}>{q}</option>
+                    ))}
+                    <option value="AUTRE">+ Autre quartier / secteur...</option>
+                  </select>
+                  {isCustomQuartier && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Préciser le nom du quartier..."
+                      value={newForm.quartier}
+                      onChange={e => setNewForm({ ...newForm, quartier: e.target.value })}
+                      className="mt-1.5 w-full p-1.5 border border-amber-400 bg-amber-50/50 rounded text-xs outline-none"
+                    />
+                  )}
                 </div>
               </div>
 

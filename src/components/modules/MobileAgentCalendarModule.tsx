@@ -45,7 +45,7 @@ import {
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { storageService } from '../../services/storageService';
-import { supabase } from '../../services/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../../services/supabaseClient';
 import { AgentTourneeEvent, Establishment, TerrainPaymentRecord, AppUser } from '../../types';
 import { APP_USERS, TERRITORIAL_REFERENTIAL } from '../../constants/referential';
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
@@ -69,7 +69,7 @@ const FIELD_AGENTS = APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 
 }));
 
 export const MobileAgentCalendarModule: React.FC = () => {
-  const { currentUser, switchUserById, setActiveModule, triggerNotification } = useSession();
+  const { currentUser, setActiveModule, triggerNotification } = useSession();
 
   // Selected agent for private field session (defaults to current user if SAA, or first field agent)
   const [activeAgentBadge, setActiveAgentBadge] = useState<string>(() => {
@@ -429,27 +429,33 @@ export const MobileAgentCalendarModule: React.FC = () => {
         isSynced: isOnline
       });
 
-      // Synchronize directly into Supabase rendezvous table
-      supabase.from('rendezvous').insert({
-        establishment_id: est.id,
-        establishment_name: est.name,
-        promoter_name: est.promoter_name,
-        promoter_phone: est.phone,
-        district: est.arrondissement,
-        address: est.address,
-        date: nextAppointmentDate,
-        time: nextAppointmentTime || '10:00',
-        motif: 'Paiement solde / acompte fixé avec la tenancière',
-        status: 'CONFIRME',
-        next_action_type: 'ENCAISSEMENT_ACOMPTE',
-        installment_amount: remainingAfterThis,
-        remaining_after: 0,
-        notes: tenanciereAccord,
-        assigned_agent_badge: currentAgent.badge,
-        assigned_agent_name: currentAgent.name
-      }).then(({ error }) => {
-        if (error) console.warn('[Supabase] Rendezvous insert note:', error);
-      });
+      // Synchronize directly into Supabase rendezvous table only if configured
+      if (isSupabaseConfigured) {
+        Promise.resolve(
+          supabase.from('rendezvous').insert({
+            establishment_id: est.id,
+            establishment_name: est.name,
+            promoter_name: est.promoter_name,
+            promoter_phone: est.phone,
+            district: est.arrondissement,
+            address: est.address,
+            date: nextAppointmentDate,
+            time: nextAppointmentTime || '10:00',
+            motif: 'Paiement solde / acompte fixé avec la tenancière',
+            status: 'CONFIRME',
+            next_action_type: 'ENCAISSEMENT_ACOMPTE',
+            installment_amount: remainingAfterThis,
+            remaining_after: 0,
+            notes: tenanciereAccord,
+            assigned_agent_badge: currentAgent.badge,
+            assigned_agent_name: currentAgent.name
+          })
+        ).then(({ error }) => {
+          if (error) console.info('[Supabase] Rendezvous insert note:', error.message);
+        }).catch(() => {
+          // offline mode
+        });
+      }
     }
 
     reloadEvents();
@@ -745,24 +751,43 @@ export const MobileAgentCalendarModule: React.FC = () => {
             <option value="PLANNING">Planning</option>
           </select>
 
-          {/* INDIVIDUAL AGENT PROFILE BUTTON */}
-          <button
-            onClick={() => setIsAgentLoginModalOpen(true)}
-            className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 bg-slate-100 hover:bg-slate-200 rounded-full border border-slate-300 transition text-left"
-            title="Changer d'agent ou verrouiller l'accès"
-          >
-            <div className="w-7 h-7 rounded-full bg-[#006d2f] text-amber-300 font-extrabold text-xs flex items-center justify-center border border-amber-400">
-              {currentAgent.avatar}
+          {/* INDIVIDUAL AGENT PROFILE BADGE / SUPERVISION FILTER */}
+          {currentUser.role === 'ADMIN' || currentUser.role === 'DIRECTEUR' ? (
+            <button
+              onClick={() => setIsAgentLoginModalOpen(true)}
+              className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 bg-slate-100 hover:bg-slate-200 rounded-full border border-slate-300 transition text-left cursor-pointer"
+              title="Superviser un autre agent de brigade"
+            >
+              <div className="w-7 h-7 rounded-full bg-[#006d2f] text-amber-300 font-extrabold text-xs flex items-center justify-center border border-amber-400">
+                {currentAgent.avatar}
+              </div>
+              <div className="leading-tight hidden sm:block">
+                <span className="text-xs font-bold text-[#022448] block truncate max-w-[120px]">
+                  {currentAgent.name}
+                </span>
+                <span className="text-[9px] text-amber-800 font-mono-ref font-semibold block">
+                  {currentAgent.badge} (Supervision)
+                </span>
+              </div>
+            </button>
+          ) : (
+            <div
+              className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 bg-slate-100 rounded-full border border-slate-300 text-left select-none"
+              title="Session Agent Assermenté active"
+            >
+              <div className="w-7 h-7 rounded-full bg-[#006d2f] text-amber-300 font-extrabold text-xs flex items-center justify-center border border-amber-400">
+                {currentAgent.avatar}
+              </div>
+              <div className="leading-tight hidden sm:block">
+                <span className="text-xs font-bold text-[#022448] block truncate max-w-[120px]">
+                  {currentAgent.name}
+                </span>
+                <span className="text-[9px] text-amber-800 font-mono-ref font-semibold block">
+                  {currentAgent.badge} • Assermenté
+                </span>
+              </div>
             </div>
-            <div className="leading-tight hidden sm:block">
-              <span className="text-xs font-bold text-[#022448] block truncate max-w-[120px]">
-                {currentAgent.name}
-              </span>
-              <span className="text-[9px] text-amber-800 font-mono-ref font-semibold block">
-                {currentAgent.badge}
-              </span>
-            </div>
-          </button>
+          )}
         </div>
       </header>
 
@@ -822,21 +847,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
                 <span>Commandement (MOD-01)</span>
               </button>
             </>
-          ) : (
-            /* Golden Button for Field Agents to switch to Admin Jacques MATOKO */
-            <button
-              type="button"
-              onClick={() => {
-                switchUserById('ADMIN-MATOKO');
-                setActiveModule('MOD-01');
-                triggerNotification('Session Administrateur activée : Jacques MATOKO', 'success');
-              }}
-              className="px-3 py-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-lg text-xs flex items-center gap-1.5 shadow transition cursor-pointer"
-            >
-              <Shield className="w-3.5 h-3.5 text-slate-950" />
-              <span>👑 Retour Espace Administrateur (Jacques MATOKO)</span>
-            </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -2193,12 +2204,8 @@ export const MobileAgentCalendarModule: React.FC = () => {
                     key={agent.badge}
                     onClick={() => {
                       setActiveAgentBadge(agent.badge);
-                      const matchedUser = APP_USERS.find(u => u.badge === agent.badge);
-                      if (matchedUser) {
-                        switchUserById(matchedUser.id);
-                      }
                       setIsAgentLoginModalOpen(false);
-                      triggerNotification(`Session agent activée pour ${agent.name} (${agent.badge}).`, 'success');
+                      triggerNotification(`Affichage du planning supervisé pour ${agent.name} (${agent.badge}).`, 'info');
                     }}
                     className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition ${
                       isSelected

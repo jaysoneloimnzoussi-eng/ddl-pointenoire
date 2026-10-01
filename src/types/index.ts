@@ -144,6 +144,11 @@ export interface UserAccount extends AppUser {
   passwordHash?: string;
   lastLogin?: string;
   isActive?: boolean;
+  matricule?: string;
+  zone?: string;
+  datePriseService?: string;
+  sermentDate?: string;
+  photoUrl?: string;
 }
 
 export interface ActivityCategoryRate {

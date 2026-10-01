@@ -537,8 +537,13 @@ export const TitlesAndReceiptsModule: React.FC = () => {
                 <label className="font-bold text-slate-700 block mb-1">Arrondissement *</label>
                 <select
                   value={newEst.arrondissement}
-                  onChange={e => setNewEst({ ...newEst, arrondissement: e.target.value as any })}
-                  className="w-full p-2 bg-white border border-slate-300 rounded-xl"
+                  onChange={e => {
+                    const code = e.target.value as any;
+                    const arrInfo = TERRITORIAL_REFERENTIAL.find(a => a.code === code);
+                    const defQ = arrInfo?.quartiers[0] || 'Centre-Ville';
+                    setNewEst({ ...newEst, arrondissement: code, quartier: defQ });
+                  }}
+                  className="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold"
                 >
                   {TERRITORIAL_REFERENTIAL.map(arr => (
                     <option key={arr.code} value={arr.code}>
@@ -549,14 +554,19 @@ export const TitlesAndReceiptsModule: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Quartier *</label>
-                <input
-                  type="text"
-                  required
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-700 block">Quartier *</label>
+                  <span className="text-[10px] text-emerald-700 font-bold">Arr. lié</span>
+                </div>
+                <select
                   value={newEst.quartier}
                   onChange={e => setNewEst({ ...newEst, quartier: e.target.value })}
-                  className="w-full p-2 bg-white border border-slate-300 rounded-xl"
-                />
+                  className="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  {(TERRITORIAL_REFERENTIAL.find(a => a.code === newEst.arrondissement)?.quartiers || []).map(q => (
+                    <option key={q} value={q}>{q}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

@@ -378,6 +378,14 @@ export const DashboardModule: React.FC = () => {
             <RefreshCw className="w-4 h-4 text-emerald-300" />
           </button>
           <button
+            onClick={() => setActiveModule('MOD-14')}
+            className="flex-1 sm:flex-initial bg-red-950/80 hover:bg-red-900 text-amber-300 font-extrabold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow border border-amber-400/40 transition cursor-pointer"
+            title="Administration des Agents, Mots de Passe & Badges QR"
+          >
+            <ShieldCheck className="w-4 h-4 text-amber-300" />
+            <span>Personnel & Badges QR</span>
+          </button>
+          <button
             onClick={() => setActiveModule('MOD-11')}
             className="flex-1 sm:flex-initial bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition cursor-pointer"
           >

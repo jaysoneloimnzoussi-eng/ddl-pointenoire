@@ -3,6 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://nbpcecsnivfggyitpxdn.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5icGNlY3NuaXZmZ2d5aXRweGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyODkyNjYsImV4cCI6MjEwMzg2NTI2Nn0.xuDFvvtfic-LHo9iBLtDSgbmNfAVXyxby8iQw9ivGqA';
 
+export const isSupabaseConfigured = Boolean(
+  import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_URL.trim() !== ''
+);
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,

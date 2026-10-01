@@ -1,6 +1,6 @@
 import { AppUser, UserAccount } from '../types';
 import { APP_USERS } from '../constants/referential';
-import { supabase } from './supabaseClient';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const LOCAL_STORAGE_ACCOUNTS_KEY = 'ddl_pn_user_accounts_v2';
 const MASTER_EMERGENCY_PASSWORD = 'DdlPn@2026!';
@@ -238,6 +238,53 @@ class AuthService {
     return this.accounts.filter(a => a.role === 'AGENT_SAA' || a.role === 'CHEF_SPA');
   }
 
+  public getAccountById(id: string): UserAccount | undefined {
+    return this.accounts.find(a => a.id === id);
+  }
+
+  public addAccount(accountData: Omit<UserAccount, 'id'> & { id?: string }): UserAccount {
+    const newId = accountData.id || `AGENT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const newAccount: UserAccount = {
+      ...accountData,
+      id: newId,
+      isActive: accountData.isActive ?? true,
+      defaultPassword: accountData.defaultPassword || 'DdlPn@2026!'
+    };
+    this.accounts.unshift(newAccount);
+    this.saveToStorage();
+    return newAccount;
+  }
+
+  public updatePassword(accountId: string, newPassword: string): boolean {
+    const acc = this.accounts.find(a => a.id === accountId);
+    if (!acc) return false;
+    acc.defaultPassword = newPassword;
+    acc.passwordHash = newPassword;
+    this.saveToStorage();
+    return true;
+  }
+
+  public updateAccount(accountId: string, updates: Partial<UserAccount>): boolean {
+    const idx = this.accounts.findIndex(a => a.id === accountId);
+    if (idx === -1) return false;
+    this.accounts[idx] = {
+      ...this.accounts[idx],
+      ...updates
+    };
+    this.saveToStorage();
+    return true;
+  }
+
+  public deleteAccount(accountId: string): boolean {
+    const prevLen = this.accounts.length;
+    this.accounts = this.accounts.filter(a => a.id !== accountId);
+    if (this.accounts.length !== prevLen) {
+      this.saveToStorage();
+      return true;
+    }
+    return false;
+  }
+
   /**
    * Multi-criteria authentication:
    * Accepts identifier as Email, Username, Badge, Phone, or Matricule.
@@ -320,15 +367,17 @@ class AuthService {
     account.lastLogin = new Date().toISOString();
     this.saveToStorage();
 
-    // Async sync to Supabase in background
-    Promise.resolve(
-      supabase
-        .from('app_users')
-        .update({ last_login: account.lastLogin })
-        .eq('id', account.id)
-    ).catch(() => {
-      // ignore network errors
-    });
+    // Async sync to Supabase in background only if configured
+    if (isSupabaseConfigured) {
+      Promise.resolve(
+        supabase
+          .from('app_users')
+          .update({ last_login: account.lastLogin })
+          .eq('id', account.id)
+      ).catch(() => {
+        // ignore network errors
+      });
+    }
 
     // Determine target module
     let targetModule = 'MOD-01';

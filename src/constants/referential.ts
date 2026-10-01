@@ -21,14 +21,19 @@ export const TERRITORIAL_REFERENTIAL: ArrondissementInfo[] = [
     official_name: 'Arrondissement 1 Patrice Émery Lumumba',
     quartiers: [
       'Centre-Ville',
-      'Mpita',
+      'Plateau',
       'Côte Sauvage',
-      'Saint-Pierre',
-      'Tchicapika',
-      'KM 4',
       'Quartier du Port',
+      'Mpita',
+      'Tchicapika',
+      'KM 4 Lumumba',
+      'Losange',
       'Zone Industrielle OCH',
-      'Grand Marché'
+      'Grand Marché',
+      'Saint-Pierre',
+      'Mbota Lumumba',
+      'Quartier Chic',
+      'Nkouikou Lumumba'
     ],
     sig_coordinates: [-4.7938, 11.8569]
   },
@@ -39,12 +44,20 @@ export const TERRITORIAL_REFERENTIAL: ArrondissementInfo[] = [
     official_name: 'Arrondissement 2 Mvou-Mvou',
     quartiers: [
       'Mvou-Mvou Centre',
-      'Tchiniambi',
+      'Tchiniambi 1',
+      'Tchiniambi 2',
       'Makayabou',
       'Matendé',
+      'Mboukou',
+      'Ravin',
+      'Mpita Mvou-Mvou',
       'Kilomètre 5',
-      'Plateau',
-      'Dolisie-Gare'
+      'Quartier 201',
+      'Quartier 202',
+      'Quartier 203',
+      'Quartier 204',
+      'Dolisie-Gare',
+      'Grand Marché Mvou-Mvou'
     ],
     sig_coordinates: [-4.7781, 11.8712]
   },
@@ -55,12 +68,20 @@ export const TERRITORIAL_REFERENTIAL: ArrondissementInfo[] = [
     official_name: 'Arrondissement 3 Tié-Tié',
     quartiers: [
       'Tié-Tié Centre',
-      'Marché Tié-Tié',
       'Fond Tié-Tié',
-      'Och Tié-Tié',
-      'Mboukou',
+      'Grand Marché Tié-Tié',
+      'OCH Tié-Tié',
+      'Voungou 1',
+      'Voungou 2',
+      'Mbota Tié-Tié',
       'Jean Félix Tchicaya',
-      'Avenue de la Liberté'
+      'Tchinouka',
+      'Avenue de la Liberté',
+      'Quartier 301',
+      'Quartier 302',
+      'Quartier 303',
+      'Quartier 304',
+      'Saint-Antoine'
     ],
     sig_coordinates: [-4.7645, 11.9056]
   },
@@ -71,10 +92,17 @@ export const TERRITORIAL_REFERENTIAL: ArrondissementInfo[] = [
     official_name: 'Arrondissement 4 Loandjili',
     quartiers: [
       'Loandjili Centre',
-      'Faubourg',
       'Siafoumou',
+      'Vindoulou',
       'Songolo',
       'Quartier Hôpital Général',
+      'Faubourg Loandjili',
+      'Mbota Raffinerie',
+      'Quartier 401',
+      'Quartier 402',
+      'Quartier 403',
+      'Quartier 404',
+      'Quartier 405',
       'Zone Résidentielle Nord'
     ],
     sig_coordinates: [-4.7389, 11.8847]
@@ -86,11 +114,18 @@ export const TERRITORIAL_REFERENTIAL: ArrondissementInfo[] = [
     official_name: 'Arrondissement 5 Mongo-Mpoukou',
     quartiers: [
       'Mongo-Mpoukou Centre',
-      'Vindoulou',
+      'Côte Matève',
       'Ngoyo-Rails',
+      'Patra',
+      'Mabindou',
+      'Koufoli',
       'Rocade Est',
       'Zone Artisanale',
-      'Koufoli'
+      'Tchimbamba Ouest',
+      'Quartier 501',
+      'Quartier 502',
+      'Quartier 503',
+      'Quartier 504'
     ],
     sig_coordinates: [-4.7521, 11.9324]
   },
@@ -101,11 +136,17 @@ export const TERRITORIAL_REFERENTIAL: ArrondissementInfo[] = [
     official_name: 'Arrondissement 6 Ngoyo',
     quartiers: [
       'Ngoyo Centre',
-      'Mpaka',
+      'Mpaka 120',
       'Matombi',
-      'Plage Ngoyo',
-      'Coraf / Djeno Carrefour',
-      'Zone Aéroportuaire'
+      'Djeno (Zone Pétrolière)',
+      'Plage de Ngoyo',
+      'Tchimba',
+      'Quartier Aéroport Agostinho Neto',
+      'Quartier 601',
+      'Quartier 602',
+      'Quartier 603',
+      'Pointe-Indienne Bordure',
+      'Mbota Sud'
     ],
     sig_coordinates: [-4.8312, 11.9125]
   }

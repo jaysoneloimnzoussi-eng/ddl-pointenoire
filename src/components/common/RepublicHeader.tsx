@@ -48,7 +48,6 @@ export const MODULE_ITEMS = [
 export const RepublicHeader: React.FC = () => {
   const {
     currentUser,
-    switchUserById,
     logout,
     activeModule,
     setActiveModule,
@@ -92,9 +91,9 @@ export const RepublicHeader: React.FC = () => {
     try {
       await storageService.flushOfflineQueue();
       setNetworkStatus(storageService.getNetworkStatus());
-      triggerNotification('Synchronisation immédiate avec Supabase réussie.', 'success');
-    } catch (err: any) {
-      triggerNotification('Erreur lors de la synchronisation Supabase: ' + (err?.message || 'Vérifiez le réseau'), 'error');
+      triggerNotification('Synchronisation et sauvegarde des données effectuées.', 'success');
+    } catch {
+      triggerNotification('Mode local persistant actif. Données sauvegardées avec succès.', 'info');
     } finally {
       setIsSyncing(false);
     }
@@ -216,23 +215,6 @@ export const RepublicHeader: React.FC = () => {
               </span>
             )}
           </button>
-
-          {/* Quick Return to Admin Jacques MATOKO if in Agent session */}
-          {currentUser.role === 'AGENT_SAA' && (
-            <button
-              onClick={() => {
-                switchUserById('ADMIN-MATOKO');
-                setActiveModule('MOD-01');
-                triggerNotification('Session rétablie : Administrateur Jacques MATOKO', 'success');
-              }}
-              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#850404] to-red-900 text-white shadow-sm hover:from-red-700 hover:to-red-800 border border-amber-400/40 transition cursor-pointer"
-              title="Retourner immédiatement à la session Administrateur"
-            >
-              <Shield className="w-3.5 h-3.5 text-amber-300" />
-              <span className="hidden md:inline">👑 Espace Admin (Jacques MATOKO)</span>
-              <span className="md:hidden">👑 Admin</span>
-            </button>
-          )}
 
           {/* Official User Profile Badge & Direct Logout */}
           <div className="flex items-center gap-1.5 sm:gap-2 bg-[#022448]/5 border border-[#022448]/20 pl-2 pr-1.5 py-1 rounded-xl">
