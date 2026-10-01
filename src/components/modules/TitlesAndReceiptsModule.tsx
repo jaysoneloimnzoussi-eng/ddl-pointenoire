@@ -17,47 +17,56 @@ import {
   ShieldCheck,
   AlertTriangle,
   Landmark,
-  UserCheck
+  UserCheck,
+  Clock,
+  MapPin,
+  Phone,
+  HelpCircle,
+  Sparkles,
+  ChevronRight,
+  Send
 } from 'lucide-react';
 import { storageService, calculateEstablishmentFee } from '../../services/storageService';
 import { useSession } from '../../context/SessionContext';
-import { TerrainPaymentRecord, Establishment, ArrondissementCode, RegimeType } from '../../types';
+import { TerrainPaymentRecord, Establishment, ArrondissementCode, RegimeType, AgentTourneeEvent } from '../../types';
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
 import { TERRITORIAL_REFERENTIAL, ACTIVITY_CATEGORIES, APP_USERS } from '../../constants/referential';
 
 export const TitlesAndReceiptsModule: React.FC = () => {
   const { currentUser, triggerNotification } = useSession();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<'ALL' | 'GUICHET' | 'MOBILE' | 'CONVOQUES'>('ALL');
 
   const [payments, setPayments] = useState<TerrainPaymentRecord[]>(() => storageService.getPayments());
   const [establishments, setEstablishments] = useState<Establishment[]>(() => storageService.getEstablishments());
-  const [acts, setActs] = useState(() => storageService.getActs());
+  const [tourneeEvents, setTourneeEvents] = useState<AgentTourneeEvent[]>(() => storageService.getAgentEvents());
 
   const reloadAll = () => {
     setPayments(storageService.getPayments());
     setEstablishments(storageService.getEstablishments());
-    setActs(storageService.getActs());
+    setTourneeEvents(storageService.getAgentEvents());
   };
 
-  // Modals state
-  const [isDeskPaymentModalOpen, setIsDeskPaymentModalOpen] = useState(false);
-  const [isNewEstModalOpen, setIsNewEstModalOpen] = useState(false);
+  // Active Desk Workflow Mode: 'EXACT_DESK_ACTION'
+  const [selectedEstId, setSelectedEstId] = useState<string>('');
+  const [estSearchInput, setEstSearchInput] = useState<string>('');
+  const [isCreatingNewEst, setIsCreatingNewEst] = useState<boolean>(false);
+  const [deskActionType, setDeskActionType] = useState<'PAY_NOW' | 'SCHEDULE_FIELD_VISIT'>('PAY_NOW');
 
-  // Desk Payment Form State
-  const [deskPaymentForm, setDeskPaymentForm] = useState({
-    establishmentId: '',
-    promoterName: '',
-    establishmentName: '',
-    arrondissement: '1_LUMUMBA' as ArrondissementCode,
-    amountToPay: 50000,
-    paymentMethod: 'Espèces (Régie)' as TerrainPaymentRecord['payment_method'],
-    agentNotificateur: 'ADMIN-MATOKO',
-    notes: 'Règlement au Guichet Bureau DDL-PN suite à convocation'
+  // Payment fields
+  const [depositAmount, setDepositAmount] = useState<number>(30000);
+  const [paymentMethod, setPaymentMethod] = useState<TerrainPaymentRecord['payment_method']>('Espèces (Régie)');
+  const [cashierNotes, setCashierNotes] = useState<string>('Paiement au Guichet Bureau DDL-PN');
+
+  // Field Appointment fields (when promoter chooses to pay on-site)
+  const [appointmentDate, setAppointmentDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
   });
+  const [appointmentTime, setAppointmentTime] = useState<string>('10:00');
+  const [assignedAgentId, setAssignedAgentId] = useState<string>('0594a697-48ba-4fb7-b4cb-a979ad46f37c'); // Default Ambetos
 
-  // New Establishment Form State
-  const [newEstForm, setNewEstForm] = useState({
+  // New Establishment Form state (if not registered yet)
+  const [newEst, setNewEst] = useState({
     name: '',
     promoter_name: '',
     phone: '+242 06 ',
@@ -67,10 +76,12 @@ export const TitlesAndReceiptsModule: React.FC = () => {
     activity_code: 'A2.1',
     regime_type: 'INFORMEL' as RegimeType,
     surface_m2: 80,
-    has_acoustic_limiter: false,
-    initialDeposit: 30000,
-    paymentMethod: 'Espèces (Régie)' as TerrainPaymentRecord['payment_method']
+    assigned_agent_id: '0594a697-48ba-4fb7-b4cb-a979ad46f37c'
   });
+
+  // Table history active tab
+  const [historyTab, setHistoryTab] = useState<'RECEIPTS' | 'SCHEDULED_VISITS'>('RECEIPTS');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Print modal
   const [printDoc, setPrintDoc] = useState<{
@@ -85,135 +96,198 @@ export const TitlesAndReceiptsModule: React.FC = () => {
     data: null
   });
 
-  // Convoques list
-  const convoquesList = useMemo(() => {
-    return establishments.filter(
-      e => e.status === 'convoque' || e.status === 'mise_en_demeure' || (e.balance_due > 0 && e.amount_paid === 0)
-    );
-  }, [establishments]);
+  // Selected establishment object
+  const currentEst = useMemo(() => {
+    return establishments.find(e => e.id === selectedEstId);
+  }, [establishments, selectedEstId]);
 
-  // Filtered payments list
-  const filteredPayments = useMemo(() => {
-    return payments.filter(p => {
-      const matchSearch =
-        p.receipt_reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.establishment_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.promoter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.collected_by.toLowerCase().includes(searchTerm.toLowerCase());
+  // Filtered establishments for search dropdown
+  const searchResults = useMemo(() => {
+    if (!estSearchInput.trim()) return [];
+    const q = estSearchInput.toLowerCase();
+    return establishments.filter(e =>
+      e.name.toLowerCase().includes(q) ||
+      e.promoter_name.toLowerCase().includes(q) ||
+      e.phone.includes(q) ||
+      e.arrondissement.toLowerCase().includes(q)
+    ).slice(0, 6);
+  }, [establishments, estSearchInput]);
 
-      if (!matchSearch) return false;
+  // When selecting an existing establishment from search
+  const handleSelectEst = (est: Establishment) => {
+    setSelectedEstId(est.id);
+    setEstSearchInput(`${est.name} — ${est.promoter_name} (${est.arrondissement})`);
+    setIsCreatingNewEst(false);
 
-      if (filterType === 'GUICHET') return p.payment_method === 'Espèces (Régie)';
-      if (filterType === 'MOBILE') return p.payment_method.includes('Money');
-      return true;
-    });
-  }, [payments, searchTerm, filterType]);
+    // Suggest remaining due or 30k
+    setDepositAmount(est.balance_due > 0 ? Math.min(50000, est.balance_due) : 30000);
 
-  // Handle Desk Payment Submission
-  const handleDeskPaymentSubmit = (e: React.FormEvent) => {
+    // Identify linked agent
+    if (est.assigned_agent_id) {
+      setAssignedAgentId(est.assigned_agent_id);
+    }
+  };
+
+  // Execution: Submit Desk Payment
+  const handleExecutePayment = (e: React.FormEvent) => {
     e.preventDefault();
-    const est = establishments.find(e => e.id === deskPaymentForm.establishmentId);
-    if (!est) {
-      triggerNotification('Veuillez sélectionner un établissement valide.', 'warning');
+
+    let targetEst: Establishment | undefined = currentEst;
+
+    // If new establishment, create it first
+    if (isCreatingNewEst) {
+      const { filingFee, ratePerSqm, totalDue } = calculateEstablishmentFee(
+        newEst.activity_code,
+        newEst.surface_m2,
+        newEst.regime_type
+      );
+
+      const assignedAgent = APP_USERS.find(u => u.id === newEst.assigned_agent_id) || APP_USERS[2];
+
+      targetEst = storageService.addEstablishment({
+        name: newEst.name,
+        promoter_name: newEst.promoter_name,
+        phone: newEst.phone,
+        arrondissement: newEst.arrondissement,
+        quartier: newEst.quartier,
+        address: newEst.address || `${newEst.quartier}, Pointe-Noire`,
+        activity_type: ACTIVITY_CATEGORIES.find(c => c.code === newEst.activity_code)?.label || 'Établissement de loisirs',
+        activity_code: newEst.activity_code,
+        regime_type: newEst.regime_type,
+        surface_m2: Number(newEst.surface_m2),
+        filing_fee: filingFee,
+        rate_per_sqm: ratePerSqm,
+        total_due: totalDue,
+        amount_paid: Number(depositAmount),
+        balance_due: Math.max(0, totalDue - Number(depositAmount)),
+        status: Number(depositAmount) > 0 ? 'attestation_depot' : 'en_instruction',
+        identified_by: `${assignedAgent.name} (${assignedAgent.badge})`,
+        identified_date: new Date().toISOString().split('T')[0],
+        coordinates: [-4.795, 11.855],
+        installments_chosen: 2,
+        assigned_agent_id: assignedAgent.id
+      });
+    }
+
+    if (!targetEst) {
+      triggerNotification('Veuillez sélectionner ou enregistrer un établissement valide.', 'warning');
       return;
     }
 
-    const assignedAgent = APP_USERS.find(u => u.id === deskPaymentForm.agentNotificateur || u.badge === deskPaymentForm.agentNotificateur) || currentUser;
+    const assignedAgent = APP_USERS.find(u => u.id === assignedAgentId || u.id === targetEst?.assigned_agent_id) || currentUser;
 
     const paymentResult = storageService.recordPayment({
-      establishment_id: est.id,
-      amount: Number(deskPaymentForm.amountToPay),
-      payment_method: deskPaymentForm.paymentMethod,
-      collected_by: `${assignedAgent.name} (Guichet SAF)`,
+      establishment_id: targetEst.id,
+      amount: Number(depositAmount),
+      payment_method: paymentMethod,
+      collected_by: `${currentUser.name} (Guichet SAF - DDL-PN)`,
       agent_badge: assignedAgent.badge,
-      notes: deskPaymentForm.notes
+      notes: cashierNotes
     });
 
-    const paymentRecord = paymentResult.payment;
-
     reloadAll();
-    setIsDeskPaymentModalOpen(false);
-    triggerNotification(`Paiement de ${deskPaymentForm.amountToPay.toLocaleString('fr-FR')} FCFA enregistré au Guichet avec succès !`, 'success');
+    triggerNotification(`Paiement de ${Number(depositAmount).toLocaleString('fr-FR')} FCFA encaissé avec succès pour « ${targetEst.name} » !`, 'success');
 
-    // Open print modal with Attestation de Dépôt A4
+    // Automatically open Attestation A4 for printing
     setPrintDoc({
       isOpen: true,
       type: 'ATTESTATION_A4',
-      title: `Attestation de Dépôt - ${est.name}`,
+      title: `Attestation de Dépôt - ${targetEst.name}`,
       data: {
-        ...est,
-        ...paymentRecord,
-        receipt_reference: paymentRecord.receipt_reference,
-        amount_paid: (est.amount_paid || 0) + Number(deskPaymentForm.amountToPay),
+        ...targetEst,
+        ...paymentResult.payment,
+        receipt_reference: paymentResult.payment.receipt_reference,
+        amount_paid: (targetEst.amount_paid || 0) + Number(depositAmount),
         date_emission: new Date().toISOString().split('T')[0]
       }
     });
+
+    // Reset form
+    setSelectedEstId('');
+    setEstSearchInput('');
+    setIsCreatingNewEst(false);
   };
 
-  // Handle New Establishment Registration at Desk
-  const handleNewEstSubmit = (e: React.FormEvent) => {
+  // Execution: Schedule Field Recovery Appointment (Agent Visit)
+  const handleScheduleFieldVisit = (e: React.FormEvent) => {
     e.preventDefault();
-    const { filingFee, ratePerSqm, totalDue } = calculateEstablishmentFee(
-      newEstForm.activity_code,
-      newEstForm.surface_m2,
-      newEstForm.regime_type
-    );
 
-    const initialPay = Number(newEstForm.initialDeposit);
+    let targetEst: Establishment | undefined = currentEst;
 
-    const newEst = storageService.addEstablishment({
-      name: newEstForm.name,
-      promoter_name: newEstForm.promoter_name,
-      phone: newEstForm.phone,
-      arrondissement: newEstForm.arrondissement,
-      quartier: newEstForm.quartier,
-      address: newEstForm.address || `${newEstForm.quartier}, Pointe-Noire`,
-      activity_type: ACTIVITY_CATEGORIES.find(c => c.code === newEstForm.activity_code)?.label || 'Établissement de loisirs',
-      activity_code: newEstForm.activity_code,
-      regime_type: newEstForm.regime_type,
-      surface_m2: Number(newEstForm.surface_m2),
-      filing_fee: filingFee,
-      rate_per_sqm: ratePerSqm,
-      total_due: totalDue,
-      amount_paid: initialPay,
-      balance_due: Math.max(0, totalDue - initialPay),
-      status: initialPay > 0 ? 'attestation_depot' : 'en_instruction',
-      identified_by: `${currentUser.name} (Guichet Bureau SAA)`,
-      identified_date: new Date().toISOString().split('T')[0],
-      coordinates: [-4.795, 11.855],
-      installments_chosen: 2
-    });
+    if (isCreatingNewEst) {
+      const { filingFee, ratePerSqm, totalDue } = calculateEstablishmentFee(
+        newEst.activity_code,
+        newEst.surface_m2,
+        newEst.regime_type
+      );
 
-    let receiptRef = `REC-GUICHET-PN-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
+      const assignedAgent = APP_USERS.find(u => u.id === newEst.assigned_agent_id) || APP_USERS[2];
 
-    if (initialPay > 0) {
-      const payRes = storageService.recordPayment({
-        establishment_id: newEst.id,
-        amount: initialPay,
-        payment_method: newEstForm.paymentMethod,
-        collected_by: `${currentUser.name} (Guichet Bureau)`,
-        agent_badge: currentUser.badge,
-        notes: 'Dépôt initial & enregistrement direct au Guichet Bureau DDL-PN'
+      targetEst = storageService.addEstablishment({
+        name: newEst.name,
+        promoter_name: newEst.promoter_name,
+        phone: newEst.phone,
+        arrondissement: newEst.arrondissement,
+        quartier: newEst.quartier,
+        address: newEst.address || `${newEst.quartier}, Pointe-Noire`,
+        activity_type: ACTIVITY_CATEGORIES.find(c => c.code === newEst.activity_code)?.label || 'Établissement de loisirs',
+        activity_code: newEst.activity_code,
+        regime_type: newEst.regime_type,
+        surface_m2: Number(newEst.surface_m2),
+        filing_fee: filingFee,
+        rate_per_sqm: ratePerSqm,
+        total_due: totalDue,
+        amount_paid: 0,
+        balance_due: totalDue,
+        status: 'convoque',
+        identified_by: `${assignedAgent.name} (${assignedAgent.badge})`,
+        identified_date: new Date().toISOString().split('T')[0],
+        coordinates: [-4.795, 11.855],
+        installments_chosen: 2,
+        assigned_agent_id: assignedAgent.id
       });
-      receiptRef = payRes.payment.receipt_reference;
     }
 
-    reloadAll();
-    setIsNewEstModalOpen(false);
-    triggerNotification(`Établissement « ${newEst.name} » enregistré avec succès au Guichet !`, 'success');
+    if (!targetEst) {
+      triggerNotification('Veuillez sélectionner ou enregistrer un établissement.', 'warning');
+      return;
+    }
 
-    // Propose immediate print of Attestation de Dépôt
-    setPrintDoc({
-      isOpen: true,
-      type: 'ATTESTATION_A4',
-      title: `Attestation de Dépôt - ${newEst.name}`,
-      data: {
-        ...newEst,
-        receipt_reference: receiptRef,
-        amount_paid: initialPay,
-        date_emission: new Date().toISOString().split('T')[0]
-      }
+    const assignedAgent = APP_USERS.find(u => u.id === assignedAgentId) || APP_USERS[2];
+
+    const hourNum = parseInt(appointmentTime.split(':')[0], 10) || 10;
+    const timeEnd = `${String(hourNum + 1).padStart(2, '0')}:00`;
+
+    // Add event directly to Agent's Calendar
+    storageService.addAgentEvent({
+      agentId: assignedAgent.id,
+      agentName: assignedAgent.name,
+      agentBadge: assignedAgent.badge,
+      establishmentId: targetEst.id,
+      establishmentName: targetEst.name,
+      promoterName: targetEst.promoter_name,
+      phone: targetEst.phone,
+      arrondissement: targetEst.arrondissement,
+      quartier: targetEst.quartier,
+      address: targetEst.address,
+      date: appointmentDate,
+      timeStart: appointmentTime,
+      timeEnd,
+      type: 'ENCAISSEMENT_ACOMPTE',
+      status: 'A_FAIRE',
+      priority: 'HAUTE',
+      amountDue: Number(depositAmount) || targetEst.balance_due,
+      notes: `Rendez-vous convenu au Guichet Bureau DDL-PN. L'exploitant ${targetEst.promoter_name} demande le passage de l'agent ${assignedAgent.name} sur place pour recouvrement de ${Number(depositAmount).toLocaleString('fr-FR')} FCFA.`,
+      isSynced: true
     });
+
+    reloadAll();
+    triggerNotification(`Rendez-vous de recouvrement sur place programmé pour l'Agent ${assignedAgent.name} le ${appointmentDate} à ${appointmentTime} !`, 'success');
+
+    // Reset form
+    setSelectedEstId('');
+    setEstSearchInput('');
+    setIsCreatingNewEst(false);
   };
 
   const handlePrintReceipt = (record: TerrainPaymentRecord, format: 'A4' | '58MM') => {
@@ -237,485 +311,688 @@ export const TitlesAndReceiptsModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5 select-none">
-      {/* Top Banner with Action Buttons */}
-      <div className="bg-gradient-to-r from-[#022448] via-[#023b75] to-[#006d2f] text-white p-5 rounded-2xl border border-[#033468] shadow-md flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+    <div className="space-y-6 select-none">
+      {/* Guichet Bureau Main Header */}
+      <div className="bg-gradient-to-r from-[#022448] via-[#023b75] to-[#006d2f] text-white p-5 rounded-2xl shadow-md border border-[#033468] flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs bg-amber-400 text-slate-950 font-black px-2.5 py-0.5 rounded-full font-mono-ref uppercase">
-              GUICHET UNIQUE D'ACCUEIL & ENCAISSEMENT
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs bg-amber-400 text-slate-950 font-black px-2.5 py-0.5 rounded-full font-mono-ref uppercase tracking-wide">
+              GUICHET UNIQUE DE PAIEMENT & ACCUEIL
             </span>
-            <span className="text-xs text-emerald-200 font-semibold">Direction Départementale DDL-PN</span>
+            <span className="text-xs text-emerald-200 font-semibold">Direction Départementale des Loisirs (DDL-PN)</span>
           </div>
-          <h2 className="text-lg sm:text-xl font-black tracking-tight mt-1 flex items-center gap-2 font-republic">
-            <Receipt className="w-5 h-5 text-amber-300" />
-            <span>Guichet d'Encaissement au Bureau, Enregistrement & Attestations de Dépôt</span>
+          <h2 className="text-xl sm:text-2xl font-black font-republic tracking-tight">
+            Guichet de Règlement, Enregistrement & Planification Terrain
           </h2>
-          <p className="text-xs text-slate-200 mt-0.5 max-w-2xl">
-            Accueil des promoteurs convoqués par la Brigade SAA, encaissement au guichet, enregistrement direct de dossiers et délivrance immédiate des Attestations de Dépôt A4 et Tickets 58mm.
+          <p className="text-xs text-slate-200 mt-1 max-w-3xl">
+            Saisie de l'établissement (enregistré ou nouveau), encaissement immédiat au guichet avec délivrance d'Attestation de Dépôt A4 ou programmation de passage sur place avec l'agent SAA affilié.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-          {/* Button 1: Encaissement d'un convoqué au guichet */}
-          <button
-            onClick={() => {
-              if (convoquesList.length > 0) {
-                const first = convoquesList[0];
-                setDeskPaymentForm({
-                  establishmentId: first.id,
-                  promoterName: first.promoter_name,
-                  establishmentName: first.name,
-                  arrondissement: first.arrondissement,
-                  amountToPay: first.balance_due > 0 ? Math.min(50000, first.balance_due) : 30000,
-                  paymentMethod: 'Espèces (Régie)',
-                  agentNotificateur: first.assigned_agent_id || 'ADMIN-MATOKO',
-                  notes: 'Paiement au Guichet Bureau suite à convocation SAA'
-                });
-              }
-              setIsDeskPaymentModalOpen(true);
-            }}
-            className="flex-1 sm:flex-initial bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs px-3.5 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow transition cursor-pointer"
-          >
-            <Coins className="w-4 h-4 text-slate-950" />
-            <span>Encaisser un Convoqué au Guichet</span>
-          </button>
-
-          {/* Button 2: Enregistrer un nouvel établissement */}
-          <button
-            onClick={() => setIsNewEstModalOpen(true)}
-            className="flex-1 sm:flex-initial bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs px-3.5 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-slate-950" />
-            <span>Enregistrer un Établissement au Bureau</span>
-          </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="bg-white/10 border border-white/20 px-3 py-2 rounded-xl text-center">
+            <span className="text-[10px] text-slate-300 uppercase block font-bold">Total Encaissé Guichet</span>
+            <span className="font-mono-ref font-black text-amber-300 text-sm">
+              {payments.reduce((acc, p) => acc + (p.amount_paid || 0), 0).toLocaleString('fr-FR')} FCFA
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* KPI Cards Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span className="text-[10px] text-slate-400 font-bold uppercase">Total Quittances Délivrées</span>
-          <p className="font-mono-ref font-black text-xl text-[#022448] mt-1">{payments.length} Reçus</p>
-          <p className="text-slate-500 mt-0.5">Enregistrés au Grand-Livre SAF</p>
-        </div>
+      {/* =========================================================================
+          PANNEAU PRINCIPAL DE TRAITEMENT AU GUICHET (RECHERCHE / PAIEMENT / RDV)
+         ========================================================================= */}
+      <div className="bg-white rounded-2xl border-2 border-[#022448]/20 shadow-md p-5 sm:p-6 space-y-5">
+        <div className="border-b pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-base font-extrabold text-[#022448] flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-[#006d2f]" />
+              <span>1. Recherche & Identification de l'Établissement</span>
+            </h3>
+            <p className="text-xs text-slate-500">
+              Vérifiez si l'établissement est déjà répertorié ou créez son dossier en direct au guichet.
+            </p>
+          </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span className="text-[10px] text-slate-400 font-bold uppercase">Recettes Guichet & Mobile</span>
-          <p className="font-mono-ref font-black text-xl text-emerald-800 mt-1">
-            {payments.reduce((acc, p) => acc + (p.amount_paid || 0), 0).toLocaleString('fr-FR')} FCFA
-          </p>
-          <p className="text-slate-500 mt-0.5">70% Trésor / 30% Régie DDL-PN</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span className="text-[10px] text-slate-400 font-bold uppercase">Tenanciers Convoqués en Attente</span>
-          <p className="font-mono-ref font-black text-xl text-amber-700 mt-1">{convoquesList.length} Locaux</p>
-          <p className="text-slate-500 mt-0.5">Attente de passage au bureau</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span className="text-[10px] text-slate-400 font-bold uppercase">Attestations de Dépôt Actives</span>
-          <p className="font-mono-ref font-black text-xl text-blue-900 mt-1">
-            {establishments.filter(e => e.status === 'attestation_depot').length} Titres
-          </p>
-          <p className="text-slate-500 mt-0.5">Autorisation provisoire en règle</p>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-        {/* Filter Pills */}
-        <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-xl gap-1">
-          <button
-            onClick={() => setFilterType('ALL')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
-              filterType === 'ALL' ? 'bg-[#022448] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Tous les Reçus ({payments.length})
-          </button>
-          <button
-            onClick={() => setFilterType('GUICHET')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
-              filterType === 'GUICHET' ? 'bg-[#006d2f] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Espèces Guichet
-          </button>
-          <button
-            onClick={() => setFilterType('MOBILE')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
-              filterType === 'MOBILE' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Paiements Mobile Money
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            placeholder="Rechercher quittance, établissement, promoteur..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#006d2f]"
-          />
-        </div>
-      </div>
-
-      {/* Cards of Receipts and Desk Transactions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredPayments.map(record => {
-          const isCash = record.payment_method === 'Espèces (Régie)';
-          return (
-            <div
-              key={record.id}
-              className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between"
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsCreatingNewEst(false);
+                setSelectedEstId('');
+                setEstSearchInput('');
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                !isCreatingNewEst ? 'bg-[#022448] text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
             >
-              <div>
-                <div className="flex items-center justify-between border-b pb-2 mb-2">
-                  <span className="font-mono-ref font-bold text-xs text-[#022448]">
-                    {record.receipt_reference}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono-ref">
-                    {record.record_date}
-                  </span>
-                </div>
+              Établissement Déjà Enregistré ({establishments.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCreatingNewEst(true);
+                setSelectedEstId('');
+                setEstSearchInput('');
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                isCreatingNewEst ? 'bg-[#006d2f] text-white shadow-xs' : 'bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
+              }`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Nouvel Établissement (Non Enregistré)</span>
+            </button>
+          </div>
+        </div>
 
-                <h3 className="font-extrabold text-sm text-slate-900 uppercase">
-                  {record.establishment_name}
-                </h3>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  Promoteur : <span className="font-semibold">{record.promoter_name}</span>
-                </p>
-                <p className="text-[11px] text-slate-500">{record.arrondissement}</p>
-
-                <div className="bg-slate-50 p-3 rounded-xl border my-3 space-y-1.5 text-xs">
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-slate-600">Montant Encaissé :</span>
-                    <span className="font-mono-ref font-black text-emerald-800 text-sm">
-                      {record.amount_paid.toLocaleString('fr-FR')} FCFA
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-slate-500 text-[11px]">
-                    <span>Canal :</span>
-                    <span className={`px-1.5 py-0.2 rounded font-semibold ${isCash ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'}`}>
-                      {record.payment_method}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-slate-500 text-[11px]">
-                    <span>Agent / Guichetier :</span>
-                    <span className="font-medium text-slate-800">{record.collected_by}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions: Double print format */}
-              <div className="pt-2 border-t flex items-center justify-between gap-2">
-                <button
-                  onClick={() => handlePrintReceipt(record, '58MM')}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2 px-2 rounded-xl flex items-center justify-center gap-1 transition cursor-pointer"
-                >
-                  <Smartphone className="w-3.5 h-3.5" />
-                  <span>Ticket 58mm</span>
-                </button>
-
-                <button
-                  onClick={() => handlePrintReceipt(record, 'A4')}
-                  className="flex-1 bg-[#006d2f] hover:bg-[#005a26] text-white text-xs font-bold py-2 px-2 rounded-xl flex items-center justify-center gap-1 shadow transition cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Attestation A4</span>
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* MODAL 1: ENCAISSEMENT AU GUICHET (CONVOCATION) */}
-      {isDeskPaymentModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 border border-slate-300">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <div>
-                <h3 className="text-base font-black text-[#022448]">Règlement au Guichet Bureau (Convocation SAA)</h3>
-                <p className="text-xs text-slate-500">Encaissement physique et mise à jour du dossier</p>
-              </div>
-              <button onClick={() => setIsDeskPaymentModalOpen(false)} className="text-slate-400 hover:text-slate-700 font-bold">
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleDeskPaymentSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Sélectionner l'Établissement convoqué / en base *</label>
-                <select
-                  value={deskPaymentForm.establishmentId}
+        {/* --- CASE A: ÉTABLISSEMENT EXISTANT (SEARCH & AUTO-FILL) --- */}
+        {!isCreatingNewEst ? (
+          <div className="space-y-4">
+            <div className="relative">
+              <label className="font-bold text-slate-700 text-xs block mb-1">
+                Saisir le Nom de l'Établissement ou du Promoteur :
+              </label>
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="Tapez pour filtrer parmi les 117 établissements (ex: Mexx House, Baobab, Christian Bitemo...)"
+                  value={estSearchInput}
                   onChange={e => {
-                    const found = establishments.find(est => est.id === e.target.value);
-                    if (found) {
-                      setDeskPaymentForm({
-                        ...deskPaymentForm,
-                        establishmentId: found.id,
-                        establishmentName: found.name,
-                        promoterName: found.promoter_name,
-                        arrondissement: found.arrondissement,
-                        amountToPay: found.balance_due > 0 ? Math.min(50000, found.balance_due) : 30000,
-                        agentNotificateur: found.assigned_agent_id || 'ADMIN-MATOKO'
-                      });
-                    }
+                    setEstSearchInput(e.target.value);
+                    if (selectedEstId) setSelectedEstId('');
                   }}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-[#022448]"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#006d2f] focus:outline-none"
+                />
+              </div>
+
+              {/* Suggestions dropdown */}
+              {searchResults.length > 0 && !selectedEstId && (
+                <div className="absolute z-20 mt-1 w-full bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
+                  {searchResults.map(est => (
+                    <div
+                      key={est.id}
+                      onClick={() => handleSelectEst(est)}
+                      className="p-3 hover:bg-emerald-50 cursor-pointer flex items-center justify-between text-xs transition"
+                    >
+                      <div>
+                        <div className="font-extrabold text-slate-900 uppercase flex items-center gap-2">
+                          <span>{est.name}</span>
+                          <span className="text-[10px] bg-slate-100 font-mono-ref px-1.5 py-0.2 rounded font-bold text-slate-600">
+                            {est.arrondissement}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          Promoteur : <strong>{est.promoter_name}</strong> • Tél: {est.phone} • {est.activity_type}
+                        </div>
+                      </div>
+                      <div className="text-right font-mono-ref">
+                        <span className="font-bold text-[#006d2f] text-xs">Solde: {est.balance_due.toLocaleString('fr-FR')} F</span>
+                        <span className="block text-[10px] text-slate-400">Total: {est.total_due.toLocaleString('fr-FR')} F</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Selected Establishment Summary Card */}
+            {currentEst && (
+              <div className="p-4 bg-slate-50 border-2 border-[#006d2f]/30 rounded-2xl text-xs space-y-3 animate-in fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2">
+                  <div>
+                    <span className="text-[10px] font-bold text-[#006d2f] uppercase tracking-wider">Fiche Établissement Identifiée</span>
+                    <h4 className="text-base font-black text-[#022448] uppercase">{currentEst.name}</h4>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full font-mono-ref font-bold text-[10px] uppercase ${
+                    currentEst.status === 'attestation_depot' ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'
+                  }`}>
+                    Statut : {currentEst.status.replace(/_/g, ' ')}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Promoteur & Contact</span>
+                    <span className="font-bold text-slate-800">{currentEst.promoter_name}</span>
+                    <span className="block text-slate-500 font-mono-ref text-[11px]">{currentEst.phone}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Localisation & Régime</span>
+                    <span className="font-semibold text-slate-800">{currentEst.quartier}, {currentEst.arrondissement}</span>
+                    <span className="block font-bold text-blue-900 font-mono-ref text-[10px]">
+                      {currentEst.regime_type === 'FORMEL' ? 'Formel (au m²)' : 'Informel (Forfait annuel)'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Situation Financière</span>
+                    <span className="font-bold text-slate-700">Total Dû : {currentEst.total_due.toLocaleString('fr-FR')} F</span>
+                    <span className="block text-emerald-800 font-mono-ref font-black">
+                      Déjà Versé : {currentEst.amount_paid.toLocaleString('fr-FR')} F (Reste: {currentEst.balance_due.toLocaleString('fr-FR')} F)
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold block flex items-center gap-1">
+                      <UserCheck className="w-3.5 h-3.5 text-[#006d2f]" />
+                      <span>Agent SAA Lié :</span>
+                    </span>
+                    <span className="font-extrabold text-[#022448] text-xs block truncate mt-0.5">
+                      {APP_USERS.find(u => u.id === currentEst.assigned_agent_id)?.name || currentEst.identified_by || 'Loic AMBETOS (SAA-PN-315)'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* --- CASE B: NOUVEL ÉTABLISSEMENT (ENREGISTREMENT AU GUICHET) --- */
+          <div className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-4 text-xs">
+            <div className="flex items-center gap-2 text-emerald-950 font-bold border-b border-emerald-200 pb-2">
+              <Plus className="w-4 h-4 text-[#006d2f]" />
+              <span>Saisie des Informations du Nouvel Établissement :</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Nom de l'Établissement *</label>
+                <input
+                  type="text"
                   required
+                  placeholder="Ex: Le Safari VIP Lounge"
+                  value={newEst.name}
+                  onChange={e => setNewEst({ ...newEst, name: e.target.value })}
+                  className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Nom du Promoteur / Gérant *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Christian BITEMO"
+                  value={newEst.promoter_name}
+                  onChange={e => setNewEst({ ...newEst, promoter_name: e.target.value })}
+                  className="w-full p-2 bg-white border border-slate-300 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Téléphone de Contact *</label>
+                <input
+                  type="text"
+                  required
+                  value={newEst.phone}
+                  onChange={e => setNewEst({ ...newEst, phone: e.target.value })}
+                  className="w-full p-2 bg-white border border-slate-300 rounded-xl font-mono-ref"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Arrondissement *</label>
+                <select
+                  value={newEst.arrondissement}
+                  onChange={e => setNewEst({ ...newEst, arrondissement: e.target.value as any })}
+                  className="w-full p-2 bg-white border border-slate-300 rounded-xl"
                 >
-                  <option value="">-- Choisir l'établissement --</option>
-                  {establishments.map(est => (
-                    <option key={est.id} value={est.id}>
-                      {est.name} — {est.promoter_name} ({est.arrondissement}) [Reste: {est.balance_due.toLocaleString('fr-FR')} F]
+                  {TERRITORIAL_REFERENTIAL.map(arr => (
+                    <option key={arr.code} value={arr.code}>
+                      {arr.name}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Quartier *</label>
+                <input
+                  type="text"
+                  required
+                  value={newEst.quartier}
+                  onChange={e => setNewEst({ ...newEst, quartier: e.target.value })}
+                  className="w-full p-2 bg-white border border-slate-300 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Régime Fiscal *</label>
+                <select
+                  value={newEst.regime_type}
+                  onChange={e => setNewEst({ ...newEst, regime_type: e.target.value as any })}
+                  className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold text-blue-900"
+                >
+                  <option value="INFORMEL">Secteur Informel (Forfait annuel)</option>
+                  <option value="FORMEL">Secteur Formel (Tarif au m²)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Catégorie d'Activité *</label>
+                <select
+                  value={newEst.activity_code}
+                  onChange={e => setNewEst({ ...newEst, activity_code: e.target.value })}
+                  className="w-full p-2 bg-white border border-slate-300 rounded-xl"
+                >
+                  {ACTIVITY_CATEGORIES.map(cat => (
+                    <option key={cat.code} value={cat.code}>
+                      {cat.code} - {cat.label} ({cat.rate_per_sqm_fcfa} F/m²)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Superficie Déclarée (m²)</label>
+                <input
+                  type="number"
+                  min={10}
+                  value={newEst.surface_m2}
+                  onChange={e => setNewEst({ ...newEst, surface_m2: Number(e.target.value) })}
+                  className="w-full p-2 bg-white border border-slate-300 rounded-xl font-mono-ref"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Agent SAA Affilié à ce Local *</label>
+                <select
+                  value={newEst.assigned_agent_id}
+                  onChange={e => {
+                    setNewEst({ ...newEst, assigned_agent_id: e.target.value });
+                    setAssignedAgentId(e.target.value);
+                  }}
+                  className="w-full p-2 bg-white border border-slate-300 rounded-xl font-medium"
+                >
+                  {APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'ADMIN').map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.badge})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- SECTION 2: DÉCISION DU TENANCIER (PAIEMENT IMMÉDIAT VS RDV SUR PLACE) --- */}
+        <div className="border-t pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-extrabold text-[#022448] flex items-center gap-2">
+              <Coins className="w-5 h-5 text-amber-600" />
+              <span>2. Décision du Tenancier / Modalité d'Exécution</span>
+            </h3>
+            <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded font-mono-ref">
+              Choix Opérationnel
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            {/* Action Option A */}
+            <div
+              onClick={() => setDeskActionType('PAY_NOW')}
+              className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-start gap-3 ${
+                deskActionType === 'PAY_NOW'
+                  ? 'border-[#006d2f] bg-emerald-50/50 shadow-sm'
+                  : 'border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <div className={`p-2 rounded-xl shrink-0 ${deskActionType === 'PAY_NOW' ? 'bg-[#006d2f] text-white' : 'bg-slate-100 text-slate-600'}`}>
+                <Receipt className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">Option A : Paiement Immédiat au Guichet</h4>
+                <p className="text-[11px] text-slate-600 mt-0.5">
+                  Le promoteur règle son acompte ou solde directement au bureau. Délivrance instantanée de l'Attestation de Dépôt A4 ou Quittance 58mm.
+                </p>
+              </div>
+            </div>
+
+            {/* Action Option B */}
+            <div
+              onClick={() => setDeskActionType('SCHEDULE_FIELD_VISIT')}
+              className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-start gap-3 ${
+                deskActionType === 'SCHEDULE_FIELD_VISIT'
+                  ? 'border-[#022448] bg-blue-50/50 shadow-sm'
+                  : 'border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <div className={`p-2 rounded-xl shrink-0 ${deskActionType === 'SCHEDULE_FIELD_VISIT' ? 'bg-[#022448] text-white' : 'bg-slate-100 text-slate-600'}`}>
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">Option B : Recouvrement sur Place (Rendez-vous Terrain)</h4>
+                <p className="text-[11px] text-slate-600 mt-0.5">
+                  Le tenancier préfère payer lors du passage de l'agent à son local. Programmation directe dans l'agenda de l'agent SAA affilié.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* SUB-FORM FOR OPTION A: ENCAISSEMENT GUICHET */}
+          {deskActionType === 'PAY_NOW' ? (
+            <form onSubmit={handleExecutePayment} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Montant Encaissé (FCFA) *</label>
+                  <label className="font-bold text-slate-700 block mb-1">Montant de l'Acompte / Solde (FCFA) *</label>
                   <input
                     type="number"
                     required
                     min={5000}
                     step={5000}
-                    value={deskPaymentForm.amountToPay}
-                    onChange={e => setDeskPaymentForm({ ...deskPaymentForm, amountToPay: Number(e.target.value) })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono-ref font-bold text-emerald-900 text-sm"
+                    value={depositAmount}
+                    onChange={e => setDepositAmount(Number(e.target.value))}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono-ref font-black text-emerald-900 text-sm"
                   />
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Mode de Paiement *</label>
+                  <label className="font-bold text-slate-700 block mb-1">Canal de Paiement *</label>
                   <select
-                    value={deskPaymentForm.paymentMethod}
-                    onChange={e => setDeskPaymentForm({ ...deskPaymentForm, paymentMethod: e.target.value as any })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                    value={paymentMethod}
+                    onChange={e => setPaymentMethod(e.target.value as any)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold"
                   >
-                    <option value="Espèces (Régie)">Espèces (Guichet Régie)</option>
+                    <option value="Espèces (Régie)">Espèces (Guichet Régie Bureau)</option>
                     <option value="MTN Mobile Money">MTN Mobile Money</option>
                     <option value="Airtel Money">Airtel Money</option>
                     <option value="Virement Trésor Public">Virement Trésor Public</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Agent SAA Affilié (Attribution) *</label>
+                  <select
+                    value={assignedAgentId}
+                    onChange={e => setAssignedAgentId(e.target.value)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-medium"
+                  >
+                    {APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'ADMIN').map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.name} ({user.badge})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Agent SAA Notificateur (Attribution du recouvrement) *</label>
-                <select
-                  value={deskPaymentForm.agentNotificateur}
-                  onChange={e => setDeskPaymentForm({ ...deskPaymentForm, agentNotificateur: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-medium"
-                >
-                  {APP_USERS.map(user => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} ({user.badge}) — {user.role}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Observations & Réf. Quittance</label>
+                <label className="font-bold text-slate-700 block mb-1">Notes / Motif de Règlement</label>
                 <input
                   type="text"
-                  value={deskPaymentForm.notes}
-                  onChange={e => setDeskPaymentForm({ ...deskPaymentForm, notes: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                  value={cashierNotes}
+                  onChange={e => setCashierNotes(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs"
                 />
               </div>
 
-              <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-emerald-950 space-y-1 text-[11px]">
-                <p className="font-bold">✓ Répartition légale automatique :</p>
-                <p>• Trésorier Payeur Général (70%) : <strong>{Math.round(deskPaymentForm.amountToPay * 0.7).toLocaleString('fr-FR')} FCFA</strong></p>
-                <p>• Compte Régie DDL-PN (30%) : <strong>{Math.round(deskPaymentForm.amountToPay * 0.3).toLocaleString('fr-FR')} FCFA</strong></p>
-              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-200">
+                <div className="text-[11px] text-slate-600 font-mono-ref">
+                  Répartition : <strong className="text-emerald-700">{Math.round(depositAmount * 0.7).toLocaleString('fr-FR')} F Trésor (70%)</strong> • <strong className="text-blue-900">{Math.round(depositAmount * 0.3).toLocaleString('fr-FR')} F Régie (30%)</strong>
+                </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t">
-                <button
-                  type="button"
-                  onClick={() => setIsDeskPaymentModalOpen(false)}
-                  className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-100 font-semibold"
-                >
-                  Annuler
-                </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#006d2f] hover:bg-emerald-800 text-white font-bold rounded-xl shadow flex items-center gap-1.5 cursor-pointer"
+                  className="py-3 px-6 bg-[#006d2f] hover:bg-[#005a26] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition cursor-pointer hover:scale-[1.01]"
                 >
-                  <Coins className="w-4 h-4" />
-                  <span>Valider & Générer l'Attestation A4</span>
+                  <CheckCircle2 className="w-4 h-4 text-amber-300" />
+                  <span>Encaisser & Délivrer l'Attestation de Dépôt A4</span>
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 2: ENREGISTREMENT D'UN NOUVEL ETABLISSEMENT AU BUREAU */}
-      {isNewEstModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-6 border border-slate-300">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <div>
-                <h3 className="text-base font-black text-[#022448]">Enregistrement d'un Nouvel Établissement au Bureau</h3>
-                <p className="text-xs text-slate-500">Création de dossier, calcul de redevance et délivrance d'Attestation de Dépôt</p>
-              </div>
-              <button onClick={() => setIsNewEstModalOpen(false)} className="text-slate-400 hover:text-slate-700 font-bold">
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleNewEstSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Nom de l'Établissement *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: Le Safari VIP Lounge"
-                    value={newEstForm.name}
-                    onChange={e => setNewEstForm({ ...newEstForm, name: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Nom du Promoteur / Gérant *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: Christian BITEMO"
-                    value={newEstForm.promoter_name}
-                    onChange={e => setNewEstForm({ ...newEstForm, promoter_name: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
-                  />
-                </div>
+          ) : (
+            /* SUB-FORM FOR OPTION B: PRONDRE RENDEZ-VOUS SUR PLACE */
+            <form onSubmit={handleScheduleFieldVisit} className="bg-blue-50/60 p-4 rounded-2xl border border-blue-200 space-y-4 text-xs">
+              <div className="flex items-center gap-2 text-blue-950 font-bold border-b border-blue-200 pb-2">
+                <Clock className="w-4 h-4 text-[#022448]" />
+                <span>Programmation de la Tournée de Recouvrement in Situ :</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Téléphone *</label>
+                  <label className="font-bold text-slate-700 block mb-1">Date du Passage sur Place *</label>
                   <input
-                    type="text"
+                    type="date"
                     required
-                    value={newEstForm.phone}
-                    onChange={e => setNewEstForm({ ...newEstForm, phone: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono-ref"
+                    value={appointmentDate}
+                    onChange={e => setAppointmentDate(e.target.value)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono-ref font-bold"
                   />
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Arrondissement *</label>
+                  <label className="font-bold text-slate-700 block mb-1">Heure Convenue *</label>
                   <select
-                    value={newEstForm.arrondissement}
-                    onChange={e => setNewEstForm({ ...newEstForm, arrondissement: e.target.value as any })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                    value={appointmentTime}
+                    onChange={e => setAppointmentTime(e.target.value)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold"
                   >
-                    {TERRITORIAL_REFERENTIAL.map(arr => (
-                      <option key={arr.code} value={arr.code}>
-                        {arr.name}
+                    <option value="08:30">08:30 (Matinée)</option>
+                    <option value="10:00">10:00 (Matinée)</option>
+                    <option value="11:30">11:30 (Midi)</option>
+                    <option value="14:00">14:00 (Après-midi)</option>
+                    <option value="15:30">15:30 (Après-midi)</option>
+                    <option value="17:00">17:00 (Fin de journée)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Agent SAA Délégué sur Place *</label>
+                  <select
+                    value={assignedAgentId}
+                    onChange={e => setAssignedAgentId(e.target.value)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-[#022448]"
+                  >
+                    {APP_USERS.filter(u => u.role === 'AGENT_SAA').map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.name} ({user.badge})
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Quartier *</label>
+                  <label className="font-bold text-slate-700 block mb-1">Montant Acompte Convenu (FCFA) *</label>
                   <input
-                    type="text"
+                    type="number"
                     required
-                    value={newEstForm.quartier}
-                    onChange={e => setNewEstForm({ ...newEstForm, quartier: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Régime d'Exploitation *</label>
-                  <select
-                    value={newEstForm.regime_type}
-                    onChange={e => setNewEstForm({ ...newEstForm, regime_type: e.target.value as any })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-blue-900"
-                  >
-                    <option value="INFORMEL">Secteur Informel (Forfait annuel d'accompagnement)</option>
-                    <option value="FORMEL">Secteur Formel (RCCM • Tarification au m²)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Catégorie d'Activité *</label>
-                  <select
-                    value={newEstForm.activity_code}
-                    onChange={e => setNewEstForm({ ...newEstForm, activity_code: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
-                  >
-                    {ACTIVITY_CATEGORIES.map(cat => (
-                      <option key={cat.code} value={cat.code}>
-                        {cat.code} - {cat.label} ({cat.rate_per_sqm_fcfa} F/m²)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Superficie Déclarée (m²)</label>
-                  <input
-                    type="number"
-                    min={10}
-                    value={newEstForm.surface_m2}
-                    onChange={e => setNewEstForm({ ...newEstForm, surface_m2: Number(e.target.value) })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono-ref"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Versement Initial au Guichet (FCFA)</label>
-                  <input
-                    type="number"
-                    min={0}
+                    min={5000}
                     step={5000}
-                    value={newEstForm.initialDeposit}
-                    onChange={e => setNewEstForm({ ...newEstForm, initialDeposit: Number(e.target.value) })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono-ref font-bold text-emerald-900"
+                    value={depositAmount}
+                    onChange={e => setDepositAmount(Number(e.target.value))}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono-ref font-bold text-emerald-900"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t">
-                <button
-                  type="button"
-                  onClick={() => setIsNewEstModalOpen(false)}
-                  className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-100 font-semibold"
-                >
-                  Annuler
-                </button>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-blue-200">
+                <div className="text-[11px] text-blue-900">
+                  📌 L'événement apparaîtra instantanément dans le <strong>Google Agenda de l'Agent (MOD-03)</strong> avec statut « À FAIRE ».
+                </div>
+
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#006d2f] hover:bg-emerald-800 text-white font-bold rounded-xl shadow flex items-center gap-1.5 cursor-pointer"
+                  className="py-3 px-6 bg-[#022448] hover:bg-[#033468] text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition cursor-pointer hover:scale-[1.01]"
                 >
-                  <Building2 className="w-4 h-4" />
-                  <span>Enregistrer & Délivrer l'Attestation A4</span>
+                  <Calendar className="w-4 h-4 text-amber-300" />
+                  <span>Enregistrer le Rendez-vous & Assigner la Mission</span>
                 </button>
               </div>
             </form>
+          )}
+        </div>
+      </div>
+
+      {/* =========================================================================
+          JOURNAL DES OPÉRATIONS DU GUICHET (REÇUS DÉLIVRÉS & RDV PROGRAMMÉS)
+         ========================================================================= */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+        {/* Navigation Tabs */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setHistoryTab('RECEIPTS')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                historyTab === 'RECEIPTS' ? 'bg-[#006d2f] text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <Receipt className="w-4 h-4" />
+              <span>Quittances & Attestations Délivrées ({payments.length})</span>
+            </button>
+            <button
+              onClick={() => setHistoryTab('SCHEDULED_VISITS')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                historyTab === 'SCHEDULED_VISITS' ? 'bg-[#022448] text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Rendez-vous de Recouvrement Terrain ({tourneeEvents.filter(e => e.type === 'ENCAISSEMENT_ACOMPTE').length})</span>
+            </button>
+          </div>
+
+          {/* Quick Search */}
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              placeholder="Rechercher dans le journal..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#006d2f]"
+            />
           </div>
         </div>
-      )}
+
+        {/* Tab 1: Receipts Grid */}
+        {historyTab === 'RECEIPTS' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {payments
+              .filter(p =>
+                p.receipt_reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                p.establishment_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                p.promoter_name.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+              .map(record => (
+                <div
+                  key={record.id}
+                  className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs hover:shadow-md transition flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between border-b pb-2 mb-2">
+                      <span className="font-mono-ref font-bold text-xs text-[#022448]">
+                        {record.receipt_reference}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-mono-ref">
+                        {record.record_date}
+                      </span>
+                    </div>
+
+                    <h4 className="font-extrabold text-sm text-slate-900 uppercase truncate">
+                      {record.establishment_name}
+                    </h4>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Promoteur : <span className="font-semibold">{record.promoter_name}</span>
+                    </p>
+                    <p className="text-[11px] text-slate-500">{record.arrondissement}</p>
+
+                    <div className="bg-slate-50 p-3 rounded-xl border my-3 space-y-1 text-xs">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-slate-600">Encaissé :</span>
+                        <span className="font-mono-ref font-black text-emerald-800 text-sm">
+                          {record.amount_paid.toLocaleString('fr-FR')} FCFA
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 text-[11px]">
+                        <span>Mode :</span>
+                        <span>{record.payment_method}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 text-[11px]">
+                        <span>Guichetier :</span>
+                        <span className="truncate max-w-[150px]">{record.collected_by}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => handlePrintReceipt(record, '58MM')}
+                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2 px-2 rounded-xl flex items-center justify-center gap-1 transition cursor-pointer"
+                    >
+                      <Smartphone className="w-3.5 h-3.5" />
+                      <span>Ticket 58mm</span>
+                    </button>
+
+                    <button
+                      onClick={() => handlePrintReceipt(record, 'A4')}
+                      className="flex-1 bg-[#006d2f] hover:bg-[#005a26] text-white text-xs font-bold py-2 px-2 rounded-xl flex items-center justify-center gap-1 shadow transition cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Attestation A4</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* Tab 2: Scheduled Field Recovery Visits */}
+        {historyTab === 'SCHEDULED_VISITS' && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left border border-slate-200 rounded-xl overflow-hidden">
+              <thead className="bg-[#022448] text-white text-[11px] font-bold">
+                <tr>
+                  <th className="p-3">Date & Heure</th>
+                  <th className="p-3">Établissement & Promoteur</th>
+                  <th className="p-3">Localisation</th>
+                  <th className="p-3">Agent SAA Assigné</th>
+                  <th className="p-3 text-right">Montant Convenu</th>
+                  <th className="p-3 text-center">Statut Mission</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {tourneeEvents
+                  .filter(e => e.type === 'ENCAISSEMENT_ACOMPTE')
+                  .map(evt => (
+                    <tr key={evt.id} className="hover:bg-slate-50 transition">
+                      <td className="p-3 font-mono-ref font-bold text-slate-800">
+                        {evt.date} à {evt.timeStart}
+                      </td>
+                      <td className="p-3">
+                        <span className="font-bold text-slate-900 uppercase block">{evt.establishmentName}</span>
+                        <span className="text-[11px] text-slate-500">{evt.promoterName} ({evt.phone})</span>
+                      </td>
+                      <td className="p-3 text-slate-600">
+                        {evt.quartier}, {evt.arrondissement}
+                      </td>
+                      <td className="p-3">
+                        <span className="font-bold text-[#022448] flex items-center gap-1.5">
+                          <UserCheck className="w-3.5 h-3.5 text-[#006d2f]" />
+                          <span>{evt.agentName}</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono-ref">{evt.agentBadge}</span>
+                      </td>
+                      <td className="p-3 text-right font-mono-ref font-bold text-emerald-800">
+                        {(evt.amountDue || 0).toLocaleString('fr-FR')} FCFA
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className={`px-2 py-0.5 rounded-full font-mono-ref font-bold text-[10px] ${
+                          evt.status === 'EFFECTUE' ? 'bg-emerald-100 text-emerald-900' : 'bg-blue-100 text-blue-900'
+                        }`}>
+                          {evt.status === 'EFFECTUE' ? '✓ Recouvert in situ' : '⏳ Tournée Programmée'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Global Print Modal */}
       <PrintModal
