@@ -74,50 +74,92 @@ Que souhaitez-vous rédiger ou analyser aujourd'hui ?`,
       const lower = textToSend.toLowerCase();
 
       if (lower.includes('rapport') || lower.includes('trimestre') || lower.includes('t3') || lower.includes('t2')) {
-        const rep = AiReportService.generateExhaustiveQuarterlyReport('2026', 'T3');
-        aiResponseText = `### 📄 PROPOSITION DE RAPPORT D'ACTIVITÉS DU 3ÈME TRIMESTRE (T3 2026)
-**Direction Départementale des Loisirs de Pointe-Noire**
-*Réf : ${rep.referenceNumber} • Période : ${rep.periodLabel}*
-*Destinataire : Monsieur Jean Richard NTSEKE NGOUAKA, Directeur Départemental*
+        const isT2 = lower.includes('t2') || lower.includes('deuxième');
+        const rep = isT2 ? AiReportService.getT2ExactReport('2026') : AiReportService.getT3ExactReport('2026');
+        const trimName = isT2 ? 'DEUXIÈME TRIMESTRE' : 'TROISIÈME TRIMESTRE';
+        aiResponseText = `### 📄 RÉPUBLIQUE DU CONGO — DDL-PN
+**RAPPORT D'ACTIVITÉS DU ${trimName} ${rep.year}**
+*${rep.sousTitreRapport} • ${rep.periodeMois}*
+*N° document : ${rep.referenceNumber}*
+*Signataire : ${rep.conclusion.signataire}, ${rep.conclusion.titreSignataire}*
 
 ---
 
-#### 1. INTRODUCTION & CONTEXTE INSTITUTIONNEL
-${rep.introduction}
+#### 1. INTRODUCTION
+${rep.introduction.join('\n\n')}
 
-#### 2. CADRE LÉGAL & RÉGLEMENTAIRE OPPOSABLE
-${rep.cadreJuridique}
+---
 
-#### 3. BILAN DÉTAILLÉ D'EXÉCUTION PAR SERVICE
-**a. Service Administratif, Financier & Matériel (SAFM) :**
-${rep.safmBilan}
+#### 2. SYNTHÈSE DU BILAN TRIMESTRIEL — TABLEAU DE BORD PTA ${rep.year}
+${rep.tableauPta.rows.map(r => `• **${r.indicateur}** | Cible: ${r.cible} | Résultat: ${r.resultat} | [${r.statutLabel || r.statut}]`).join('\n')}
 
-**b. Service Assistance et Autorisation (SAA - M. Jacques MATOKO) :**
-${rep.saaBilan}
+*${rep.tableauPta.noteLecture}*
 
-**c. Service Statistiques, Information & Documentation (SSID) :**
-${rep.ssidBilan}
+---
 
-**d. Service Promotion & Animation des Loisirs Sains (SPA) :**
-${rep.spaBilan}
+#### 3. ACTIVITÉS PROGRAMMÉES RÉALISÉES
+${rep.activitesRealisees.intro}
 
-#### 4. BILAN TERRITORIAL & GÉOMÉTRIE SPATIALE (118 ÉTABLISSEMENTS)
-${rep.bilanTerritorial}
+**a. Service Administratif, Financier et du Matériel (SAFM) :**
+${rep.activitesRealisees.safm.rows.map(r => `• N°${r.n} ${r.activite} : ${r.contenu} (Indicateur: ${r.indicateur} • Exécution: ${r.execution} • Obs: ${r.observation})`).join('\n')}
 
-#### 5. SITUATION FINANCIÈRE & RÉPARTITION 70/30
-${rep.bilanFinancier}
+**b. Service de l'Autorisation :**
+${rep.activitesRealisees.autorisation.rows.map(r => `• N°${r.n} ${r.activite} : ${r.contenu} (Indicateur: ${r.indicateur} • Exécution: ${r.execution} • Obs: ${r.observation})`).join('\n')}
 
-#### 6. POLICE ACOUSTIQUE & LIMITATION DES NUISANCES SONORES (<80 dB)
-${rep.policeAcoustique}
+**c. Service des Statistiques, de l'Information et de la Documentation (SSID) :**
+${rep.activitesRealisees.ssid.rows.map(r => `• N°${r.n} ${r.activite} : ${r.contenu} (Indicateur: ${r.indicateur} • Exécution: ${r.execution} • Obs: ${r.observation})`).join('\n')}
 
-#### 7. DIFFICULTÉS MAJEURES & CONTRAINTES LOGISTIQUES
-${rep.difficultes}
+**d. Service de la Promotion et Animation :**
+${rep.activitesRealisees.spa.rows.map(r => `• N°${r.n} ${r.activite} : ${r.contenu} (Indicateur: ${r.indicateur} • Exécution: ${r.execution} • Obs: ${r.observation})`).join('\n')}
 
-#### 8. RECOMMANDATIONS STRATÉGIQUES & PLAIDOYER MINISTÉRIEL
-${rep.recommandations}
+---
 
-#### 9. CONCLUSION & PERSPECTIVES
-${rep.conclusion}`;
+#### 4. EXPLOITATION DES RÉSULTATS DE L'ENQUÊTE STATISTIQUE — APPORTS DU ${rep.trimestre}
+${rep.enqueteStatistique.intro}
+
+*4.1. Rappel des constats structurants confirmés par la version V2 :*
+${rep.enqueteStatistique.constatsV2.map(c => `• **${c.indicateur}** : ${c.valeur} (${c.lecture})`).join('\n')}
+
+*${rep.enqueteStatistique.ficheTechnique.titre} :*
+${rep.enqueteStatistique.ficheTechnique.contenu.join('\n\n')}
+
+---
+
+#### 5. ACTIVITÉS PROGRAMMÉES NON RÉALISÉES
+${rep.activitesNonRealisees.intro}
+
+${rep.activitesNonRealisees.rows.map(r => `• N°${r.n} **${r.activite}** : ${r.contenu} | Exécution: ${r.execution} | Motif/Obs: ${r.observation}`).join('\n')}
+
+---
+
+#### 6. TRAVAUX EN COURS ET PERSPECTIVES POUR LE TRIMESTRE SUIVANT
+${rep.perspectives.items.map(p => `• **${p.code} ${p.titre}** : ${p.texte}`).join('\n')}
+
+---
+
+#### 7. ACTIVITÉS PONCTUELLES — PARTICIPATIONS INSTITUTIONNELLES
+${rep.participations.rows.map(p => `• **${p.date}** : ${p.activite} (Rôle: ${p.role} • Cadre: ${p.patronage})`).join('\n')}
+
+${rep.participations.postTable.join('\n\n')}
+
+---
+
+#### 8. DIFFICULTÉS RENCONTRÉES
+${rep.difficultes.items.map(d => `${d.numero}. **${d.titre}** : ${d.texte}`).join('\n\n')}
+
+---
+
+#### 9. SUGGESTIONS POUR LE TRIMESTRE SUIVANT
+${rep.suggestions.items.map(s => `${s.romain} **${s.titre}** : ${s.texte}`).join('\n\n')}
+
+---
+
+#### 10. CONCLUSION
+${rep.conclusion.paragraphs.join('\n\n')}
+
+${rep.conclusion.faitA} ${rep.conclusion.date}
+**${rep.conclusion.signataire}**
+*${rep.conclusion.titreSignataire}*`;
       } else if (lower.includes('mise en demeure') || lower.includes('sanction') || lower.includes('72h')) {
         aiResponseText = `### ⚖️ PROJET D'ACTE JURIDIQUE : MISE EN DEMEURE SOUS HUTAINE (72H)
 **RÉPUBLIQUE DU CONGO** • *Unité - Travail - Progrès*

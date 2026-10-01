@@ -3,6 +3,7 @@ import { X, Printer, Download, CheckCircle2, ShieldCheck, QrCode } from 'lucide-
 import { OfficialRepublicLogo, RepublicTricolorBar } from '../common/OfficialSeal';
 import { OfficialVerifiableQrCode } from '../common/OfficialVerifiableQrCode';
 import { REPUBLIQUE_CONGO } from '../../constants/referential';
+import { OfficialReportDocumentView } from '../modules/OfficialReportDocumentView';
 
 export type PrintDocumentType =
   | 'ATTESTATION_A4'
@@ -258,6 +259,11 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                 </div>
               </div>
             </div>
+          ) : documentType === 'RAPPORT_TRIMESTRIEL_A4' ? (
+            /* EXACT 9-PAGE OFFICIAL DOCUMENT VIEW */
+            <div className="w-full">
+              <OfficialReportDocumentView report={data} readOnly={true} />
+            </div>
           ) : (
             /* Official Republic A4 Acts / Attestation / Bordereau */
             <div className="print-page-a4 w-[210mm] max-w-full bg-white p-6 sm:p-8 md:p-10 print:p-2 text-slate-900 relative border border-slate-300 shadow-xl print:shadow-none print:border-none">
@@ -442,122 +448,6 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                             ))}
                           </tbody>
                         </table>
-                      </div>
-                    )}
-                  </div>
-                ) : documentType === 'RAPPORT_TRIMESTRIEL_A4' ? (
-                  /* RAPPORT TRIMESTRIEL D'ACTIVITE OFFICIEL MINISTERE */
-                  <div className="space-y-6">
-                    <div className="text-center pb-3 border-b-2 border-[#006d2f]">
-                      <h2 className="text-lg font-black uppercase tracking-wide text-[#022448] font-republic">
-                        RAPPORT D'ACTIVITÉS DU {data.trimestre || '3ème TRIMESTRE'} ({data.year || '2026'})
-                      </h2>
-                      <p className="text-xs font-semibold text-slate-600 mt-0.5">
-                        Direction Départementale des Loisirs de Pointe-Noire • Période : {data.periodLabel || data.period || 'Exercice en cours'}
-                      </p>
-                    </div>
-
-                    {/* Section 1 : Introduction & Contexte */}
-                    <div className="text-xs text-justify leading-relaxed bg-slate-50 p-3.5 rounded-lg border border-slate-200">
-                      <p className="font-bold text-[#022448] uppercase mb-1">1. Introduction & Contexte Général</p>
-                      <p className="text-slate-700 whitespace-pre-line">{data.introduction || 'Le présent rapport dresse le bilan des activités de la Direction Départementale des Loisirs de Pointe-Noire.'}</p>
-                    </div>
-
-                    {/* Section 2 : Cadre Juridique */}
-                    {data.cadreJuridique && (
-                      <div className="text-xs text-justify leading-relaxed bg-blue-50/40 p-3 rounded-lg border border-blue-200">
-                        <p className="font-bold text-[#022448] uppercase mb-1">2. Cadre Légal & Réglementaire Opposable</p>
-                        <p className="text-slate-700 whitespace-pre-line">{data.cadreJuridique}</p>
-                      </div>
-                    )}
-
-                    {/* Section 3 : Tableau des Indicateurs PTA */}
-                    {data.indicators && data.indicators.length > 0 && (
-                      <div>
-                        <p className="font-bold text-xs text-[#022448] uppercase mb-1.5">3. Synthèse d'Exécution du Plan de Travail Annuel (PTA)</p>
-                        <table className="w-full text-[11px] border border-slate-300 text-left">
-                          <thead className="bg-[#022448] text-white">
-                            <tr>
-                              <th className="p-1.5 border">Indicateur / Activité Clé</th>
-                              <th className="p-1.5 border">Cible</th>
-                              <th className="p-1.5 border">Résultat Obtenu</th>
-                              <th className="p-1.5 border text-center">Statut</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {data.indicators.map((ind: any, i: number) => (
-                              <tr key={i} className="border-b border-slate-200">
-                                <td className="p-1.5 border font-semibold">{ind.name}</td>
-                                <td className="p-1.5 border font-mono-ref">{ind.target}</td>
-                                <td className="p-1.5 border font-bold text-slate-800">{ind.result}</td>
-                                <td className="p-1.5 border text-center font-bold text-[10px]">{ind.status}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-
-                    {/* Section 4 : Activités par Service */}
-                    <div>
-                      <p className="font-bold text-xs text-[#022448] uppercase mb-1.5">4. Activités Programmées Réalisées par Service</p>
-                      <div className="grid grid-cols-2 gap-3 text-[11px]">
-                        <div className="p-2.5 bg-slate-50 rounded border">
-                          <p className="font-bold text-slate-900 uppercase text-[10px]">a. Service Administratif & Financier (SAFM)</p>
-                          <p className="text-slate-600 mt-1 whitespace-pre-line">{data.safmBilan || 'Continuité administrative et comptabilité de régie assurées.'}</p>
-                        </div>
-                        <div className="p-2.5 bg-emerald-50/50 rounded border border-emerald-200">
-                          <p className="font-bold text-emerald-950 uppercase text-[10px]">b. Service Assistance & Autorisation (SAA — Jacques MATOKO)</p>
-                          <p className="text-slate-600 mt-1 whitespace-pre-line">{data.saaBilan || 'Recensement, contrôle in situ et régularisation des établissements de loisirs.'}</p>
-                        </div>
-                        <div className="p-2.5 bg-blue-50/50 rounded border border-blue-200">
-                          <p className="font-bold text-blue-950 uppercase text-[10px]">c. Statistiques & Information (SSID)</p>
-                          <p className="text-slate-600 mt-1 whitespace-pre-line">{data.ssidBilan || 'Consolidation de la base de données et cartographie des opérateurs.'}</p>
-                        </div>
-                        <div className="p-2.5 bg-amber-50/50 rounded border border-amber-200">
-                          <p className="font-bold text-amber-950 uppercase text-[10px]">d. Promotion & Animation (SPA)</p>
-                          <p className="text-slate-600 mt-1 whitespace-pre-line">{data.spaBilan || 'Animation des loisirs sains et partenariats stratégiques.'}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Section 5 : Bilan Financier & Territorial */}
-                    {data.bilanTerritorial && (
-                      <div className="text-xs text-justify leading-relaxed bg-emerald-50/30 p-3 rounded-lg border border-emerald-200">
-                        <p className="font-bold text-emerald-950 uppercase mb-1">5. Bilan Territorial & Ventilation des Recettes (70% Trésor / 30% Régie)</p>
-                        <p className="text-slate-700 whitespace-pre-line">{data.bilanTerritorial}</p>
-                      </div>
-                    )}
-
-                    {/* Section 6 : Police Acoustique & Partenariats */}
-                    <div className="grid grid-cols-2 gap-3 text-[11px]">
-                      <div className="p-2.5 bg-slate-50 rounded border">
-                        <p className="font-bold text-slate-900 uppercase text-[10px]">6. Police Acoustique & Contrôles Sonométriques</p>
-                        <p className="text-slate-600 mt-1 whitespace-pre-line">{data.policeAcoustique || 'Contrôles in situ réalisés au sonomètre sous 80 dB.'}</p>
-                      </div>
-                      <div className="p-2.5 bg-slate-50 rounded border">
-                        <p className="font-bold text-slate-900 uppercase text-[10px]">7. Partenariats (Globaline, IFPN, Wing Wah)</p>
-                        <p className="text-slate-600 mt-1 whitespace-pre-line">{data.partenariats || 'Conventions de partenariat en cours de signature.'}</p>
-                      </div>
-                    </div>
-
-                    {/* Section 7 : Difficultés & Recommandations */}
-                    <div className="grid grid-cols-2 gap-3 text-[11px]">
-                      <div className="p-2.5 bg-slate-50 rounded border">
-                        <p className="font-bold text-slate-900 uppercase text-[10px]">8. Difficultés & Contraintes</p>
-                        <p className="text-slate-600 mt-1 whitespace-pre-line">{data.difficultes || 'Insuffisance de moyens de transport et contraintes budgétaires.'}</p>
-                      </div>
-                      <div className="p-2.5 bg-slate-50 rounded border">
-                        <p className="font-bold text-slate-900 uppercase text-[10px]">9. Suggestions à Monsieur le Directeur</p>
-                        <p className="text-slate-600 mt-1 whitespace-pre-line">{data.recommandations || 'Arbitrage budgétaire minimal et acquisition de moyens roulants.'}</p>
-                      </div>
-                    </div>
-
-                    {/* Section 8 : Conclusion */}
-                    {data.conclusion && (
-                      <div className="text-xs text-justify leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-200">
-                        <p className="font-bold text-[#022448] uppercase mb-1">10. Conclusion & Perspectives</p>
-                        <p className="text-slate-700 whitespace-pre-line">{data.conclusion}</p>
                       </div>
                     )}
                   </div>

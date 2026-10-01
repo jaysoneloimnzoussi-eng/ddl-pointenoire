@@ -86,16 +86,18 @@
     width: 100% !important;
     max-width: 210mm !important;
     min-height: auto !important;
-    padding: 6mm 10mm !important;
+    padding: 8mm 12mm !important;
     margin: 0 auto !important;
     background: white !important;
     box-shadow: none !important;
     border: none !important;
-    page-break-after: avoid !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
     display: block !important;
     box-sizing: border-box !important;
+  }
+
+  .page-break-after-always {
+    page-break-after: always !important;
+    break-after: page !important;
   }
 
   .print-ticket-58mm {
