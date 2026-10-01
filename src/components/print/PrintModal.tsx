@@ -260,7 +260,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
             </div>
           ) : (
             /* Official Republic A4 Acts / Attestation / Bordereau */
-            <div className="print-page-a4 w-[210mm] min-h-[297mm] bg-white p-12 text-slate-900 relative border border-slate-300 shadow-xl print:shadow-none print:border-none">
+            <div className="print-page-a4 w-[210mm] max-w-full bg-white p-6 sm:p-8 md:p-10 print:p-2 text-slate-900 relative border border-slate-300 shadow-xl print:shadow-none print:border-none">
               {/* Header Republic Banner */}
               <div className="flex items-start justify-between pb-6 border-b-2 border-[#022448]">
                 {/* Left: Ministry Hierarchy */}
@@ -563,78 +563,50 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                   </div>
                 ) : (
                   /* ATTESTATION DE DEPOT OFFICIELLE DDL-PN */
-                  <div className="space-y-6 my-4">
-                    <div className="text-center my-4">
+                  <div className="space-y-6 my-6">
+                    <div className="text-center my-6">
                       <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-widest text-[#022448] font-republic underline decoration-[#006d2f] underline-offset-8">
-                        ATTESTATION DE DÉPÔT DE DOSSIER
+                        ATTESTATION DE DÉPÔT
                       </h1>
-                      <p className="text-xs font-serif italic text-slate-600 mt-2 font-semibold">
-                        Titre Provisoire d'Autorisation d'Exploitation (En cours d'instruction administrative)
-                      </p>
                     </div>
 
-                    {/* Legal Visas */}
-                    <div className="text-[11px] space-y-1 text-slate-600 bg-slate-50/80 p-3 rounded-lg border border-slate-200 italic font-serif">
-                      <p className="font-bold not-italic text-slate-800 uppercase text-[10px]">Visas Légaux & Réglementaires :</p>
-                      <p>• Vu la Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs en République du Congo ;</p>
-                      <p>• Vu le Décret N° 2021-412 du 28 octobre 2021 portant organisation de la Direction Générale des Loisirs ;</p>
-                      <p>• Vu les directives départementales relatives à la salubrité, à l'hygiène publique et à la tranquillité nocturne.</p>
-                    </div>
-
-                    <div className="text-sm sm:text-base text-justify leading-relaxed space-y-4 font-serif text-slate-900 px-1 sm:px-2">
-                      <p className="indent-8">
-                        Le Directeur Départemental des Loisirs de Pointe-Noire soussigné, atteste par la présente que :
+                    <div className="text-sm sm:text-base text-justify leading-loose space-y-6 font-serif text-slate-900 px-2 sm:px-4">
+                      <p className="indent-8 leading-relaxed">
+                        Par la présente, je soussigné, Directeur Départemental des Loisirs de Pointe-Noire, atteste que{' '}
+                        <strong className="font-bold text-[#022448]">
+                          {data.promoter_title || 'Monsieur/Madame'} {data.promoter_name || 'l’Exploitant'}
+                        </strong>,{' '}
+                        a déposé un dossier en cours d’étude pour solliciter une autorisation d’exploitation d’un{' '}
+                        <strong className="font-bold">
+                          {data.activity_type || data.activity_code || 'établissement de loisirs'}
+                        </strong>,{' '}
+                        dénommé{' '}
+                        <strong className="font-extrabold uppercase text-[#022448] tracking-wide">
+                          « {data.establishment_name || data.name} »
+                        </strong>, ayant pour adresse{' '}
+                        <span className="italic font-medium">
+                          {data.address || data.quartier || 'Pointe-Noire'}
+                        </span>,{' '}
+                        <span className="font-semibold">{data.arrondissement}</span>.
                       </p>
 
-                      <div className="bg-slate-50 border-2 border-[#022448]/20 p-4 rounded-xl text-sm leading-snug space-y-1.5 my-2">
-                        <p><span className="font-bold text-slate-700">Promoteur / Exploitant :</span> <strong className="font-bold text-[#022448] uppercase">{data.promoter_name || 'L’Exploitant'}</strong></p>
-                        <p><span className="font-bold text-slate-700">Nom de l'Établissement :</span> <strong className="font-extrabold uppercase text-[#006d2f] text-base">« {data.establishment_name || data.name} »</strong></p>
-                        <p><span className="font-bold text-slate-700">Activité exercée :</span> <span className="font-semibold">{data.activity_type || data.activity_code || 'Établissement de loisirs'}</span></p>
-                        <p><span className="font-bold text-slate-700">Localisation :</span> {data.address || data.quartier || 'Pointe-Noire'}, {data.arrondissement}</p>
-                        <p><span className="font-bold text-slate-700">Régime Fiscal :</span> <span className="font-mono-ref font-bold text-blue-900">{data.regime_type === 'FORMEL' ? 'Secteur Formel (RCCM • Tarif au m²)' : 'Secteur Informel (Forfait d’accompagnement annuel)'}</span></p>
-                        {data.surface_m2 && data.surface_m2 > 0 && (
-                          <p><span className="font-bold text-slate-700">Superficie déclarée :</span> <span className="font-mono-ref">{data.surface_m2} m²</span></p>
-                        )}
-                      </div>
-
-                      <p className="indent-8 text-justify">
-                        A régulièrement déposé aux services de la Direction Départementale des Loisirs une demande d'agrément d'ouverture et d'exploitation actuellement en cours d'instruction et de complément de pièces administratives.
+                      <p className="indent-8 leading-relaxed">
+                        La présente attestation lui est délivrée pour lui permettre d'exercer ses activités à titre conservatoire pendant la constitution progressive de son dossier administratif, en vue de sa transmission pour l'obtention de l'autorisation d'exploitation.
                       </p>
 
-                      <p className="indent-8 text-justify">
-                        Afin de ne pas pénaliser la continuité de l'activité économique, la présente <strong>Attestation de Dépôt</strong> confère à l'exploitant le droit d'exercer ses activités à titre conservatoire et temporaire, sous réserve du strict respect des règles d'hygiène, de salubrité publique, de sécurité incendie et des normes acoustiques en vigueur (&lt;85 dB).
+                      <p className="indent-8 font-semibold text-slate-800 pt-2">
+                        En foi de quoi, la présente attestation lui est établie pour servir et valoir ce que de droit. /-
                       </p>
-
-                      <div className="bg-amber-50/70 border-l-4 border-amber-600 p-3 text-xs text-amber-950 font-serif leading-snug">
-                        <strong>Condition suspensive de transmission centrale :</strong> Conformément à la réglementation, le dossier complet ne sera transmis à la Direction Générale des Loisirs (DGL) à Brazzaville pour délivrance de l'Agrément Définitif qu'après apurement intégral de la redevance exigible et constat favorable de l'enquête de conformité de terrain.
-                      </div>
-
-                      <p className="indent-8 font-semibold text-slate-800 pt-1">
-                        En foi de quoi, la présente attestation lui est délivrée pour servir et valoir ce que de droit. /-
-                      </p>
-                    </div>
-
-                    {/* Administrative & Financial References Strip */}
-                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1 font-mono-ref">
-                      <div className="flex justify-between text-slate-700">
-                        <span>Réf. Enregistrement Guichet :</span>
-                        <strong className="text-[#022448]">{data.receipt_reference || data.id || 'REC-DDL-PN-2026'}</strong>
-                      </div>
-                      <div className="flex justify-between text-emerald-800 font-bold border-t border-slate-200 pt-1">
-                        <span>Montant Reversé au Trésor & Régie :</span>
-                        <span>{(data.amount_paid || data.amount || 0).toLocaleString('fr-FR')} FCFA</span>
-                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Clean Official Signature Block (No bottom QR code or emblem) */}
-                <div className="mt-12 pt-6 border-t-2 border-slate-300 flex items-start justify-between text-xs">
-                  {/* Left: Ampliations & Mentions */}
-                  <div className="text-left text-[10px] text-slate-500 font-serif space-y-1 max-w-[200px]">
-                    <p className="font-bold text-slate-700 uppercase">Ampliations :</p>
+                {/* Clean Official Signature Block (Single-Page Fit) */}
+                <div className="mt-12 pt-6 border-t border-slate-300 flex items-start justify-between text-xs">
+                  {/* Left: Ampliations Départementales (Sans Direction Générale) */}
+                  <div className="text-left text-[10px] text-slate-600 font-serif space-y-1 max-w-[220px]">
+                    <p className="font-bold text-slate-800 uppercase">Ampliations :</p>
                     <p>• Cabinet Ministère (MCAPNIT) / Brazzaville</p>
-                    <p>• Direction Générale des Loisirs (DGL)</p>
                     <p>• Brigade SAA / Contrôle Qualité</p>
                     <p>• Archives DDL-PN / Chrono</p>
                   </div>
