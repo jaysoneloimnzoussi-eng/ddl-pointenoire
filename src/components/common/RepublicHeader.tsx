@@ -234,80 +234,31 @@ export const RepublicHeader: React.FC = () => {
             </button>
           )}
 
-          {/* Official Role Switcher Dropdown */}
-          <div className="relative">
+          {/* Official User Profile Badge & Direct Logout */}
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-[#022448]/5 border border-[#022448]/20 pl-2 pr-1.5 py-1 rounded-xl">
+            <div className="w-7 h-7 rounded-full bg-[#022448] text-amber-300 font-bold text-xs flex items-center justify-center border border-amber-400/40 shrink-0">
+              {currentUser.name.charAt(0)}
+            </div>
+            <div className="hidden sm:block text-left leading-tight pr-1">
+              <div className="text-xs font-bold text-[#022448] flex items-center gap-1">
+                <span className="truncate max-w-[110px]">{currentUser.name.split(' ')[0]} {currentUser.name.split(' ')[1] || ''}</span>
+                <span className="text-[9px] bg-amber-100 text-amber-900 font-mono-ref px-1 rounded font-bold shrink-0">
+                  {currentUser.badge}
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-500 font-medium truncate max-w-[120px]">
+                {currentUser.role}
+              </div>
+            </div>
+
             <button
-              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              className="flex items-center gap-2 bg-[#022448]/5 hover:bg-[#022448]/10 border border-[#022448]/20 px-2.5 py-1.5 rounded text-left transition"
+              onClick={() => logout()}
+              className="p-1.5 hover:bg-red-100 rounded-lg text-slate-500 hover:text-red-700 transition flex items-center gap-1 text-xs font-bold cursor-pointer"
+              title="Déconnexion sécurisée"
             >
-              <div className="w-7 h-7 rounded-full bg-[#022448] text-amber-300 font-bold text-xs flex items-center justify-center border border-amber-400/40">
-                {currentUser.name.charAt(0)}
-              </div>
-              <div className="hidden sm:block text-left leading-tight">
-                <div className="text-xs font-bold text-[#022448] flex items-center gap-1">
-                  <span>{currentUser.name.split(' ')[0]} {currentUser.name.split(' ')[1] || ''}</span>
-                  <span className="text-[9px] bg-amber-100 text-amber-900 font-mono-ref px-1 rounded">
-                    {currentUser.badge}
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-500 font-medium truncate max-w-[120px]">
-                  {currentUser.role}
-                </div>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+              <LogOut className="w-4 h-4 text-red-600" />
+              <span className="hidden md:inline text-red-700 text-[11px]">Déconnexion</span>
             </button>
-
-            {userDropdownOpen && (
-              <div className="absolute right-0 mt-1 w-[calc(100vw-1rem)] max-w-[18rem] sm:w-72 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-50">
-                <div className="px-3 py-1.5 border-b border-slate-100 bg-slate-50">
-                  <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                    Changer d'utilisateur assermenté
-                  </p>
-                </div>
-                <div className="max-h-72 overflow-y-auto">
-                  {APP_USERS.map(user => {
-                    const isSelected = user.id === currentUser.id;
-                    return (
-                      <button
-                        key={user.id}
-                        onClick={() => {
-                          switchUserById(user.id);
-                          setUserDropdownOpen(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 flex items-start gap-2.5 transition ${
-                          isSelected ? 'bg-emerald-50 text-[#006d2f] font-semibold' : 'hover:bg-slate-50 text-slate-700'
-                        }`}
-                      >
-                        <UserCheck className={`w-4 h-4 mt-0.5 ${isSelected ? 'text-[#006d2f]' : 'text-slate-400'}`} />
-                        <div className="text-xs leading-snug">
-                          <div className="font-bold flex items-center gap-1.5">
-                            <span>{user.name}</span>
-                            <span className="text-[9px] font-mono-ref bg-slate-100 text-slate-600 px-1 rounded">
-                              {user.badge}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-slate-500">{user.title}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Déconnexion Option */}
-                <div className="p-1.5 border-t border-slate-100 bg-slate-50/70">
-                  <button
-                    onClick={() => {
-                      setUserDropdownOpen(false);
-                      logout();
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-md transition flex items-center gap-2"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Déconnexion de la session</span>
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

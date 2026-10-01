@@ -31,7 +31,14 @@ import {
   Wallet,
   ShieldCheck,
   Award,
-  RefreshCw
+  RefreshCw,
+  Scale,
+  UserCheck,
+  Percent,
+  Compass,
+  FileCheck2,
+  Receipt,
+  ArrowRight
 } from 'lucide-react';
 import { storageService } from '../../services/storageService';
 import { useSession } from '../../context/SessionContext';
@@ -123,6 +130,66 @@ export const DashboardModule: React.FC = () => {
     };
   }, [filteredEsts]);
 
+  // Gender Distribution of Promoters
+  const genderStats = useMemo(() => {
+    const femaleNames = ['mme', 'madame', 'solange', 'sylvie', 'yvette', 'nadine', 'chimene', 'chimène', 'honorine', 'jeanne', 'patricia', 'marie', 'clarisse', 'brigitte', 'grâce', 'grace', 'chantal', 'esther', 'arlette', 'alphonsine', 'bernice', 'charlotte'];
+    let femaleCount = 0;
+    let maleCount = 0;
+
+    filteredEsts.forEach(e => {
+      const p = (e.promoter_name || '').toLowerCase();
+      const isFemale = femaleNames.some(fn => p.includes(fn));
+      if (isFemale) {
+        femaleCount++;
+      } else {
+        maleCount++;
+      }
+    });
+
+    const total = filteredEsts.length || 1;
+    const femalePct = Math.round((femaleCount / total) * 100);
+    const malePct = 100 - femalePct;
+
+    return {
+      femaleCount,
+      maleCount,
+      femalePct,
+      malePct
+    };
+  }, [filteredEsts]);
+
+  // Status breakdown (Dossier workflow distribution)
+  const statusDistribution = useMemo(() => {
+    const counts = {
+      attestation_depot: 0,
+      en_instruction: 0,
+      transmis_brazzaville: 0,
+      autorise_dgl: 0,
+      convoque: 0,
+      mise_en_demeure: 0
+    };
+
+    filteredEsts.forEach(e => {
+      if (e.status === 'attestation_depot') counts.attestation_depot++;
+      else if (e.status === 'en_instruction') counts.en_instruction++;
+      else if (e.status === 'transmis_brazzaville') counts.transmis_brazzaville++;
+      else if (e.status === 'autorise_dgl') counts.autorise_dgl++;
+      else if (e.status === 'convoque') counts.convoque++;
+      else if (e.status === 'mise_en_demeure' || e.status === 'fermeture_administrative') counts.mise_en_demeure++;
+      else counts.en_instruction++;
+    });
+
+    const total = filteredEsts.length || 1;
+    return [
+      { label: 'Attestation de Dépôt délivrée', count: counts.attestation_depot, pct: Math.round((counts.attestation_depot / total) * 100), color: '#006d2f' },
+      { label: 'En instruction de dossier', count: counts.en_instruction, pct: Math.round((counts.en_instruction / total) * 100), color: '#0284c7' },
+      { label: 'Transmis DGL Brazzaville', count: counts.transmis_brazzaville, pct: Math.round((counts.transmis_brazzaville / total) * 100), color: '#6366f1' },
+      { label: 'Agréments définitifs DGL', count: counts.autorise_dgl, pct: Math.round((counts.autorise_dgl / total) * 100), color: '#850404' },
+      { label: 'Convoqués au Guichet Bureau', count: counts.convoque, pct: Math.round((counts.convoque / total) * 100), color: '#d97706' },
+      { label: 'Mises en demeure (72h)', count: counts.mise_en_demeure, pct: Math.round((counts.mise_en_demeure / total) * 100), color: '#dc2626' }
+    ];
+  }, [filteredEsts]);
+
   // Real Arrondissement breakdown directly from database
   const arrondissementStats = useMemo(() => {
     const estList = establishments || [];
@@ -133,7 +200,6 @@ export const DashboardModule: React.FC = () => {
       const count = arrEsts.length;
       const due = arrEsts.reduce((sum, e) => sum + (e.total_due || 0), 0);
       
-      // Calculate paid both from establishments and payment records
       const paidFromEsts = arrEsts.reduce((sum, e) => sum + (e.amount_paid || 0), 0);
       const paidFromPayments = payList
         .filter(p => p && p.arrondissement === arr.code)
@@ -167,7 +233,7 @@ export const DashboardModule: React.FC = () => {
       map.set(c.code, { label: c.label, count: 0, paid: 0, due: 0 });
     });
 
-    (establishments || []).forEach(e => {
+    (filteredEsts || []).forEach(e => {
       if (!e) return;
       const code = e.activity_code || 'A2.1';
       const defaultLabel = ACTIVITY_CATEGORIES.find(c => c.code === code)?.label || e.activity_type || 'Activité Loisirs';
@@ -178,6 +244,7 @@ export const DashboardModule: React.FC = () => {
       map.set(code, entry);
     });
 
+    const totalEsts = filteredEsts.length || 1;
     return Array.from(map.entries())
       .map(([code, val]) => ({
         code,
@@ -185,20 +252,21 @@ export const DashboardModule: React.FC = () => {
         count: val.count,
         paid: val.paid,
         due: val.due,
-        percent: val.due > 0 ? Math.round((val.paid / val.due) * 100) : 0
+        pct: Math.round((val.count / totalEsts) * 100),
+        rate: val.due > 0 ? Math.round((val.paid / val.due) * 100) : 0
       }))
-      .filter(item => item.count > 0 || ['A1.1', 'A1.2', 'A1.3', 'A2.1', 'A2.2', 'A3.1', 'A3.2', 'A4.1'].includes(item.code))
+      .filter(item => item.count > 0 || ['A1.1', 'A1.2', 'A1.3', 'A2.1', 'A2.2', 'A3.1'].includes(item.code))
       .sort((a, b) => b.count - a.count);
-  }, [establishments]);
+  }, [filteredEsts]);
 
-  // Monthly Payment progression calculated directly from payments database records
+  // Monthly Payment progression
   const monthlyTimeline = useMemo(() => {
     const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc'];
     const map = new Map<string, { total: number; count: number; label: string }>();
 
     (payments || []).forEach(p => {
       if (!p || !p.record_date) return;
-      const monthKey = p.record_date.slice(0, 7); // e.g. "2026-09"
+      const monthKey = p.record_date.slice(0, 7);
       const parts = monthKey.split('-');
       const monthIndex = parts.length > 1 ? parseInt(parts[1], 10) - 1 : 0;
       const label = `${monthNames[monthIndex] || 'Mois'} ${parts[0] || '2026'}`;
@@ -211,7 +279,6 @@ export const DashboardModule: React.FC = () => {
 
     const entries = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
     
-    // If few months, ensure current active months are present
     if (entries.length === 0) {
       return [
         { key: '2026-09', month: 'Sept 2026', total: filteredMetrics.totalPaid, count: payments.length, color: '#006d2f' }
@@ -227,20 +294,20 @@ export const DashboardModule: React.FC = () => {
     }));
   }, [payments, filteredMetrics.totalPaid]);
 
-  // Payment Methods Breakdown (100% computed from real payments)
+  // Payment Methods Breakdown (Computed from real payments)
   const paymentMethodStats = useMemo(() => {
-    const methodsMap: Record<string, { count: number; total: number; color: string; icon: string }> = {
-      'Espèces (Régie)': { count: 0, total: 0, color: 'bg-emerald-500', icon: 'cash' },
-      'MTN Mobile Money': { count: 0, total: 0, color: 'bg-amber-400', icon: 'mtn' },
-      'Airtel Money': { count: 0, total: 0, color: 'bg-red-500', icon: 'airtel' },
-      'Virement Trésor Public': { count: 0, total: 0, color: 'bg-blue-600', icon: 'bank' }
+    const methodsMap: Record<string, { count: number; total: number; color: string; label: string }> = {
+      'Espèces (Régie)': { count: 0, total: 0, color: '#006d2f', label: 'Espèces (Guichet Bureau)' },
+      'MTN Mobile Money': { count: 0, total: 0, color: '#d97706', label: 'MTN Mobile Money' },
+      'Airtel Money': { count: 0, total: 0, color: '#dc2626', label: 'Airtel Money' },
+      'Virement Trésor Public': { count: 0, total: 0, color: '#0284c7', label: 'Virement Trésor' }
     };
 
     (payments || []).forEach(p => {
       if (!p) return;
       const method = p.payment_method || 'Espèces (Régie)';
       if (!methodsMap[method]) {
-        methodsMap[method] = { count: 0, total: 0, color: 'bg-slate-500', icon: 'other' };
+        methodsMap[method] = { count: 0, total: 0, color: '#64748b', label: method };
       }
       methodsMap[method].count += 1;
       methodsMap[method].total += p.amount_paid || 0;
@@ -248,97 +315,32 @@ export const DashboardModule: React.FC = () => {
 
     const grandTotal = Object.values(methodsMap).reduce((sum, m) => sum + m.total, 0) || 1;
 
-    return Object.entries(methodsMap).map(([name, data]) => ({
-      name,
-      count: data.count,
-      total: data.total,
-      color: data.color,
-      percent: Math.round((data.total / grandTotal) * 100)
+    return Object.entries(methodsMap).map(([key, val]) => ({
+      method: val.label,
+      rawKey: key,
+      count: val.count,
+      total: val.total,
+      pct: Math.round((val.total / grandTotal) * 100),
+      color: val.color
     })).sort((a, b) => b.total - a.total);
   }, [payments]);
 
-  // Status Funnel Breakdown (100% computed from real establishments)
-  const statusFunnel = useMemo(() => {
-    const statuses = [
-      { key: 'identifie', label: '1. Recensés in situ', color: 'bg-slate-400', textColor: 'text-slate-700' },
-      { key: 'convoque', label: '2. Convoqués SAA', color: 'bg-amber-500', textColor: 'text-amber-700' },
-      { key: 'en_instruction', label: '3. Acomptes & Instruction', color: 'bg-blue-500', textColor: 'text-blue-700' },
-      { key: 'attestation_depot', label: '4. Attestation Délivrée', color: 'bg-indigo-500', textColor: 'text-indigo-700' },
-      { key: 'transmis_brazzaville', label: '5. Transmis DGL Brazza', color: 'bg-purple-600', textColor: 'text-purple-700' },
-      { key: 'autorise_dgl', label: '6. Agréés DGL Définitifs', color: 'bg-emerald-600', textColor: 'text-emerald-700' },
-      { key: 'mise_en_demeure', label: '7. Infractions / Mises en Demeure', color: 'bg-red-600', textColor: 'text-red-700' }
-    ];
+  // Police administrative & legal acts
+  const legalActsSummary = useMemo(() => {
+    const allActs = acts || [];
+    const misesEnDemeure = allActs.filter(a => a.type === 'MISE_EN_DEMEURE').length;
+    const convocations = allActs.filter(a => a.type === 'CONVOCATION').length;
+    const fermetures = allActs.filter(a => a.type === 'ARRETE_FERMETURE').length;
+    const missions = allActs.filter(a => a.type === 'ORDRE_MISSION').length;
 
-    const estList = establishments || [];
-    const totalCount = estList.length || 1;
-
-    return statuses.map(s => {
-      const count = estList.filter(e => {
-        if (!e) return false;
-        if (s.key === 'mise_en_demeure') {
-          return e.status === 'mise_en_demeure' || e.status === 'fermeture_administrative';
-        }
-        return e.status === s.key;
-      }).length;
-      const pct = (count / totalCount) * 100;
-      return { ...s, count, pct: Number(pct.toFixed(1)) };
-    });
-  }, [establishments]);
-
-  // Agent Performance Roster calculated directly from real database records
-  const agentPerformance = useMemo(() => {
-    const fieldUsers = (APP_USERS || []).filter(u => u && (u.role === 'AGENT_SAA' || u.role === 'CHEF_SAA' || u.role === 'ADMIN'));
-    const estList = establishments || [];
-    const payList = payments || [];
-    const actList = acts || [];
-
-    return fieldUsers.map(ag => {
-      // Real establishments assigned or identified by this agent
-      const agEsts = estList.filter(e => {
-        if (!e) return false;
-        const firstName = (ag.name || '').split(' ')[0].toLowerCase();
-        const byName = e.identified_by ? e.identified_by.toLowerCase().includes(firstName) : false;
-        const byBadge = e.identified_by ? e.identified_by.includes(ag.badge) : false;
-        const byId = e.assigned_agent_id === ag.id;
-        return byName || byBadge || byId;
-      });
-
-      // Real payments collected by this agent
-      const agPayments = payList.filter(p => {
-        if (!p) return false;
-        const firstName = (ag.name || '').split(' ')[0].toLowerCase();
-        const byName = p.collected_by ? p.collected_by.toLowerCase().includes(firstName) : false;
-        const byBadge = p.collected_by ? p.collected_by.includes(ag.badge) : false;
-        const byAgentBadge = p.agent_badge === ag.badge;
-        return byName || byBadge || byAgentBadge;
-      });
-      const encaisses = agPayments.reduce((acc, curr) => acc + (curr.amount_paid || 0), 0);
-
-      // Real convocations/acts issued
-      const agConvocations = actList.filter(
-        a => a && ((a.agent_notificateur && a.agent_notificateur.includes(ag.name)) || (a.agent_notificateur && a.agent_notificateur.includes(ag.badge)))
-      ).length;
-
-      const totalDue = agEsts.reduce((acc, curr) => acc + (curr.total_due || 0), 0);
-      const conformite = totalDue > 0 ? Math.min(100, Math.round((encaisses / totalDue) * 100)) : (agEsts.length > 0 ? 80 : 100);
-
-      return {
-        id: ag.badge,
-        name: ag.name,
-        title: ag.title,
-        service: ag.service,
-        recenses: agEsts.length,
-        encaisses,
-        paiementsCount: agPayments.length,
-        convocations: agConvocations,
-        conformite
-      };
-    }).sort((a, b) => b.encaisses - a.encaisses);
-  }, [establishments, payments, acts]);
-
-  // Urgent relances: mise en demeure or convocation
-  const urgentActs = (acts || []).filter(a => a && (a.type === 'MISE_EN_DEMEURE' || a.type === 'CONVOCATION'));
-  const recentPayments = (payments || []).slice(0, 8);
+    return {
+      total: allActs.length,
+      misesEnDemeure,
+      convocations,
+      fermetures,
+      missions
+    };
+  }, [acts]);
 
   // Maximum values for graph scaling
   const maxArrPaid = Math.max(...arrondissementStats.map(a => a.paid), 1);
@@ -347,7 +349,7 @@ export const DashboardModule: React.FC = () => {
 
   return (
     <div className="space-y-6 select-none">
-      {/* Welcome Banner */}
+      {/* Welcome Strategic Command Banner */}
       <div className="bg-gradient-to-r from-[#022448] via-[#023b75] to-[#006d2f] text-white p-4 sm:p-6 rounded-2xl shadow-lg border border-[#033468] flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
@@ -360,10 +362,10 @@ export const DashboardModule: React.FC = () => {
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black font-republic tracking-tight">
-            Système Intégré de Régulation des Loisirs de Pointe-Noire
+            Tableau de Bord Exécutif & Régulation des Loisirs
           </h2>
           <p className="text-xs sm:text-sm text-slate-200 mt-1 max-w-3xl leading-snug">
-            Observatoire statistique départemental consolidé en temps réel : supervision de la brigade SAA, monitoring fiscal Trésor/Régie (70/30) et géométrie spatiale des 6 arrondissements.
+            Observatoire départemental consolidé en temps réel : supervision de la brigade SAA, monitoring fiscal Trésor/Régie (70/30), analyse sectorielle (Formel $m^2$ / Informel forfait) et parité de genre.
           </p>
         </div>
 
@@ -371,27 +373,27 @@ export const DashboardModule: React.FC = () => {
           <button
             onClick={reloadData}
             title="Rafraîchir les données de la base"
-            className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs flex items-center justify-center transition border border-white/20"
+            className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs flex items-center justify-center transition border border-white/20 cursor-pointer"
           >
             <RefreshCw className="w-4 h-4 text-emerald-300" />
           </button>
           <button
+            onClick={() => setActiveModule('MOD-11')}
+            className="flex-1 sm:flex-initial bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition cursor-pointer"
+          >
+            <Receipt className="w-4 h-4 text-slate-950" />
+            <span>Guichet Bureau & Titres</span>
+          </button>
+          <button
             onClick={() => setActiveModule('MOD-03')}
-            className="flex-1 sm:flex-initial bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition"
+            className="flex-1 sm:flex-initial bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition cursor-pointer"
           >
             <Calendar className="w-4 h-4" />
             <span>Portail Terrain & Agenda</span>
           </button>
           <button
-            onClick={() => setActiveModule('MOD-02')}
-            className="flex-1 sm:flex-initial bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition"
-          >
-            <Building2 className="w-4 h-4" />
-            <span>Recensement SAA</span>
-          </button>
-          <button
             onClick={() => setActiveModule('MOD-07')}
-            className="flex-1 sm:flex-initial bg-white/10 hover:bg-white/20 text-white font-semibold px-3 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-white/20 transition"
+            className="flex-1 sm:flex-initial bg-white/10 hover:bg-white/20 text-white font-semibold px-3 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-white/20 transition cursor-pointer"
           >
             <MapPin className="w-4 h-4 text-emerald-300" />
             <span>Carte SIG</span>
@@ -427,9 +429,9 @@ export const DashboardModule: React.FC = () => {
             onChange={e => setSelectedRegime(e.target.value)}
             className="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#006d2f]"
           >
-            <option value="ALL">Tous régimes fiscaux</option>
-            <option value="FORMEL">Régime Formel (Dossier 50 000 FCFA)</option>
-            <option value="INFORMEL">Régime Informel (Dossier 30 000 FCFA)</option>
+            <option value="ALL">Tous régimes (Formel & Informel)</option>
+            <option value="FORMEL">Secteur Formel (RCCM • Tarif au m²)</option>
+            <option value="INFORMEL">Secteur Informel (Forfait d'accompagnement)</option>
           </select>
 
           {/* Reset button */}
@@ -453,7 +455,7 @@ export const DashboardModule: React.FC = () => {
         </div>
       </div>
 
-      {/* 4 KPIs Cards with Trend & Progress */}
+      {/* 4 Core KPIs Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: Total Recensé */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-[#006d2f] transition">
@@ -479,8 +481,8 @@ export const DashboardModule: React.FC = () => {
             </span>
           </div>
           <div className="mt-2 text-[11px] text-slate-500 flex justify-between border-t border-slate-100 pt-2">
-            <span>Formels : <strong className="text-blue-700 font-mono-ref">{filteredMetrics.formelCount}</strong></span>
-            <span>Informels : <strong className="text-amber-700 font-mono-ref">{filteredMetrics.informelCount}</strong></span>
+            <span>Formels (m²) : <strong className="text-blue-700 font-mono-ref">{filteredMetrics.formelCount}</strong></span>
+            <span>Informels (Forfait) : <strong className="text-amber-700 font-mono-ref">{filteredMetrics.informelCount}</strong></span>
           </div>
         </div>
 
@@ -524,7 +526,7 @@ export const DashboardModule: React.FC = () => {
           </div>
         </div>
 
-        {/* KPI 4: Dossiers DGL Brazzaville */}
+        {/* KPI 4: Circuit DGL Brazzaville */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group hover:border-[#022448] transition">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Circuit DGL Brazzaville</span>
@@ -553,7 +555,246 @@ export const DashboardModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Row 1 of Charts: Territorial Bar Chart & Monthly Progression */}
+      {/* =========================================================================
+          NOUVEAU BLOC : GRAPHIQUES CAMEMBERTS / FROMAGES (SECTORIEL & GENRE & STATUTS)
+         ========================================================================= */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Camembert 1 : Secteur Formel vs Secteur Informel */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <PieIcon className="w-4 h-4 text-[#006d2f]" />
+                <h3 className="font-bold text-slate-900 text-sm">Répartition Sectorielle</h3>
+              </div>
+              <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded font-mono-ref">
+                Régimes Fiscaux
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mb-4">
+              Formel (Calcul au m² + RCCM + Enquête Hygiène/Sécurité) vs Informel (Forfait annuel d'accompagnement).
+            </p>
+
+            {/* Visual Bar / Donut Representation */}
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between text-xs font-bold mb-1">
+                  <span className="text-blue-900 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                    Secteur Formel (au m²)
+                  </span>
+                  <span className="font-mono-ref">{filteredMetrics.formelCount} locaux ({Math.round((filteredMetrics.formelCount / (filteredMetrics.total || 1)) * 100)}%)</span>
+                </div>
+                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                  <div className="bg-blue-600 h-full rounded-full transition-all duration-500" style={{ width: `${Math.round((filteredMetrics.formelCount / (filteredMetrics.total || 1)) * 100)}%` }} />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs font-bold mb-1">
+                  <span className="text-amber-900 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    Secteur Informel (Forfait annuel)
+                  </span>
+                  <span className="font-mono-ref">{filteredMetrics.informelCount} locaux ({Math.round((filteredMetrics.informelCount / (filteredMetrics.total || 1)) * 100)}%)</span>
+                </div>
+                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                  <div className="bg-amber-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.round((filteredMetrics.informelCount / (filteredMetrics.total || 1)) * 100)}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between font-mono-ref">
+            <span>Frais dossier Formel : <strong>50 000 F</strong></span>
+            <span>Frais dossier Informel : <strong>30 000 F</strong></span>
+          </div>
+        </div>
+
+        {/* Camembert 2 : Répartition par Genre des Promoteurs */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-purple-700" />
+                <h3 className="font-bold text-slate-900 text-sm">Parité & Genre des Promoteurs</h3>
+              </div>
+              <span className="text-[10px] bg-purple-100 text-purple-900 font-bold px-2 py-0.5 rounded font-mono-ref">
+                Exploitants
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mb-4">
+              Proportion des femmes entrepreneures et gérantes d'établissements de loisirs à Pointe-Noire.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between text-xs font-bold mb-1">
+                  <span className="text-purple-900 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-600" />
+                    Promotrices Femmes
+                  </span>
+                  <span className="font-mono-ref">{genderStats.femaleCount} exploitantes ({genderStats.femalePct}%)</span>
+                </div>
+                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                  <div className="bg-purple-600 h-full rounded-full transition-all duration-500" style={{ width: `${genderStats.femalePct}%` }} />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs font-bold mb-1">
+                  <span className="text-slate-800 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-700" />
+                    Promoteurs Hommes
+                  </span>
+                  <span className="font-mono-ref">{genderStats.maleCount} exploitants ({genderStats.malePct}%)</span>
+                </div>
+                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                  <div className="bg-slate-700 h-full rounded-full transition-all duration-500" style={{ width: `${genderStats.malePct}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-purple-900 font-semibold flex items-center justify-between">
+            <span>Indice d'inclusion féminine :</span>
+            <span className="font-mono-ref font-bold">{genderStats.femalePct}% de gestionnaires</span>
+          </div>
+        </div>
+
+        {/* Camembert 3 : Ventilation des Canaux de Paiement SAF */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-emerald-700" />
+                <h3 className="font-bold text-slate-900 text-sm">Canaux d'Encaissement SAF</h3>
+              </div>
+              <span className="text-[10px] bg-emerald-100 text-emerald-900 font-bold px-2 py-0.5 rounded font-mono-ref">
+                Régie & Guichet
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">
+              Répartition des versements entre le Guichet Bureau et les solutions mobiles.
+            </p>
+
+            <div className="space-y-2">
+              {paymentMethodStats.map((item, idx) => (
+                <div key={idx} className="text-xs">
+                  <div className="flex justify-between font-semibold mb-0.5">
+                    <span className="truncate max-w-[170px] text-slate-800 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                      {item.method}
+                    </span>
+                    <span className="font-mono-ref font-bold text-slate-900">{item.total.toLocaleString('fr-FR')} F ({item.pct}%)</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-500" style={{ backgroundColor: item.color, width: `${item.pct}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-3 pt-2.5 border-t border-slate-100 text-[11px] text-slate-600 flex justify-between font-mono-ref">
+            <span>Total Guichet + Mobile :</span>
+            <strong className="text-emerald-800">{filteredMetrics.totalPaid.toLocaleString('fr-FR')} FCFA</strong>
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          BLOC : STATUTS D'INSTRUCTION ET POLICE ADMINISTRATIVE (ACTES 72h)
+         ========================================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Statuts d'Instruction du Circuit (7 cols) */}
+        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FileCheck2 className="w-5 h-5 text-[#022448]" />
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Circuit d'Instruction & Statuts Réglementaires</h3>
+                <p className="text-xs text-slate-500">De l'identification terrain jusqu'à l'Agrément Ministériel à Brazzaville</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {statusDistribution.map((st, idx) => (
+              <div key={idx} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 text-xs">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-bold text-slate-900 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: st.color }} />
+                    {st.label}
+                  </span>
+                  <span className="font-mono-ref font-extrabold text-slate-900">
+                    {st.count} locaux <span className="text-slate-500 font-normal">({st.pct}%)</span>
+                  </span>
+                </div>
+                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500" style={{ backgroundColor: st.color, width: `${st.pct}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Actes de Police Administrative & Sanctions SAA (5 cols) */}
+        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Scale className="w-5 h-5 text-red-700" />
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Atelier des Actes & Police SAA</h3>
+                  <p className="text-xs text-slate-500">Contrôle de conformité et mesures conservatoires</p>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 bg-red-100 text-red-800 rounded font-mono-ref font-bold text-[10px]">
+                Loi 21-2019
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs mb-4">
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                <span className="text-[10px] font-bold text-amber-900 uppercase block">Mises en Demeure (72h)</span>
+                <span className="text-2xl font-black text-amber-950 font-mono-ref block mt-1">{legalActsSummary.misesEnDemeure}</span>
+                <span className="text-[10px] text-amber-700">Délai sous huitaine</span>
+              </div>
+
+              <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                <span className="text-[10px] font-bold text-blue-900 uppercase block">Convocations SAA</span>
+                <span className="text-2xl font-black text-blue-950 font-mono-ref block mt-1">{legalActsSummary.convocations}</span>
+                <span className="text-[10px] text-blue-700">Auditions au bureau</span>
+              </div>
+
+              <div className="p-3 bg-red-50 rounded-xl border border-red-200">
+                <span className="text-[10px] font-bold text-red-900 uppercase block">Arrêtés de Fermeture</span>
+                <span className="text-2xl font-black text-red-950 font-mono-ref block mt-1">{legalActsSummary.fermetures}</span>
+                <span className="text-[10px] text-red-700">Scellés de la République</span>
+              </div>
+
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                <span className="text-[10px] font-bold text-emerald-900 uppercase block">Limiteurs Acoustiques</span>
+                <span className="text-2xl font-black text-emerald-950 font-mono-ref block mt-1">{filteredMetrics.limiterCount}</span>
+                <span className="text-[10px] text-emerald-700">Seuils &lt;85 dB scellés</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setActiveModule('MOD-05')}
+            className="w-full py-2 bg-[#022448] hover:bg-[#033468] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
+          >
+            <span>Ouvrir l'Atelier des Actes & Convocations</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          BLOC : RECOUVREMENT PAR ARRONDISSEMENT (BAR CHART) & PROGRESSION MENSUELLE
+         ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Chart 1: Territorial Performance (8 Cols) */}
         <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm">
@@ -566,7 +807,7 @@ export const DashboardModule: React.FC = () => {
                 </h3>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Comparatif des montants encaissés vs dus calculés sur les données réelles des 6 arrondissements
+                Comparatif des montants encaissés vs exigibles calculés sur les 6 arrondissements de Pointe-Noire
               </p>
             </div>
 
@@ -574,7 +815,7 @@ export const DashboardModule: React.FC = () => {
             <div className="inline-flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
               <button
                 onClick={() => setChartMetric('RECOUVREMENT')}
-                className={`px-3 py-1 rounded-lg transition ${
+                className={`px-3 py-1 rounded-lg transition cursor-pointer ${
                   chartMetric === 'RECOUVREMENT' ? 'bg-white text-[#006d2f] shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -582,7 +823,7 @@ export const DashboardModule: React.FC = () => {
               </button>
               <button
                 onClick={() => setChartMetric('ETABLISSEMENTS')}
-                className={`px-3 py-1 rounded-lg transition ${
+                className={`px-3 py-1 rounded-lg transition cursor-pointer ${
                   chartMetric === 'ETABLISSEMENTS' ? 'bg-white text-[#006d2f] shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -599,41 +840,41 @@ export const DashboardModule: React.FC = () => {
               const barPercent = Math.min(100, Math.round((currentVal / maxVal) * 100));
 
               return (
-                <div key={arr.code} className="bg-slate-50 hover:bg-slate-100/80 p-3 rounded-xl border border-slate-200/80 transition">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs mb-1.5 gap-1">
+                <div key={arr.code} className="space-y-1 text-xs">
+                  <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-slate-800 text-xs sm:text-sm">{arr.name}</span>
-                      <span className="bg-white border border-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono-ref text-[11px] font-bold">
+                      <span className="font-bold text-slate-900">{arr.name}</span>
+                      <span className="text-[10px] text-slate-400 font-mono-ref font-semibold">
                         {arr.count} établissements
                       </span>
-                      <span className="text-[10px] text-emerald-800 bg-emerald-100 font-bold px-1.5 py-0.2 rounded font-mono-ref">
+                      <span className="text-[9px] bg-emerald-100 text-emerald-900 font-bold px-1.5 py-0.2 rounded font-mono-ref">
                         {arr.enRegle} en règle
                       </span>
                     </div>
-
-                    <div className="flex items-center gap-3 font-mono-ref self-end sm:self-auto">
-                      <span className="text-slate-500 font-medium">
-                        {arr.paid.toLocaleString('fr-FR')} / {arr.due.toLocaleString('fr-FR')} FCFA
-                      </span>
-                      <span className="font-black text-[#006d2f] bg-emerald-100/80 px-2 py-0.5 rounded text-xs">
-                        {arr.rate}%
-                      </span>
+                    <div className="font-mono-ref font-extrabold text-slate-900 flex items-center gap-2">
+                      {chartMetric === 'RECOUVREMENT' ? (
+                        <>
+                          <span className="text-emerald-800">{arr.paid.toLocaleString('fr-FR')}</span>
+                          <span className="text-slate-400 font-normal">/ {arr.due.toLocaleString('fr-FR')} FCFA</span>
+                          <span className="text-[#006d2f] font-black">{arr.rate}%</span>
+                        </>
+                      ) : (
+                        <span>{arr.count} locaux recensés</span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Dual Bar (Paid vs Total Due) */}
-                  <div className="w-full bg-slate-200/90 rounded-full h-3.5 overflow-hidden flex relative">
+                  {/* Dual layered bar */}
+                  <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden flex">
                     <div
-                      className="bg-gradient-to-r from-[#006d2f] via-[#028a3d] to-amber-500 h-full rounded-full transition-all duration-700 relative"
-                      style={{ width: `${Math.min(100, arr.rate)}%` }}
+                      className="bg-gradient-to-r from-[#006d2f] to-emerald-500 h-full rounded-full transition-all duration-700"
+                      style={{ width: `${barPercent}%` }}
                     />
                   </div>
 
-                  <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
-                    <span>
-                      Formels : <strong className="text-blue-700 font-mono-ref">{arr.formels}</strong> • Informels : <strong className="text-amber-700 font-mono-ref">{arr.informels}</strong>
-                    </span>
-                    <span>Reste à recouvrer : <strong className="text-amber-900 font-mono-ref">{arr.balance.toLocaleString('fr-FR')} FCFA</strong></span>
+                  <div className="flex justify-between text-[10px] text-slate-400 font-mono-ref flex-wrap gap-1">
+                    <span>Formels : {arr.formels} • Informels : {arr.informels}</span>
+                    <span>Reste à recouvrer : {arr.balance.toLocaleString('fr-FR')} FCFA</span>
                   </div>
                 </div>
               );
@@ -641,460 +882,47 @@ export const DashboardModule: React.FC = () => {
           </div>
         </div>
 
-        {/* Chart 2: Monthly Evolution & Real Ventilation (4 Cols) */}
+        {/* Chart 2: Monthly Timeline Progression (4 Cols) */}
         <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="w-5 h-5 text-blue-600" />
               <h3 className="font-bold text-slate-900 text-base">Progression des Paiements</h3>
             </div>
-            <p className="text-xs text-slate-500 mb-5">
+            <p className="text-xs text-slate-500 mb-6">
               Historique des encaissements par mois issus de la table des quittances
             </p>
 
-            {/* Vertical column chart */}
-            <div className="flex items-end justify-between h-44 pt-6 pb-2 px-1 border-b border-slate-200 gap-2">
+            <div className="space-y-4">
               {monthlyTimeline.map((item, idx) => {
-                const heightPct = Math.max(15, Math.round((item.total / maxMonthPaid) * 100));
+                const heightPercent = Math.min(100, Math.round((item.total / maxMonthPaid) * 100));
                 return (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
-                    <span className="text-[10px] font-mono-ref font-bold text-slate-700 opacity-90 transition">
-                      {(item.total / 1000000).toFixed(1)}M
-                    </span>
-                    <div
-                      className="w-full rounded-t-lg transition-all duration-500 group-hover:brightness-110"
-                      style={{
-                        height: `${heightPct}%`,
-                        backgroundColor: item.color
-                      }}
-                    />
-                    <span className="text-[10px] text-slate-600 font-semibold truncate w-full text-center">
-                      {item.month.split(' ')[0]}
-                    </span>
+                  <div key={idx} className="space-y-1 text-xs">
+                    <div className="flex justify-between font-bold">
+                      <span className="text-slate-700">{item.month}</span>
+                      <span className="font-mono-ref text-slate-900">{item.total.toLocaleString('fr-FR')} FCFA</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ backgroundColor: item.color, width: `${heightPercent}%` }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-slate-400 text-right font-mono-ref">
+                      {item.count} quittances validées
+                    </div>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Real 70/30 Financial Split Box */}
-          <div className="mt-4 p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
-            <div className="font-bold text-slate-900 flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-[#022448]">
-                <Landmark className="w-4 h-4 text-blue-700" />
-                <span>Ventilation Fiscale 70/30</span>
-              </span>
-              <span className="font-mono-ref text-[#006d2f] font-black">
-                {filteredMetrics.totalPaid.toLocaleString('fr-FR')} FCFA
-              </span>
+          <div className="mt-6 pt-4 border-t border-slate-100 bg-slate-50 p-3 rounded-xl text-xs space-y-1">
+            <p className="font-bold text-slate-800">Clé de répartition légale :</p>
+            <div className="flex justify-between text-[11px] font-mono-ref">
+              <span className="text-emerald-700">Trésor (70%) : {filteredMetrics.tresor70.toLocaleString('fr-FR')} F</span>
+              <span className="text-blue-900">Régie (30%) : {filteredMetrics.regie30.toLocaleString('fr-FR')} F</span>
             </div>
-            
-            <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden flex">
-              <div className="bg-blue-600 h-full" style={{ width: '70%' }} title="70% Trésor Public" />
-              <div className="bg-[#006d2f] h-full" style={{ width: '30%' }} title="30% Régie DDL" />
-            </div>
-
-            <div className="flex justify-between text-[11px] font-mono-ref pt-1 border-t border-slate-200">
-              <span className="text-blue-800 font-semibold">
-                🏛️ Trésor (70%) : <strong>{filteredMetrics.tresor70.toLocaleString('fr-FR')} F</strong>
-              </span>
-              <span className="text-[#006d2f] font-semibold">
-                🏢 Régie (30%) : <strong>{filteredMetrics.regie30.toLocaleString('fr-FR')} F</strong>
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Row 2 of Charts: Funnel of Status & Category Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Funnel of Status (6 Cols) */}
-        <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-purple-600" />
-                <h3 className="font-bold text-slate-900 text-base">Entonnoir d'Agrément & Instruction</h3>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Cycle de vie légal des {establishments.length} dossiers du recensement in situ à l'agrément ministériel
-              </p>
-            </div>
-            <span className="text-xs bg-purple-50 text-purple-700 font-bold px-2 py-1 rounded-lg font-mono-ref">
-              7 Paliers
-            </span>
-          </div>
-
-          <div className="space-y-2.5">
-            {statusFunnel.map((step, idx) => (
-              <div key={idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 flex items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:flex-none sm:min-w-[180px]">
-                  <div className={`w-3 h-3 rounded-full shrink-0 ${step.color}`} />
-                  <span className="font-bold text-slate-800 truncate sm:whitespace-normal">{step.label}</span>
-                </div>
-
-                <div className="flex-1 bg-slate-200 h-2 rounded-full overflow-hidden hidden sm:block">
-                  <div className={`${step.color} h-full rounded-full`} style={{ width: `${step.pct}%` }} />
-                </div>
-
-                <div className="flex items-center gap-2 font-mono-ref shrink-0">
-                  <span className="font-black text-slate-900">{step.count}</span>
-                  <span className="text-[10px] text-slate-500">({step.pct}%)</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Category Breakdown (6 Cols) */}
-        <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <PieIcon className="w-5 h-5 text-amber-600" />
-                <h3 className="font-bold text-slate-900 text-base">Répartition par Catégorie d'Activité</h3>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Ventilation économique des débits de boissons, discothèques et complexes récréatifs
-              </p>
-            </div>
-            <span className="text-xs bg-amber-50 text-amber-800 font-bold px-2 py-1 rounded-lg font-mono-ref">
-              {categoryBreakdown.length} Typologies
-            </span>
-          </div>
-
-          <div className="space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
-            {categoryBreakdown.map((cat) => (
-              <div key={cat.code} className="bg-slate-50 hover:bg-slate-100/60 p-2.5 rounded-xl border border-slate-200/70 text-xs">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono-ref text-[10px] font-bold bg-white border border-slate-200 text-slate-700 px-1.5 py-0.2 rounded">
-                      {cat.code}
-                    </span>
-                    <span className="font-bold text-slate-800 truncate max-w-[120px] sm:max-w-[220px]">{cat.label}</span>
-                  </div>
-                  <div className="flex items-center gap-2 font-mono-ref">
-                    <span className="font-black text-slate-900">{cat.count} locaux</span>
-                    <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded">
-                      {cat.paid.toLocaleString('fr-FR')} F
-                    </span>
-                  </div>
-                </div>
-
-                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-amber-500 h-full rounded-full" style={{ width: `${cat.percent}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Row 3: Payment Methods & Acoustic Control Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Payment Channels (6 Cols) */}
-        <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Smartphone className="w-5 h-5 text-emerald-600" />
-              <h3 className="font-bold text-slate-900 text-base">Canaux d'Encaissement Réels</h3>
-            </div>
-            <span className="text-xs bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded-full font-mono-ref">
-              {payments.length} Transactions
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mb-4">
-            Répartition des paiements enregistrés par méthode de règlement (Mobile Money, Espèces, Trésor)
-          </p>
-
-          <div className="space-y-3">
-            {paymentMethodStats.map(m => (
-              <div key={m.name} className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
-                <div className="flex items-center justify-between text-xs mb-1.5 gap-1 flex-wrap">
-                  <span className="font-bold text-slate-800">{m.name}</span>
-                  <div className="flex flex-wrap items-center gap-2 font-mono-ref">
-                    <span className="text-slate-600 font-semibold">{m.count} reçus</span>
-                    <span className="font-black text-slate-900">{m.total.toLocaleString('fr-FR')} FCFA</span>
-                    <span className="bg-white border border-slate-200 text-[#006d2f] font-bold px-1.5 py-0.5 rounded text-[10px]">
-                      {m.percent}%
-                    </span>
-                  </div>
-                </div>
-                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                  <div className={`${m.color} h-full rounded-full`} style={{ width: `${m.percent}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Acoustic & Police Noise Stats (6 Cols) */}
-        <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Volume2 className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-bold text-slate-900 text-base">Contrôle Acoustique & Police des Loisirs</h3>
-              </div>
-              <span className="text-xs bg-indigo-50 text-indigo-800 font-bold px-2 py-0.5 rounded-full font-mono-ref">
-                Norme &lt;85 dB
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mb-4">
-              Suivi du respect de l'Arrêté Départemental N° 018/2026 sur les émissions sonores nocturnes
-            </p>
-
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="bg-indigo-50/60 border border-indigo-100 p-3.5 rounded-xl text-center">
-                <div className="text-xl sm:text-2xl font-black text-indigo-950 font-mono-ref">{filteredMetrics.limiterCount}</div>
-                <div className="text-xs font-semibold text-indigo-800 mt-0.5">Limiteurs Acoustiques Installés</div>
-                <div className="text-[10px] text-indigo-600 font-mono-ref mt-1">
-                  {Math.round((filteredMetrics.limiterCount / (filteredMetrics.total || 1)) * 100)}% du parc actif
-                </div>
-              </div>
-
-              <div className="bg-amber-50/60 border border-amber-100 p-3.5 rounded-xl text-center">
-                <div className="text-xl sm:text-2xl font-black text-amber-950 font-mono-ref">{urgentActs.length}</div>
-                <div className="text-xs font-semibold text-amber-800 mt-0.5">Mises en Demeure / Convocations</div>
-                <div className="text-[10px] text-amber-700 font-mono-ref mt-1">Délai strict 72 heures</div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700">
-              <span className="font-bold text-slate-900 block mb-1">Obligation Légale d'Insonorisation :</span>
-              Tout établissement de catégorie A1 (Discothèques, Cabarets, Lounges) émettant après 22h00 doit obligatoirement posséder un limiteur-enregistreur de décibels scellé par la brigade SAA sous peine de fermeture administrative immédiate.
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-            <button
-              onClick={() => setActiveModule('MOD-05')}
-              className="text-xs font-bold text-[#006d2f] hover:underline flex items-center gap-1"
-            >
-              <span>Consulter l'Atelier des Actes Juridiques</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Row 4: Agent SAA Field Performance Leaderboard */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-[#006d2f]" />
-              <h3 className="font-bold text-slate-900 text-base sm:text-lg">
-                Performance Réelle des Agents de Terrain (Brigade SAA)
-              </h3>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Suivi calculé directement sur les données des tournées, quittances signées et convocations notifiées
-            </p>
-          </div>
-
-          <button
-            onClick={() => setActiveModule('MOD-03')}
-            className="text-xs bg-[#006d2f] hover:bg-[#005a26] text-white font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 self-start sm:self-auto shadow-xs"
-          >
-            <Calendar className="w-4 h-4" />
-            <span>Ouvrir les Agendas des Agents</span>
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-slate-50 text-slate-600 font-bold border-y border-slate-200 uppercase text-[10px]">
-              <tr>
-                <th className="py-3 px-3">Agent & Badge</th>
-                <th className="py-3 px-3">Titre & Affectation</th>
-                <th className="py-3 px-3 text-center">Établissements Attribués</th>
-                <th className="py-3 px-3 text-center">Actes & Convocations</th>
-                <th className="py-3 px-3 text-center">Quittances Signées</th>
-                <th className="py-3 px-3 text-right">Montant Encaissé</th>
-                <th className="py-3 px-3 text-center">Statut Mission</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {agentPerformance.map(ag => (
-                <tr key={ag.id} className="hover:bg-slate-50 transition">
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-[#006d2f] text-white font-bold flex items-center justify-center text-xs shrink-0">
-                        {ag.name.charAt(0)}
-                      </div>
-                      <div>
-                        <span className="font-bold text-slate-900 block">{ag.name}</span>
-                        <span className="text-[10px] font-mono-ref text-slate-500">{ag.id}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-3 px-3 font-medium text-slate-700 max-w-[200px] truncate">{ag.title}</td>
-                  <td className="py-3 px-3 text-center font-mono-ref font-bold text-slate-800">{ag.recenses}</td>
-                  <td className="py-3 px-3 text-center font-mono-ref text-amber-800 font-bold">{ag.convocations}</td>
-                  <td className="py-3 px-3 text-center font-mono-ref text-blue-800 font-bold">{ag.paiementsCount}</td>
-                  <td className="py-3 px-3 text-right font-mono-ref font-bold text-emerald-800">
-                    {ag.encaisses.toLocaleString('fr-FR')} FCFA
-                  </td>
-                  <td className="py-3 px-3 text-center">
-                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md font-semibold text-[10px] inline-flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      <span>Actif</span>
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Row 5: Urgent Relances & Derniers Encaissements */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Urgent Actions SAA (5 Cols) */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                <span>Mesures Conservatoires & Alertes 72h</span>
-              </h3>
-              <span className="text-[10px] bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded-full">
-                Délai Strict
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mb-4">
-              Mises en demeure et convocations actives nécessitant notification contradictoire ou exécution de scellés.
-            </p>
-
-            <div className="space-y-3">
-              {urgentActs.slice(0, 4).map(act => (
-                <div
-                  key={act.id}
-                  className="p-3 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-50 transition text-xs"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="font-extrabold text-[#022448] uppercase block">
-                        {act.establishment_name}
-                      </span>
-                      <span className="text-[10px] text-slate-500">{act.arrondissement}</span>
-                    </div>
-                    <span className="text-[9px] bg-amber-200 text-amber-900 font-mono-ref px-1.5 py-0.5 rounded font-bold">
-                      {act.type === 'MISE_EN_DEMEURE' ? 'M.D. 72h' : 'Convocation'}
-                    </span>
-                  </div>
-
-                  <p className="text-[11px] text-slate-700 mt-1 line-clamp-2 italic">
-                    « {act.motif} »
-                  </p>
-
-                  <div className="mt-2.5 flex items-center justify-between border-t border-amber-200/60 pt-2 text-[10px]">
-                    <span className="text-slate-500">Échéance : <strong>{act.delai_huitaine_date || '72h'}</strong></span>
-                    <button
-                      onClick={() => {
-                        setPrintDoc({
-                          isOpen: true,
-                          type: 'ACTE_JURIDIQUE_A4',
-                          title: `Acte Officiel - ${act.reference_number}`,
-                          data: act
-                        });
-                      }}
-                      className="text-[#006d2f] hover:text-[#005a26] font-bold flex items-center gap-1"
-                    >
-                      <Printer className="w-3 h-3" />
-                      <span>Imprimer Acte A4</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-100">
-            <button
-              onClick={() => setActiveModule('MOD-05')}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-              <span>Accéder à l'Atelier des Actes & Sanctions</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Derniers Encaissements Régie (7 Cols) */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-                  Derniers Encaissements Réels & Quittances
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Transactions réelles enregistrées via terminaux mobiles avec quittances certifiées
-                </p>
-              </div>
-              <button
-                onClick={() => setActiveModule('MOD-10')}
-                className="text-xs text-[#006d2f] hover:underline font-bold flex items-center gap-1"
-              >
-                <span>Régie SAF</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 text-slate-600 font-bold border-y border-slate-200 uppercase text-[10px]">
-                  <tr>
-                    <th className="py-2.5 px-3">Quittance Réf</th>
-                    <th className="py-2.5 px-3">Établissement</th>
-                    <th className="py-2.5 px-3">Mode</th>
-                    <th className="py-2.5 px-3">Montant Encaissé</th>
-                    <th className="py-2.5 px-3">Agent SAA</th>
-                    <th className="py-2.5 px-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {recentPayments.map(p => (
-                    <tr key={p.id} className="hover:bg-slate-50 transition">
-                      <td className="py-2.5 px-3 font-mono-ref font-bold text-[#022448]">{p.receipt_reference}</td>
-                      <td className="py-2.5 px-3 font-semibold truncate max-w-[150px]">{p.establishment_name}</td>
-                      <td className="py-2.5 px-3">
-                        <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] text-slate-700 font-medium">
-                          {p.payment_method}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 font-mono-ref font-bold text-emerald-800">
-                        {p.amount_paid.toLocaleString('fr-FR')} FCFA
-                      </td>
-                      <td className="py-2.5 px-3 text-slate-600 truncate max-w-[120px]">{p.collected_by}</td>
-                      <td className="py-2.5 px-3 text-right">
-                        <button
-                          onClick={() => {
-                            setPrintDoc({
-                              isOpen: true,
-                              type: 'TICKET_58MM',
-                              title: `Ticket Quittance - ${p.receipt_reference}`,
-                              data: p
-                            });
-                          }}
-                          className="text-xs bg-[#006d2f]/10 text-[#006d2f] hover:bg-[#006d2f]/20 font-bold px-2 py-1 rounded inline-flex items-center gap-1"
-                        >
-                          <Printer className="w-3 h-3" />
-                          <span>Ticket 58mm</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1 text-xs text-slate-500">
-            <span>Règle d'or renouvellement N+1 active sur toutes les quittances soldées</span>
-            <span className="font-mono-ref font-bold text-[#006d2f]">70% Trésor / 30% Régie DDL</span>
           </div>
         </div>
       </div>

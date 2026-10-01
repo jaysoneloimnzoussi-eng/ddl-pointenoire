@@ -58,7 +58,7 @@ const SIDEBAR_SECTIONS: NavSection[] = [
     title: 'FINANCES & RÉGIE SAF',
     items: [
       { id: 'MOD-10', num: '10', label: 'Régie SAF & Trésor Public', shortLabel: 'Régie & Trésor', icon: Landmark, badge: '70/30' },
-      { id: 'MOD-11', num: '11', label: 'Attestations & Quittances POS', shortLabel: 'Attestations & POS', icon: Receipt },
+      { id: 'MOD-11', num: '11', label: 'Guichet Bureau, Titres & Recettes', shortLabel: 'Guichet & Titres', icon: Receipt, badge: 'Guichet' },
       { id: 'MOD-12', num: '12', label: 'Textes & Simulateur Tarifaire', shortLabel: 'Barèmes & Textes', icon: Calculator }
     ]
   },
