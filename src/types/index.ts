@@ -138,6 +138,14 @@ export interface AppUser {
   email: string;
 }
 
+export interface UserAccount extends AppUser {
+  username: string;
+  defaultPassword?: string;
+  passwordHash?: string;
+  lastLogin?: string;
+  isActive?: boolean;
+}
+
 export interface ActivityCategoryRate {
   code: string;
   label: string;

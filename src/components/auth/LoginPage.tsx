@@ -1,161 +1,95 @@
 import React, { useState } from 'react';
 import {
   Shield,
-  Smartphone,
   Lock,
   User,
   ArrowRight,
-  UserCheck,
   CheckCircle2,
   Calendar,
-  Building2,
   Sparkles,
-  ChevronDown
+  ChevronDown,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  Key,
+  BadgeCheck,
+  Smartphone,
+  Landmark,
+  RefreshCw,
+  Search
 } from 'lucide-react';
 import { OfficialRepublicLogo, RepublicTricolorBar } from '../common/OfficialSeal';
 import { CongoMapIllustration } from '../common/CongoMapIllustration';
-import { REPUBLIQUE_CONGO, APP_USERS } from '../../constants/referential';
-import { AppUser } from '../../types';
+import { REPUBLIQUE_CONGO } from '../../constants/referential';
+import { AppUser, UserAccount } from '../../types';
+import { authService, OFFICIAL_USER_ACCOUNTS } from '../../services/authService';
 
 interface LoginPageProps {
   onLoginSuccess: (user: AppUser, initialModule?: string) => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
-  const [identifier, setIdentifier] = useState<string>('Jacks.matoko@gmail.com');
-  const [password, setPassword] = useState<string>('');
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('0594a697-48ba-4fb7-b4cb-a979ad46f37c');
+  const [identifier, setIdentifier] = useState<string>('ambetos');
+  const [password, setPassword] = useState<string>('Ambetos@315');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [directorySearch, setDirectorySearch] = useState<string>('');
+  const [isEmergencyInfoOpen, setIsEmergencyInfoOpen] = useState<boolean>(false);
 
-  // Field agents list from Supabase referential
-  const fieldAgents = APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'CHEF_SPA');
-  const matokoAdmin = APP_USERS.find(u => u.id === 'ADMIN-MATOKO') || APP_USERS[0];
-  const directorUser = APP_USERS.find(u => u.id === 'DIR-01') || APP_USERS[1];
+  const allAccounts = authService.getAllAccounts();
 
-  // Direct 1-Click Login handlers (No password required)
-  const handleDirectLoginAsAdmin = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      onLoginSuccess(matokoAdmin, 'MOD-01');
-    }, 150);
-  };
+  // Filtered accounts for directory search
+  const filteredAccounts = allAccounts.filter(acc => {
+    const q = directorySearch.toLowerCase();
+    return (
+      acc.name.toLowerCase().includes(q) ||
+      acc.badge.toLowerCase().includes(q) ||
+      acc.username.toLowerCase().includes(q) ||
+      acc.role.toLowerCase().includes(q) ||
+      acc.phone.includes(q)
+    );
+  });
 
-  const handleDirectLoginAsDirector = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      onLoginSuccess(directorUser, 'MOD-01');
-    }, 150);
-  };
+  // Pre-fill credentials from directory
+  const handleSelectAccount = (account: UserAccount, autoSubmit: boolean = false) => {
+    setIdentifier(account.username);
+    setPassword(account.defaultPassword || 'DdlPn@2026!');
+    setErrorMessage(null);
 
-  const handleDirectLoginAsSelectedAgent = () => {
-    const targetAgent = APP_USERS.find(u => u.id === selectedAgentId) || fieldAgents[0];
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      onLoginSuccess(targetAgent, 'MOD-03');
-    }, 150);
-  };
-
-  const handleDirectLoginAgent = (agent: AppUser) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      onLoginSuccess(agent, 'MOD-03');
-    }, 150);
-  };
-
-  // Form submit handler for custom input (No restrictive password check)
-  const handleFormLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    const raw = identifier.trim().toLowerCase();
-    const rawClean = raw.replace(/[\s\-_.]/g, '');
-
-    // 1. Check for Jacques MATOKO (Admin & Resp. SAA)
-    if (
-      raw.includes('matoko') ||
-      raw.includes('jacques') ||
-      raw.includes('jacks') ||
-      raw === 'admin' ||
-      raw === 'administrateur' ||
-      rawClean.includes('053028383') ||
-      raw === 'adm-pn-001' ||
-      raw === 'saa-pn-001'
-    ) {
-      setTimeout(() => {
-        setIsLoading(false);
-        onLoginSuccess(matokoAdmin, 'MOD-01');
-      }, 150);
-      return;
+    if (autoSubmit) {
+      executeLogin(account.username, account.defaultPassword || 'DdlPn@2026!');
     }
+  };
 
-    // 2. Check for Monsieur Jean Richard NTSEKE NGOUAKA (Directeur)
-    if (
-      raw.includes('ntseke') ||
-      raw.includes('ngouaka') ||
-      raw.includes('richard') ||
-      raw === 'directeur' ||
-      raw === 'ddl' ||
-      raw.includes('directeur@ddl-pointenoire.cg') ||
-      raw === 'ddl-dir-001' ||
-      raw === 'dir-01'
-    ) {
-      setTimeout(() => {
-        setIsLoading(false);
-        onLoginSuccess(directorUser, 'MOD-01');
-      }, 150);
-      return;
-    }
+  const executeLogin = async (idToUse: string, pwdToUse: string) => {
+    setIsLoading(true);
+    setErrorMessage(null);
 
-    // 3. Match against real Supabase Agents list (Matricule, Name, Phone, Email, Badge)
-    const matchedAgent = APP_USERS.find(u => {
-      const b = u.badge.toLowerCase().replace(/[\s\-_.]/g, '');
-      const em = u.email.toLowerCase();
-      const n = u.name.toLowerCase();
-      const p = u.phone.replace(/[\s\-_.]/g, '');
-      const t = u.title.toLowerCase();
+    try {
+      const result = await authService.authenticate(idToUse, pwdToUse);
 
-      return (
-        b.includes(rawClean) ||
-        em === raw ||
-        n.includes(raw) ||
-        p.includes(rawClean) ||
-        t.includes(raw) ||
-        u.id.toLowerCase() === raw
-      );
-    });
-
-    if (matchedAgent) {
-      setTimeout(() => {
-        setIsLoading(false);
-        if (matchedAgent.role === 'AGENT_SAA' || matchedAgent.role === 'CHEF_SPA') {
-          onLoginSuccess(matchedAgent, 'MOD-03');
+      if (result.success && result.user) {
+        if (rememberMe) {
+          localStorage.setItem('ddl_pn_remembered_user', result.user.email);
         } else {
-          onLoginSuccess(matchedAgent, 'MOD-01');
+          localStorage.removeItem('ddl_pn_remembered_user');
         }
-      }, 150);
-      return;
-    }
-
-    // 4. If any custom identifier entered, open as dynamic field agent (MOD-03)
-    const dynamicAgent: AppUser = {
-      id: `SAA-${Date.now().toString().slice(-4)}`,
-      badge: identifier.trim().toUpperCase(),
-      name: `Agent SAA (${identifier.trim()})`,
-      role: 'AGENT_SAA',
-      title: 'Agent Enquêteur de Terrain - Brigade SAA',
-      phone: '+242 06 000 00 00',
-      service: 'Brigade SAA - Terrain',
-      email: `${rawClean}@ddl-pointenoire.cg`
-    };
-
-    setTimeout(() => {
+        onLoginSuccess(result.user, result.targetModule);
+      } else {
+        setErrorMessage(result.error || 'Identifiants invalides. Veuillez vérifier votre mot de passe.');
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Erreur de connexion au service d’authentification.');
+    } finally {
       setIsLoading(false);
-      onLoginSuccess(dynamicAgent, 'MOD-03');
-    }, 150);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeLogin(identifier, password);
   };
 
   return (
@@ -192,8 +126,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </div>
       </header>
 
-      {/* Main Container: Map of Congo on Left + Direct 1-Click Access on Right */}
-      <main className="relative z-10 max-w-6xl mx-auto w-full my-auto py-6 sm:py-8">
+      {/* Main Authentication Container */}
+      <main className="relative z-10 max-w-6xl mx-auto w-full my-auto py-4 sm:py-6">
         <div className="bg-[#0b0c10]/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.8)] border border-amber-400/30 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
           
           {/* Left Column (5 cols): Official Map of Republic of Congo */}
@@ -201,154 +135,233 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <CongoMapIllustration />
           </div>
 
-          {/* Right Column (7 cols): Direct Access & Portal */}
-          <div className="lg:col-span-7 bg-white p-6 sm:p-8 flex flex-col justify-between">
+          {/* Right Column (7 cols): Real Database Authentication Form */}
+          <div className="lg:col-span-7 bg-white p-5 sm:p-8 flex flex-col justify-between">
             <div>
               {/* Header Badge */}
-              <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="inline-flex items-center gap-1.5 bg-[#850404] text-white font-extrabold text-[11px] px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
                   <Shield className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Accès Direct Sans Mot de Passe Imposé</span>
+                  <span>Portail Sécurisé des Agents Assermentés</span>
                 </div>
-                <span className="text-[10px] text-slate-400 font-mono-ref">Session Sécurisée</span>
+                <span className="text-[10px] text-emerald-700 font-mono-ref font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Supabase Connecté
+                </span>
               </div>
 
               <h2 className="text-xl sm:text-2xl font-black text-[#022448] font-republic tracking-tight leading-snug">
-                Espace de Travail DDL-PN
+                Connexion à l'Espace DDL-PN
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                Cliquez directement sur votre profil pour ouvrir immédiatement votre espace dédié :
+                Authentifiez-vous avec votre identifiant officiel (Email, Matricule, Badge ou Nom d'utilisateur) et votre mot de passe :
               </p>
 
-              {/* 1-CLICK INSTANT ACCESS CARDS */}
-              <div className="mt-5 space-y-3">
-                {/* 1. JACQUES MATOKO (ADMIN & RESP. SAA) */}
-                <button
-                  type="button"
-                  onClick={handleDirectLoginAsAdmin}
-                  disabled={isLoading}
-                  className="w-full text-left p-3.5 rounded-2xl bg-gradient-to-r from-red-900 via-[#850404] to-red-950 text-white shadow-md hover:shadow-xl hover:scale-[1.01] transition-all border border-amber-400/40 flex items-center justify-between group cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-xl bg-amber-400/20 border border-amber-400/50 flex items-center justify-center shrink-0 text-amber-300">
-                      <Shield className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-black tracking-wide text-white font-republic">
-                          Jacques MATOKO
-                        </span>
-                        <span className="text-[10px] bg-amber-400 text-red-950 font-black px-2 py-0.5 rounded-full uppercase">
-                          Administrateur
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-amber-200/90 mt-0.5">
-                        Resp. Service Assistance & Autorisation (SAA) • Contrôle Qualités
-                      </p>
-                      <p className="text-[10px] text-white/60 font-mono-ref mt-0.5">
-                        Jacks.matoko@gmail.com • Tél: 053028383
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 text-amber-300 font-bold text-xs bg-black/20 px-3 py-1.5 rounded-xl group-hover:bg-amber-400 group-hover:text-red-950 transition">
-                    <span>Ouvrir</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </div>
-                </button>
-
-
-
-                {/* 3. AGENT DE TERRAIN SAA (GOOGLE CALENDAR INTERFACE) */}
-                <div className="p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
-                        <Calendar className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-emerald-950 uppercase tracking-wide">
-                          Agents de Terrain SAA (Google Calendar)
-                        </span>
-                        <p className="text-[10px] text-emerald-800">
-                          Accès direct à l'agenda de descente, rendez-vous et solde tenancières
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                    <div className="relative flex-1">
-                      <select
-                        value={selectedAgentId}
-                        onChange={e => setSelectedAgentId(e.target.value)}
-                        className="w-full appearance-none pl-3 pr-8 py-2 bg-white border border-emerald-300 rounded-lg text-xs font-semibold text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      >
-                        {fieldAgents.map(agent => (
-                          <option key={agent.id} value={agent.id}>
-                            {agent.name} — {agent.badge} ({agent.phone})
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-emerald-700 absolute right-2.5 top-2.5 pointer-events-none" />
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleDirectLoginAsSelectedAgent}
-                      disabled={isLoading}
-                      className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg shadow flex items-center justify-center gap-1.5 shrink-0 transition cursor-pointer"
-                    >
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>Ouvrir l'Agenda</span>
-                    </button>
-                  </div>
-
-                  {/* Quick agent chips */}
-                  <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2 border-t border-emerald-200/60">
-                    {fieldAgents.slice(0, 4).map(agent => (
-                      <button
-                        key={agent.id}
-                        type="button"
-                        onClick={() => handleDirectLoginAgent(agent)}
-                        className="text-[10px] font-bold px-2 py-1 bg-white hover:bg-emerald-100 text-emerald-900 rounded-md border border-emerald-300 transition cursor-pointer"
-                      >
-                        {agent.name.split(' ')[0]} ({agent.badge})
-                      </button>
-                    ))}
+              {/* Error Alert Box */}
+              {errorMessage && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-300 rounded-xl flex items-start gap-2.5 text-red-900 text-xs animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <span className="font-bold block">Erreur d'authentification</span>
+                    <span>{errorMessage}</span>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* MANUAL SEARCH / CUSTOM INPUT ACCORDION */}
-              <div className="mt-4 pt-3 border-t border-slate-200">
-                <details className="text-xs group">
-                  <summary className="font-semibold text-slate-500 hover:text-slate-800 cursor-pointer flex items-center justify-between py-1">
-                    <span className="flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5" />
-                      <span>Ou taper un identifiant / numéro manuellement</span>
-                    </span>
+              {/* REAL AUTHENTICATION FORM */}
+              <form onSubmit={handleSubmit} className="mt-4 space-y-3.5 text-xs">
+                {/* 1. Identifier Input */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Identifiant Officiel / Matricule / Email <span className="text-red-600">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={identifier}
+                      onChange={e => {
+                        setIdentifier(e.target.value);
+                        if (errorMessage) setErrorMessage(null);
+                      }}
+                      placeholder="Ex: ambetos, Jacks.matoko@gmail.com, ou SAA-PN-315"
+                      className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-[#850404] focus:border-[#850404] transition"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Password Input with Show/Hide Toggle */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700">
+                      Mot de Passe de Session <span className="text-red-600">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsEmergencyInfoOpen(!isEmergencyInfoOpen)}
+                      className="text-[11px] text-[#006d2f] hover:underline font-semibold"
+                    >
+                      Mot de passe d'urgence ?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={password}
+                      onChange={e => {
+                        setPassword(e.target.value);
+                        if (errorMessage) setErrorMessage(null);
+                      }}
+                      placeholder="Saisissez votre mot de passe"
+                      className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-[#850404] focus:border-[#850404] transition font-mono-ref"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-700 transition"
+                      title={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Emergency Password helper banner */}
+                {isEmergencyInfoOpen && (
+                  <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-[11px] text-amber-900 space-y-1 animate-in fade-in">
+                    <p className="font-bold flex items-center gap-1.5 text-amber-950">
+                      <Key className="w-3.5 h-3.5 text-amber-700" />
+                      <span>Mot de passe d'urgence Brigade Terrain :</span>
+                    </p>
+                    <p>
+                      En cas d'oubli, vous pouvez utiliser le mot de passe maître de mission : <code className="bg-amber-200/80 px-1.5 py-0.5 rounded font-bold font-mono-ref">DdlPn@2026!</code>
+                    </p>
+                  </div>
+                )}
+
+                {/* Remember Me Checkbox */}
+                <div className="flex items-center justify-between pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={e => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 accent-[#850404] rounded cursor-pointer"
+                    />
+                    <span className="font-medium">Mémoriser cet appareil</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-mono-ref">Session chiffrée</span>
+                </div>
+
+                {/* Submit Action Button */}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-red-900 via-[#850404] to-red-950 hover:from-red-800 hover:to-red-900 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg border border-amber-400/40 flex items-center justify-center gap-2 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  {isLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
+                      <span>Vérification des accréditations...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="w-4 h-4 text-amber-300" />
+                      <span>Se Connecter à l'Espace DDL-PN</span>
+                      <ArrowRight className="w-4 h-4 text-amber-300" />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* ACCORDION: OFFICIAL PERSONNEL DIRECTORY & 1-CLICK TEST FILL */}
+              <div className="mt-5 pt-3 border-t border-slate-200">
+                <details className="text-xs group" open={false}>
+                  <summary className="font-bold text-slate-700 hover:text-[#022448] cursor-pointer flex items-center justify-between py-1">
+                    <div className="flex items-center gap-2">
+                      <Key className="w-4 h-4 text-amber-600" />
+                      <span>Annuaire & Mots de Passe Officiels des Agents ({allAccounts.length} Profils)</span>
+                    </div>
                     <span className="text-[10px] text-slate-400 group-open:rotate-180 transition-transform">▼</span>
                   </summary>
 
-                  <form onSubmit={handleFormLogin} className="mt-3 space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    <div>
+                  <div className="mt-3 bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-3">
+                    {/* Search inside accounts */}
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
                       <input
                         type="text"
-                        value={identifier}
-                        onChange={e => setIdentifier(e.target.value)}
-                        placeholder="Ex: Jacks.matoko@gmail.com, 053028383, ou Matricule"
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-[#850404]"
+                        placeholder="Filtrer agent par nom, badge ou rôle..."
+                        value={directorySearch}
+                        onChange={e => setDirectorySearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs outline-none"
                       />
                     </div>
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full bg-[#850404] hover:bg-[#6b0202] text-white font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer"
-                    >
-                      <span>Entrer directement</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </form>
+
+                    {/* Scrollable grid of agent account cards */}
+                    <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+                      {filteredAccounts.map(account => {
+                        const isAdmin = account.role === 'ADMIN';
+                        const isDirector = account.role === 'DIRECTEUR';
+                        return (
+                          <div
+                            key={account.id}
+                            onClick={() => handleSelectAccount(account, false)}
+                            className={`p-2.5 rounded-xl border transition flex items-center justify-between cursor-pointer ${
+                              identifier.toLowerCase() === account.username.toLowerCase() ||
+                              identifier.toLowerCase() === account.email.toLowerCase()
+                                ? 'bg-amber-50 border-amber-400 shadow-xs'
+                                : 'bg-white hover:bg-slate-100 border-slate-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                                  isAdmin
+                                    ? 'bg-red-900 text-amber-300'
+                                    : isDirector
+                                    ? 'bg-[#022448] text-white'
+                                    : 'bg-emerald-700 text-white'
+                                }`}
+                              >
+                                {account.name.charAt(0)}
+                              </div>
+                              <div className="min-w-0 leading-tight">
+                                <div className="font-extrabold text-slate-900 flex items-center gap-1.5 truncate">
+                                  <span>{account.name}</span>
+                                  <span className="text-[9px] bg-slate-100 font-mono-ref px-1 rounded text-slate-600 font-bold shrink-0">
+                                    {account.badge}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-slate-500 truncate">
+                                  ID: <strong className="text-slate-800 font-mono-ref">{account.username}</strong> • Pass: <strong className="text-[#006d2f] font-mono-ref">{account.defaultPassword}</strong>
+                                </div>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={e => {
+                                e.stopPropagation();
+                                handleSelectAccount(account, true);
+                              }}
+                              className="shrink-0 ml-2 px-2.5 py-1 bg-slate-800 hover:bg-[#850404] text-white text-[10px] font-bold rounded-lg transition"
+                              title="Se connecter directement avec ce profil"
+                            >
+                              Entrer
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </details>
               </div>
 
@@ -358,7 +371,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
               <span className="flex items-center gap-1 text-emerald-700 font-semibold">
                 <CheckCircle2 className="w-3 h-3" />
-                Base Supabase connectée
+                Base Supabase connectée • Table app_users
               </span>
               <span>DDL-PN Pointe-Noire © 2026</span>
             </div>
