@@ -276,10 +276,12 @@ export const GoogleWorkspaceGatewayModule: React.FC = () => {
     let addedEventCount = 0;
 
     toImport.forEach(item => {
+      const customAmount = (item as any).custom_total_due !== undefined ? (item as any).custom_total_due : (item.regime_type === 'INFORMEL' ? 50000 : undefined);
       const { filingFee, ratePerSqm, totalDue } = calculateEstablishmentFee(
         item.activity_code,
         item.surface_m2,
-        item.regime_type
+        item.regime_type,
+        customAmount
       );
 
       // 1. Check if establishment exists in local database or add new
@@ -969,16 +971,18 @@ export const GoogleWorkspaceGatewayModule: React.FC = () => {
                   <label className="font-bold text-slate-700 block mb-1">Régime Fiscale</label>
                   <select
                     value={editingItem.regime_type}
-                    onChange={e =>
+                    onChange={e => {
+                      const reg = e.target.value as RegimeType;
                       setEditingItem({
                         ...editingItem,
-                        regime_type: e.target.value as RegimeType
-                      })
-                    }
+                        regime_type: reg,
+                        custom_total_due: reg === 'INFORMEL' ? 50000 : (editingItem as any).custom_total_due || 80000
+                      } as any);
+                    }}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
                   >
+                    <option value="INFORMEL">Secteur Informel (Forfait standard : 50 000 FCFA)</option>
                     <option value="FORMEL">Secteur Formel (au m²)</option>
-                    <option value="INFORMEL">Secteur Informel (Forfait)</option>
                   </select>
                 </div>
                 <div>
@@ -991,6 +995,56 @@ export const GoogleWorkspaceGatewayModule: React.FC = () => {
                     }
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 font-mono-ref text-slate-900"
                   />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="font-bold text-slate-700 block">Redevance Totale / Forfait (FCFA)</label>
+                  <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                    {editingItem.regime_type === 'INFORMEL' ? 'Forfait informel : 50 000 FCFA par défaut' : 'Formel'}
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  step="5000"
+                  value={(editingItem as any).custom_total_due !== undefined ? (editingItem as any).custom_total_due : (editingItem.regime_type === 'INFORMEL' ? 50000 : 80000)}
+                  onChange={e =>
+                    setEditingItem({
+                      ...editingItem,
+                      custom_total_due: Number(e.target.value)
+                    } as any)
+                  }
+                  className="w-full bg-white border border-emerald-500 rounded-xl p-2 font-mono-ref font-bold text-slate-900"
+                />
+                <div className="flex gap-1.5 mt-1.5 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setEditingItem({ ...editingItem, custom_total_due: 50000 } as any)}
+                    className="px-2 py-0.5 bg-emerald-600 text-white rounded font-bold cursor-pointer"
+                  >
+                    50 000 F (DDL)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = (editingItem as any).custom_total_due || 50000;
+                      setEditingItem({ ...editingItem, custom_total_due: Math.max(0, cur - 10000) } as any);
+                    }}
+                    className="px-2 py-0.5 bg-slate-200 text-slate-700 rounded cursor-pointer"
+                  >
+                    -10 000 F
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = (editingItem as any).custom_total_due || 50000;
+                      setEditingItem({ ...editingItem, custom_total_due: cur + 10000 } as any);
+                    }}
+                    className="px-2 py-0.5 bg-slate-200 text-slate-700 rounded cursor-pointer"
+                  >
+                    +10 000 F
+                  </button>
                 </div>
               </div>
 

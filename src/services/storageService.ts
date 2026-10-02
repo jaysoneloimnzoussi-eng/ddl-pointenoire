@@ -41,16 +41,45 @@ export function getCoordinatesForArrondissement(arr: ArrondissementCode, idSeed:
   return [Number((baseCoord[0] + jitterLat).toFixed(5)), Number((baseCoord[1] + jitterLng).toFixed(5))];
 }
 
-// Helper to calculate total fee
-export function calculateEstablishmentFee(activityCode: string, surfaceM2: number, regime: RegimeType) {
+// Helper to calculate total fee (Forfait DDL-PN informel par défaut : 50 000 FCFA, révisable manuellement à la baisse comme à la hausse)
+export function calculateEstablishmentFee(
+  activityCode: string,
+  surfaceM2: number,
+  regime: RegimeType,
+  customAmount?: number
+) {
+  // If a manual amount is explicitly entered by the agent/user, honor it directly (révisable à la baisse comme à la hausse)
+  if (customAmount !== undefined && customAmount !== null && !isNaN(customAmount) && customAmount >= 0) {
+    const rounded = Math.round(customAmount);
+    return {
+      filingFee: regime === 'FORMEL' ? TAXATION_RULES.filing_fee_formal_fcfa : rounded,
+      ratePerSqm: 0,
+      totalDue: rounded,
+      isCustom: true
+    };
+  }
+
+  // Secteur INFORMEL : Forfait DDL-PN standard fixé à 50 000 FCFA par défaut (révisable manuellement)
+  if (regime === 'INFORMEL') {
+    const totalDue = TAXATION_RULES.forfait_informel_defaut_fcfa; // 50 000 FCFA
+    return {
+      filingFee: totalDue,
+      ratePerSqm: 0,
+      totalDue,
+      isCustom: false
+    };
+  }
+
+  // Secteur FORMEL : Frais d'instruction 50 000 FCFA + calcul proportionnel à la surface
   const category = ACTIVITY_CATEGORIES.find(c => c.code === activityCode) || ACTIVITY_CATEGORIES[3];
-  const filingFee = regime === 'FORMEL' ? TAXATION_RULES.filing_fee_formal_fcfa : TAXATION_RULES.filing_fee_informal_fcfa;
+  const filingFee = TAXATION_RULES.filing_fee_formal_fcfa;
   const ratePerSqm = category.rate_per_sqm_fcfa;
   const total = filingFee + (surfaceM2 * ratePerSqm);
   return {
     filingFee,
     ratePerSqm,
-    totalDue: Math.round(total)
+    totalDue: Math.round(total),
+    isCustom: false
   };
 }
 
@@ -424,7 +453,21 @@ class StorageService {
     const storedEsts = localStorage.getItem(LOCAL_STORAGE_KEYS.ESTABLISHMENTS);
     if (storedEsts) {
       try {
-        this.establishments = JSON.parse(storedEsts);
+        const parsed: Establishment[] = JSON.parse(storedEsts);
+        // Normalize any establishment that had the erroneous 118 000 or legacy values for INFORMEL
+        this.establishments = parsed.map(e => {
+          if (e.regime_type === 'INFORMEL' && (e.total_due === 118000 || e.total_due === 150000 || !e.total_due)) {
+            const newTotal = 50000;
+            const newBalance = Math.max(0, newTotal - (e.amount_paid || 0));
+            return {
+              ...e,
+              total_due: newTotal,
+              filing_fee: 50000,
+              balance_due: newBalance
+            };
+          }
+          return e;
+        });
       } catch {
         this.establishments = generateSeedEstablishments();
         this.saveEstablishments();

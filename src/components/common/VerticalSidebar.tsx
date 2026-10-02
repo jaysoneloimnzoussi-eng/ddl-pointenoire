@@ -50,7 +50,7 @@ const SIDEBAR_SECTIONS: NavSection[] = [
   {
     title: 'CONTRÔLE & CONFORMITÉ SAA',
     items: [
-      { id: 'MOD-02', num: '02', label: 'Recensement & Recouvrement SAA', shortLabel: 'Recensement SAA', icon: ClipboardList, badge: '118' },
+      { id: 'MOD-02', num: '02', label: 'Recensement & Recouvrement SAA', shortLabel: 'Recensement SAA', icon: ClipboardList, badge: 'SAA' },
       { id: 'MOD-03', num: '03', label: 'Portail Terrain & Google Agenda SAA', shortLabel: 'Portail Terrain SAA', icon: Smartphone, badge: 'Agent' },
       { id: 'MOD-07', num: '07', label: 'SIG Cartographique Pointe-Noire', shortLabel: 'Carte SIG', icon: MapPin },
       { id: 'MOD-04', num: '04', label: 'Passerelle Google Workspace', shortLabel: 'Google Workspace', icon: CloudDownload },

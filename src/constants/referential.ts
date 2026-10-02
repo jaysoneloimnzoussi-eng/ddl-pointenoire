@@ -212,8 +212,9 @@ export const ACTIVITY_CATEGORIES: ActivityCategoryRate[] = [
 ];
 
 export const TAXATION_RULES = {
+  forfait_informel_defaut_fcfa: 50000, // Forfait officiel DDL-PN secteur informel (50 000 FCFA par défaut, révisable manuellement à la baisse comme à la hausse)
   filing_fee_formal_fcfa: 50000,
-  filing_fee_informal_fcfa: 30000,
+  filing_fee_informal_fcfa: 50000,
   revenue_split: {
     tresor_public_percent: 70,
     regie_fonctionnement_ddl_percent: 30

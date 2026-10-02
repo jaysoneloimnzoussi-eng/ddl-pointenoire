@@ -176,7 +176,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
     activity_code: 'A2.1',
     regime_type: 'INFORMEL' as RegimeType,
     surface_m2: 60,
-    total_due: 150000,
+    total_due: 50000,
     programBureauPassage: true,
     bureauPassageDate: '2026-10-02',
     bureauPassageTime: '10:00',
@@ -755,7 +755,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
 
     const arrInfo = TERRITORIAL_REFERENTIAL.find(a => a.code === newEstForm.arrondissement);
     const coords: [number, number] = arrInfo?.sig_coordinates || [-4.7938, 11.8569];
-    const totalDue = Number(newEstForm.total_due) || 150000;
+    const totalDue = Number(newEstForm.total_due) > 0 ? Number(newEstForm.total_due) : 50000;
 
     const createdEst = storageService.addEstablishment({
       name: newEstForm.name.trim(),
@@ -2698,10 +2698,14 @@ export const MobileAgentCalendarModule: React.FC = () => {
                   <label className="font-bold text-slate-700 block mb-1">Régime Fiscal *</label>
                   <select
                     value={newEstForm.regime_type}
-                    onChange={e => setNewEstForm({ ...newEstForm, regime_type: e.target.value as any })}
+                    onChange={e => {
+                      const reg = e.target.value as any;
+                      const nextFee = reg === 'INFORMEL' ? 50000 : 80000;
+                      setNewEstForm({ ...newEstForm, regime_type: reg, total_due: nextFee });
+                    }}
                     className="w-full p-2 border border-slate-300 rounded-lg font-bold"
                   >
-                    <option value="INFORMEL">Secteur Informel (Forfait annuel)</option>
+                    <option value="INFORMEL">Secteur Informel (Forfait standard : 50 000 FCFA)</option>
                     <option value="FORMEL">Secteur Formel (Tarif m²)</option>
                   </select>
                 </div>
@@ -2715,13 +2719,42 @@ export const MobileAgentCalendarModule: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Redevance Estimée (FCFA) *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700 block">Redevance / Forfait (FCFA) *</label>
+                    <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-1 rounded border border-emerald-200">
+                      {newEstForm.regime_type === 'INFORMEL' ? '50 000 F standard' : 'Formel'}
+                    </span>
+                  </div>
                   <input
                     type="number"
+                    step="5000"
                     value={newEstForm.total_due}
                     onChange={e => setNewEstForm({ ...newEstForm, total_due: Number(e.target.value) })}
                     className="w-full p-2 border border-slate-300 rounded-lg font-mono-ref font-bold text-amber-900 bg-amber-50"
                   />
+                  <div className="flex gap-1 mt-1 text-[9px]">
+                    <button
+                      type="button"
+                      onClick={() => setNewEstForm({ ...newEstForm, total_due: 50000 })}
+                      className="px-1.5 py-0.5 bg-emerald-600 text-white rounded font-bold hover:bg-emerald-700 cursor-pointer"
+                    >
+                      50 000 F (DDL)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewEstForm({ ...newEstForm, total_due: Math.max(0, newEstForm.total_due - 10000) })}
+                      className="px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded hover:bg-slate-300 cursor-pointer"
+                    >
+                      -10k
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewEstForm({ ...newEstForm, total_due: newEstForm.total_due + 10000 })}
+                      className="px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded hover:bg-slate-300 cursor-pointer"
+                    >
+                      +10k
+                    </button>
+                  </div>
                 </div>
               </div>
 

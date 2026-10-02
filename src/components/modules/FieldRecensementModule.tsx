@@ -54,12 +54,17 @@ export const FieldRecensementModule: React.FC = () => {
     regime_type: 'INFORMEL' as RegimeType,
     rccm: '',
     surface_m2: 80,
+    custom_total_due: 50000, // Forfait officiel DDL-PN secteur informel (50 000 FCFA par défaut, modifiable manuellement)
     has_acoustic_limiter: false,
     decibel_level: 82,
     lat: -4.7938,
     lng: 11.8569,
     notes: 'Recensement direct Service SAA Pointe-Noire'
   });
+
+  // State for manual fee revision in Fiche Contradictoire
+  const [isEditingFee, setIsEditingFee] = useState(false);
+  const [editedFeeValue, setEditedFeeValue] = useState<number>(50000);
 
   // Direct payment modal
   const [paymentModalEst, setPaymentModalEst] = useState<Establishment | null>(null);
@@ -100,10 +105,12 @@ export const FieldRecensementModule: React.FC = () => {
   // Handle creation
   const handleCreateEstablishment = (e: React.FormEvent) => {
     e.preventDefault();
+    const manualAmount = Number(newForm.custom_total_due) > 0 ? Number(newForm.custom_total_due) : (newForm.regime_type === 'INFORMEL' ? 50000 : 50000);
     const { filingFee, ratePerSqm, totalDue } = calculateEstablishmentFee(
       newForm.activity_code,
       newForm.surface_m2,
-      newForm.regime_type
+      newForm.regime_type,
+      manualAmount
     );
 
     const actLabel = ACTIVITY_CATEGORIES.find(c => c.code === newForm.activity_code)?.label || 'Loisirs';
@@ -465,17 +472,102 @@ export const FieldRecensementModule: React.FC = () => {
                 {selectedEst.rccm && <p className="text-blue-700 font-mono-ref mt-0.5 font-bold">RCCM : {selectedEst.rccm}</p>}
               </div>
 
-              <div className="bg-slate-50 p-3 rounded-lg">
-                <span className="text-slate-400 uppercase font-bold text-[10px]">Situation Financière SAA</span>
-                <p className="font-mono-ref font-bold text-slate-800 text-sm mt-0.5">
-                  Total dû : {selectedEst.total_due.toLocaleString('fr-FR')} FCFA
-                </p>
-                <p className="text-emerald-700 font-mono-ref font-bold">
-                  Encaissé : {selectedEst.amount_paid.toLocaleString('fr-FR')} FCFA
-                </p>
-                <p className="text-amber-800 font-mono-ref">
-                  Solde résiduel : {selectedEst.balance_due.toLocaleString('fr-FR')} FCFA
-                </p>
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 uppercase font-bold text-[10px]">Situation Financière SAA</span>
+                  {!isEditingFee && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingFee(true);
+                        setEditedFeeValue(selectedEst.total_due);
+                      }}
+                      className="text-[10px] text-blue-700 hover:text-blue-900 font-bold underline cursor-pointer"
+                    >
+                      Ajuster montant
+                    </button>
+                  )}
+                </div>
+
+                {!isEditingFee ? (
+                  <>
+                    <p className="font-mono-ref font-bold text-slate-800 text-sm mt-0.5">
+                      Total dû : {selectedEst.total_due.toLocaleString('fr-FR')} FCFA
+                    </p>
+                    <p className="text-emerald-700 font-mono-ref font-bold">
+                      Encaissé : {selectedEst.amount_paid.toLocaleString('fr-FR')} FCFA
+                    </p>
+                    <p className="text-amber-800 font-mono-ref">
+                      Solde résiduel : {selectedEst.balance_due.toLocaleString('fr-FR')} FCFA
+                    </p>
+                  </>
+                ) : (
+                  <div className="mt-1.5 space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-700 block">Nouveau montant total exigible (FCFA) :</label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min="0"
+                        step="5000"
+                        value={editedFeeValue}
+                        onChange={e => setEditedFeeValue(Number(e.target.value))}
+                        className="w-full p-1.5 bg-white border border-blue-500 rounded font-mono-ref font-bold text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newTotal = Math.max(0, Number(editedFeeValue) || 0);
+                          const newBalance = Math.max(0, newTotal - selectedEst.amount_paid);
+                          storageService.updateEstablishment(selectedEst.id, {
+                            total_due: newTotal,
+                            balance_due: newBalance
+                          });
+                          setSelectedEst({
+                            ...selectedEst,
+                            total_due: newTotal,
+                            balance_due: newBalance
+                          });
+                          setEstablishments(storageService.getEstablishmentsForUser(currentUser));
+                          setIsEditingFee(false);
+                          triggerNotification(`Redevance révisée à ${newTotal.toLocaleString('fr-FR')} FCFA pour ${selectedEst.name}.`, 'success');
+                        }}
+                        className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold shrink-0 cursor-pointer"
+                      >
+                        Valider
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingFee(false)}
+                        className="px-2 py-1 bg-slate-200 text-slate-700 rounded text-xs shrink-0 cursor-pointer"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                    <div className="flex gap-1 text-[9px]">
+                      <button
+                        type="button"
+                        onClick={() => setEditedFeeValue(50000)}
+                        className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold cursor-pointer"
+                      >
+                        50 000 F (Forfait DDL)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditedFeeValue(Math.max(0, editedFeeValue - 10000))}
+                        className="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded cursor-pointer"
+                      >
+                        -10 000 F
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditedFeeValue(editedFeeValue + 10000)}
+                        className="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded cursor-pointer"
+                      >
+                        +10 000 F
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -690,11 +782,19 @@ export const FieldRecensementModule: React.FC = () => {
                   <label className="font-bold text-slate-700 block mb-1">Secteur / Régime *</label>
                   <select
                     value={newForm.regime_type}
-                    onChange={e => setNewForm({ ...newForm, regime_type: e.target.value as RegimeType })}
+                    onChange={e => {
+                      const reg = e.target.value as RegimeType;
+                      const nextFee = reg === 'INFORMEL' ? 50000 : calculateEstablishmentFee(newForm.activity_code, newForm.surface_m2, 'FORMEL').totalDue;
+                      setNewForm({
+                        ...newForm,
+                        regime_type: reg,
+                        custom_total_due: nextFee
+                      });
+                    }}
                     className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-[#006d2f]"
                   >
-                    <option value="INFORMEL">Informel (Frais 30 000 FCFA)</option>
-                    <option value="FORMEL">Formel (Frais 50 000 FCFA)</option>
+                    <option value="INFORMEL">Secteur Informel (Forfait standard : 50 000 FCFA)</option>
+                    <option value="FORMEL">Secteur Formel (Frais dossier : 50 000 FCFA + Surface)</option>
                   </select>
                 </div>
 
@@ -709,27 +809,74 @@ export const FieldRecensementModule: React.FC = () => {
                 </div>
               </div>
 
-              {/* Realtime calculation summary */}
-              {(() => {
-                const calc = calculateEstablishmentFee(newForm.activity_code, newForm.surface_m2, newForm.regime_type);
-                return (
-                  <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-lg text-emerald-900 text-xs">
-                    <p className="font-bold">Simulation tarifaire automatique :</p>
-                    <div className="flex justify-between mt-1">
-                      <span>Frais de dossier réglementaires :</span>
-                      <span className="font-mono-ref font-bold">{calc.filingFee.toLocaleString('fr-FR')} FCFA</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Redevance surface ({newForm.surface_m2} m² × {calc.ratePerSqm} F) :</span>
-                      <span className="font-mono-ref font-bold">{(newForm.surface_m2 * calc.ratePerSqm).toLocaleString('fr-FR')} FCFA</span>
-                    </div>
-                    <div className="flex justify-between border-t border-emerald-300 pt-1 mt-1 font-extrabold text-sm text-[#006d2f]">
-                      <span>REDEVANCE TOTALE EXIGIBLE :</span>
-                      <span className="font-mono-ref">{calc.totalDue.toLocaleString('fr-FR')} FCFA</span>
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* Editable Redevance / Forfait Field (50 000 FCFA par défaut, révisable manuellement) */}
+              <div className="p-3.5 bg-emerald-50/80 border-2 border-emerald-500 rounded-xl space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-1">
+                  <label className="font-black text-emerald-950 text-xs flex items-center gap-1.5">
+                    <span>Redevance Totale Exigible / Forfait DDL-PN (FCFA) *</span>
+                  </label>
+                  <span className="text-[10px] font-bold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-300">
+                    {newForm.regime_type === 'INFORMEL' ? 'Forfait informel standard : 50 000 FCFA' : 'Calcul secteur formel'}
+                  </span>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="5000"
+                    value={newForm.custom_total_due}
+                    onChange={e => setNewForm({ ...newForm, custom_total_due: Number(e.target.value) })}
+                    className="w-full p-2.5 bg-white border-2 border-emerald-600 rounded-lg font-mono-ref font-black text-base text-[#022448] focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-400">FCFA</span>
+                </div>
+
+                {/* Quick adjustment buttons for field inspectors */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                  <span className="text-slate-500 font-medium text-[10px]">Ajustements rapides :</span>
+                  <button
+                    type="button"
+                    onClick={() => setNewForm({ ...newForm, custom_total_due: 50000 })}
+                    className="px-2 py-0.5 bg-emerald-600 text-white rounded font-bold hover:bg-emerald-700 cursor-pointer shadow-2xs"
+                  >
+                    50 000 F (Forfait DDL)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewForm({ ...newForm, custom_total_due: Math.max(0, newForm.custom_total_due - 10000) })}
+                    className="px-2 py-0.5 bg-white border border-slate-300 text-slate-700 rounded font-semibold hover:bg-slate-100 cursor-pointer"
+                  >
+                    -10 000 F (Baisse)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewForm({ ...newForm, custom_total_due: newForm.custom_total_due + 10000 })}
+                    className="px-2 py-0.5 bg-white border border-slate-300 text-slate-700 rounded font-semibold hover:bg-slate-100 cursor-pointer"
+                  >
+                    +10 000 F (Hausse)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewForm({ ...newForm, custom_total_due: 40000 })}
+                    className="px-2 py-0.5 bg-white border border-slate-300 text-slate-700 rounded font-semibold hover:bg-slate-100 cursor-pointer"
+                  >
+                    40 000 F
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewForm({ ...newForm, custom_total_due: 60000 })}
+                    className="px-2 py-0.5 bg-white border border-slate-300 text-slate-700 rounded font-semibold hover:bg-slate-100 cursor-pointer"
+                  >
+                    60 000 F
+                  </button>
+                </div>
+
+                <p className="text-[10px] text-slate-600 italic">
+                  ℹ️ Conformément aux pratiques de la DDL-PN, ce montant peut être directement saisi manuellement selon l'appréciation contradictoire in situ de la brigade SAA.
+                </p>
+              </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t">
                 <button

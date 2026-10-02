@@ -20,9 +20,15 @@ export const LegalTextsAndSimulatorModule: React.FC = () => {
   const [selectedActivity, setSelectedActivity] = useState<string>('A1.1');
   const [surface, setSurface] = useState<number>(150);
   const [regime, setRegime] = useState<RegimeType>('INFORMEL');
+  const [customForfait, setCustomForfait] = useState<number>(50000);
   const [installments, setInstallments] = useState<number>(2);
 
-  const calc = calculateEstablishmentFee(selectedActivity, surface, regime);
+  const calc = calculateEstablishmentFee(
+    selectedActivity,
+    surface,
+    regime,
+    regime === 'INFORMEL' ? customForfait : undefined
+  );
   const tresorShare = Math.round(calc.totalDue * 0.7);
   const regieShare = calc.totalDue - tresorShare;
   const perInstallment = Math.round(calc.totalDue / installments);
@@ -76,7 +82,7 @@ export const LegalTextsAndSimulatorModule: React.FC = () => {
                   }`}
                 >
                   <p className="font-bold">Secteur Informel</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Frais de dossier : 30 000 FCFA</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Forfait DDL : 50 000 FCFA (révisable)</p>
                 </button>
 
                 <button
@@ -89,49 +95,107 @@ export const LegalTextsAndSimulatorModule: React.FC = () => {
                   }`}
                 >
                   <p className="font-bold">Secteur Formel (RCCM)</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Frais de dossier : 50 000 FCFA</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Frais de dossier : 50 000 FCFA + Surface</p>
                 </button>
               </div>
             </div>
 
-            {/* Activity Category */}
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Catégorie d'Activité de Loisirs</label>
-              <select
-                value={selectedActivity}
-                onChange={e => setSelectedActivity(e.target.value)}
-                className="w-full p-2 border border-slate-300 rounded-lg font-semibold text-slate-800 focus:ring-1 focus:ring-[#006d2f]"
-              >
-                {ACTIVITY_CATEGORIES.map(cat => (
-                  <option key={cat.code} value={cat.code}>
-                    {cat.code} - {cat.label} ({cat.rate_per_sqm_fcfa} FCFA/m²)
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* SECTEUR INFORMEL : Saisie manuelle du forfait DDL-PN */}
+            {regime === 'INFORMEL' ? (
+              <div className="p-4 bg-emerald-50/90 border-2 border-emerald-500 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="font-black text-emerald-950 text-xs flex items-center gap-1.5">
+                    <span>Forfait DDL-PN Secteur Informel (FCFA) *</span>
+                  </label>
+                  <span className="text-[10px] font-bold bg-white text-emerald-800 px-2 py-0.5 rounded border border-emerald-300">
+                    50 000 FCFA par défaut (révisable)
+                  </span>
+                </div>
 
-            {/* Surface slider & input */}
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="font-bold text-slate-700">Superficie au sol déclarée</label>
-                <span className="font-mono-ref font-extrabold text-sm text-[#022448]">{surface} m²</span>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="5000"
+                    value={customForfait}
+                    onChange={e => setCustomForfait(Math.max(0, Number(e.target.value)))}
+                    className="w-full p-2.5 bg-white border-2 border-emerald-600 rounded-lg font-mono-ref font-black text-base text-[#022448] focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-400">FCFA</span>
+                </div>
+
+                {/* Boutons d'ajustements manuels rapides */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                  <span className="text-slate-600 font-medium text-[10px]">Ajustements rapides :</span>
+                  <button
+                    type="button"
+                    onClick={() => setCustomForfait(50000)}
+                    className="px-2 py-1 bg-emerald-600 text-white rounded font-bold hover:bg-emerald-700 cursor-pointer shadow-2xs"
+                  >
+                    50 000 F (Forfait DDL)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomForfait(Math.max(0, customForfait - 10000))}
+                    className="px-2 py-1 bg-white border border-slate-300 text-slate-700 rounded font-semibold hover:bg-slate-100 cursor-pointer"
+                  >
+                    -10 000 F (Baisse)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomForfait(customForfait + 10000)}
+                    className="px-2 py-1 bg-white border border-slate-300 text-slate-700 rounded font-semibold hover:bg-slate-100 cursor-pointer"
+                  >
+                    +10 000 F (Hausse)
+                  </button>
+                </div>
+                <p className="text-[10.5px] text-emerald-900 leading-snug">
+                  * Note officielle : À la Direction Départementale des Loisirs de Pointe-Noire, le montant forfaitaire réglementaire pour le secteur informel est de <strong>50 000 FCFA</strong>. Ce montant peut être saisi manuellement à la baisse comme à la hausse lors des constatations et conciliations sur le terrain.
+                </p>
               </div>
-              <input
-                type="range"
-                min="20"
-                max="800"
-                step="5"
-                value={surface}
-                onChange={e => setSurface(Number(e.target.value))}
-                className="w-full accent-[#006d2f] cursor-pointer"
-              />
-              <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
-                <span>20 m²</span>
-                <span>200 m²</span>
-                <span>500 m²</span>
-                <span>800 m²</span>
-              </div>
-            </div>
+            ) : (
+              /* SECTEUR FORMEL : Activité et Surface */
+              <>
+                {/* Activity Category */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Catégorie d'Activité de Loisirs</label>
+                  <select
+                    value={selectedActivity}
+                    onChange={e => setSelectedActivity(e.target.value)}
+                    className="w-full p-2 border border-slate-300 rounded-lg font-semibold text-slate-800 focus:ring-1 focus:ring-[#006d2f]"
+                  >
+                    {ACTIVITY_CATEGORIES.map(cat => (
+                      <option key={cat.code} value={cat.code}>
+                        {cat.code} - {cat.label} ({cat.rate_per_sqm_fcfa} FCFA/m²)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Surface slider & input */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="font-bold text-slate-700">Superficie au sol déclarée</label>
+                    <span className="font-mono-ref font-extrabold text-sm text-[#022448]">{surface} m²</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="20"
+                    max="800"
+                    step="5"
+                    value={surface}
+                    onChange={e => setSurface(Number(e.target.value))}
+                    className="w-full accent-[#006d2f] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                    <span>20 m²</span>
+                    <span>200 m²</span>
+                    <span>500 m²</span>
+                    <span>800 m²</span>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Installments */}
             <div>
@@ -156,14 +220,23 @@ export const LegalTextsAndSimulatorModule: React.FC = () => {
 
             {/* Result Box */}
             <div className="bg-slate-900 text-white p-5 rounded-xl space-y-3 font-mono-ref mt-4">
-              <div className="flex justify-between text-xs text-slate-300">
-                <span>Frais de dossier réglementaires :</span>
-                <span>{calc.filingFee.toLocaleString('fr-FR')} FCFA</span>
-              </div>
-              <div className="flex justify-between text-xs text-slate-300">
-                <span>Superficie ({surface} m² × {calc.ratePerSqm} F) :</span>
-                <span>{(surface * calc.ratePerSqm).toLocaleString('fr-FR')} FCFA</span>
-              </div>
+              {regime === 'INFORMEL' ? (
+                <div className="flex justify-between text-xs text-slate-300">
+                  <span>Forfait DDL-PN Secteur Informel :</span>
+                  <span className="font-bold text-emerald-400">{calc.totalDue.toLocaleString('fr-FR')} FCFA</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between text-xs text-slate-300">
+                    <span>Frais de dossier réglementaires :</span>
+                    <span>{calc.filingFee.toLocaleString('fr-FR')} FCFA</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-300">
+                    <span>Superficie ({surface} m² × {calc.ratePerSqm} F) :</span>
+                    <span>{(surface * calc.ratePerSqm).toLocaleString('fr-FR')} FCFA</span>
+                  </div>
+                </>
+              )}
 
               <div className="flex justify-between items-baseline pt-2 border-t border-slate-700 text-amber-400 font-extrabold text-base sm:text-lg">
                 <span className="font-sans text-xs uppercase tracking-wider text-slate-300">TOTAL EXIGIBLE :</span>

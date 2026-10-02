@@ -76,8 +76,13 @@ export const TitlesAndReceiptsModule: React.FC = () => {
     activity_code: 'A2.1',
     regime_type: 'INFORMEL' as RegimeType,
     surface_m2: 80,
+    custom_total_due: 50000,
     assigned_agent_id: '0594a697-48ba-4fb7-b4cb-a979ad46f37c'
   });
+
+  // State to edit fee for currently selected existing establishment
+  const [isEditingCurrentEstFee, setIsEditingCurrentEstFee] = useState<boolean>(false);
+  const [editedCurrentEstFee, setEditedCurrentEstFee] = useState<number>(50000);
 
   // Table history active tab
   const [historyTab, setHistoryTab] = useState<'RECEIPTS' | 'SCHEDULED_VISITS'>('RECEIPTS');
@@ -136,10 +141,12 @@ export const TitlesAndReceiptsModule: React.FC = () => {
 
     // If new establishment, create it first
     if (isCreatingNewEst) {
+      const manualAmount = Number(newEst.custom_total_due) >= 0 ? Number(newEst.custom_total_due) : undefined;
       const { filingFee, ratePerSqm, totalDue } = calculateEstablishmentFee(
         newEst.activity_code,
         newEst.surface_m2,
-        newEst.regime_type
+        newEst.regime_type,
+        manualAmount
       );
 
       const assignedAgent = APP_USERS.find(u => u.id === newEst.assigned_agent_id) || APP_USERS[2];
@@ -215,10 +222,12 @@ export const TitlesAndReceiptsModule: React.FC = () => {
     let targetEst: Establishment | undefined = currentEst;
 
     if (isCreatingNewEst) {
+      const manualAmount = Number(newEst.custom_total_due) >= 0 ? Number(newEst.custom_total_due) : undefined;
       const { filingFee, ratePerSqm, totalDue } = calculateEstablishmentFee(
         newEst.activity_code,
         newEst.surface_m2,
-        newEst.regime_type
+        newEst.regime_type,
+        manualAmount
       );
 
       const assignedAgent = APP_USERS.find(u => u.id === newEst.assigned_agent_id) || APP_USERS[2];
@@ -468,10 +477,87 @@ export const TitlesAndReceiptsModule: React.FC = () => {
 
                   <div>
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">Situation Financière</span>
-                    <span className="font-bold text-slate-700">Total Dû : {currentEst.total_due.toLocaleString('fr-FR')} F</span>
-                    <span className="block text-emerald-800 font-mono-ref font-black">
-                      Déjà Versé : {currentEst.amount_paid.toLocaleString('fr-FR')} F (Reste: {currentEst.balance_due.toLocaleString('fr-FR')} F)
-                    </span>
+                    {!isEditingCurrentEstFee ? (
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-slate-700">Total Dû : {currentEst.total_due.toLocaleString('fr-FR')} F</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditedCurrentEstFee(currentEst.total_due);
+                              setIsEditingCurrentEstFee(true);
+                            }}
+                            className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold underline cursor-pointer"
+                          >
+                            Modifier
+                          </button>
+                        </div>
+                        <span className="block text-emerald-800 font-mono-ref font-black">
+                          Déjà Versé : {currentEst.amount_paid.toLocaleString('fr-FR')} F (Reste: {currentEst.balance_due.toLocaleString('fr-FR')} F)
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5 p-2 bg-emerald-50 rounded-lg border border-emerald-300 mt-1">
+                        <label className="text-[10px] font-bold text-emerald-950 block">Réviser la Redevance / Forfait (FCFA)</label>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            step="5000"
+                            min="0"
+                            value={editedCurrentEstFee}
+                            onChange={e => setEditedCurrentEstFee(Number(e.target.value))}
+                            className="w-24 p-1 bg-white border border-emerald-500 rounded font-mono-ref text-xs font-bold"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newTotal = Math.max(0, Number(editedCurrentEstFee) || 50000);
+                              const newBalance = Math.max(0, newTotal - currentEst.amount_paid);
+                              storageService.updateEstablishment(currentEst.id, {
+                                total_due: newTotal,
+                                balance_due: newBalance
+                              });
+                              setEstablishments(storageService.getEstablishments());
+                              setIsEditingCurrentEstFee(false);
+                              triggerNotification(`Montant révisé à ${newTotal.toLocaleString('fr-FR')} FCFA pour ${currentEst.name}`, 'success');
+                            }}
+                            className="px-2 py-1 bg-emerald-700 text-white rounded text-[10px] font-bold"
+                          >
+                            OK
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingCurrentEstFee(false)}
+                            className="px-1.5 py-1 bg-slate-200 text-slate-700 rounded text-[10px]"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="flex gap-1 text-[9px]">
+                          <button
+                            type="button"
+                            onClick={() => setEditedCurrentEstFee(50000)}
+                            className="bg-white border border-emerald-400 px-1 py-0.5 rounded text-emerald-800 font-bold"
+                          >
+                            50 000 F (Forfait DDL)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditedCurrentEstFee(Math.max(0, editedCurrentEstFee - 10000))}
+                            className="bg-white border border-slate-300 px-1 py-0.5 rounded text-slate-700"
+                          >
+                            -10k
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditedCurrentEstFee(editedCurrentEstFee + 10000)}
+                            className="bg-white border border-slate-300 px-1 py-0.5 rounded text-slate-700"
+                          >
+                            +10k
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-2.5 bg-white rounded-xl border border-slate-200">
@@ -573,10 +659,14 @@ export const TitlesAndReceiptsModule: React.FC = () => {
                 <label className="font-bold text-slate-700 block mb-1">Régime Fiscal *</label>
                 <select
                   value={newEst.regime_type}
-                  onChange={e => setNewEst({ ...newEst, regime_type: e.target.value as any })}
+                  onChange={e => {
+                    const reg = e.target.value as RegimeType;
+                    const nextFee = reg === 'INFORMEL' ? 50000 : calculateEstablishmentFee(newEst.activity_code, newEst.surface_m2, 'FORMEL').totalDue;
+                    setNewEst({ ...newEst, regime_type: reg, custom_total_due: nextFee });
+                  }}
                   className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold text-blue-900"
                 >
-                  <option value="INFORMEL">Secteur Informel (Forfait annuel)</option>
+                  <option value="INFORMEL">Secteur Informel (Forfait standard : 50 000 FCFA)</option>
                   <option value="FORMEL">Secteur Formel (Tarif au m²)</option>
                 </select>
               </div>
@@ -585,7 +675,11 @@ export const TitlesAndReceiptsModule: React.FC = () => {
                 <label className="font-bold text-slate-700 block mb-1">Catégorie d'Activité *</label>
                 <select
                   value={newEst.activity_code}
-                  onChange={e => setNewEst({ ...newEst, activity_code: e.target.value })}
+                  onChange={e => {
+                    const code = e.target.value;
+                    const nextFee = newEst.regime_type === 'INFORMEL' ? (newEst.custom_total_due || 50000) : calculateEstablishmentFee(code, newEst.surface_m2, 'FORMEL').totalDue;
+                    setNewEst({ ...newEst, activity_code: code, custom_total_due: nextFee });
+                  }}
                   className="w-full p-2 bg-white border border-slate-300 rounded-xl"
                 >
                   {ACTIVITY_CATEGORIES.map(cat => (
@@ -604,7 +698,11 @@ export const TitlesAndReceiptsModule: React.FC = () => {
                   type="number"
                   min={10}
                   value={newEst.surface_m2}
-                  onChange={e => setNewEst({ ...newEst, surface_m2: Number(e.target.value) })}
+                  onChange={e => {
+                    const s = Number(e.target.value);
+                    const nextFee = newEst.regime_type === 'INFORMEL' ? (newEst.custom_total_due || 50000) : calculateEstablishmentFee(newEst.activity_code, s, 'FORMEL').totalDue;
+                    setNewEst({ ...newEst, surface_m2: s, custom_total_due: nextFee });
+                  }}
                   className="w-full p-2 bg-white border border-slate-300 rounded-xl font-mono-ref"
                 />
               </div>
@@ -626,6 +724,60 @@ export const TitlesAndReceiptsModule: React.FC = () => {
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Champ Forfait DDL-PN / Redevance Totale Exigible (50 000 FCFA par défaut, révisable manuellement) */}
+            <div className="p-3.5 bg-emerald-50/80 border-2 border-emerald-500 rounded-xl space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-1">
+                <label className="font-black text-emerald-950 text-xs flex items-center gap-1.5">
+                  <span>Redevance Totale Exigible / Forfait DDL-PN (FCFA) *</span>
+                </label>
+                <span className="text-[10px] font-bold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-300">
+                  {newEst.regime_type === 'INFORMEL' ? 'Forfait informel standard : 50 000 FCFA' : 'Calcul secteur formel'}
+                </span>
+              </div>
+
+              <div className="relative">
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  step="5000"
+                  value={newEst.custom_total_due}
+                  onChange={e => setNewEst({ ...newEst, custom_total_due: Number(e.target.value) })}
+                  className="w-full p-2.5 bg-white border-2 border-emerald-600 rounded-lg font-mono-ref font-black text-base text-[#022448] focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                />
+                <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-400">FCFA</span>
+              </div>
+
+              {/* Quick adjustment buttons */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                <span className="text-slate-500 font-medium text-[10px]">Ajustements rapides :</span>
+                <button
+                  type="button"
+                  onClick={() => setNewEst({ ...newEst, custom_total_due: 50000 })}
+                  className="px-2 py-0.5 bg-emerald-600 text-white rounded font-bold hover:bg-emerald-700 cursor-pointer text-xs"
+                >
+                  50 000 F (Forfait DDL)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewEst({ ...newEst, custom_total_due: Math.max(0, newEst.custom_total_due - 10000) })}
+                  className="px-2 py-0.5 bg-white border border-slate-300 text-slate-700 rounded font-semibold hover:bg-slate-100 cursor-pointer text-xs"
+                >
+                  -10 000 F (Baisse)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewEst({ ...newEst, custom_total_due: newEst.custom_total_due + 10000 })}
+                  className="px-2 py-0.5 bg-white border border-slate-300 text-slate-700 rounded font-semibold hover:bg-slate-100 cursor-pointer text-xs"
+                >
+                  +10 000 F (Hausse)
+                </button>
+              </div>
+              <p className="text-[10px] text-emerald-900 italic">
+                * Note administrative : Le forfait informel DDL-PN est de 50 000 FCFA par défaut. Il est librement modifiable manuellement à la baisse comme à la hausse selon les constatations.
+              </p>
             </div>
           </div>
         )}

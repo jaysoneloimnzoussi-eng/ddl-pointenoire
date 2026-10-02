@@ -1192,7 +1192,7 @@ export const DashboardModule: React.FC = () => {
 
           <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between text-[11px] text-slate-500 font-mono-ref">
             <span>Tarif moyen au m² : <strong>1 000 - 1 500 FCFA</strong></span>
-            <span>Forfait informel : <strong>100 000 FCFA</strong></span>
+            <span>Forfait informel DDL-PN : <strong>50 000 FCFA</strong> (révisable)</span>
           </div>
         </div>
 
