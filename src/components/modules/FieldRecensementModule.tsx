@@ -16,7 +16,8 @@ import {
   Volume2,
   Download,
   RefreshCw,
-  Eye
+  Eye,
+  CloudDownload
 } from 'lucide-react';
 import { storageService, calculateEstablishmentFee } from '../../services/storageService';
 import { useSession } from '../../context/SessionContext';
@@ -25,7 +26,7 @@ import { TERRITORIAL_REFERENTIAL, ACTIVITY_CATEGORIES } from '../../constants/re
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
 
 export const FieldRecensementModule: React.FC = () => {
-  const { currentUser, triggerNotification } = useSession();
+  const { currentUser, triggerNotification, setActiveModule } = useSession();
   const [establishments, setEstablishments] = useState<Establishment[]>(() => storageService.getEstablishmentsForUser(currentUser));
 
   useEffect(() => {
@@ -206,13 +207,24 @@ export const FieldRecensementModule: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="bg-[#006d2f] hover:bg-[#005a26] text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow transition"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Identifier un Établissement In Situ</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveModule('MOD-04')}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+            title="Extraire les établissements depuis votre Google Agenda"
+          >
+            <CloudDownload className="w-4 h-4 text-blue-200" />
+            <span>Importer Google Agenda</span>
+          </button>
+
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="bg-[#006d2f] hover:bg-[#005a26] text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow transition cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Identifier un Établissement In Situ</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}

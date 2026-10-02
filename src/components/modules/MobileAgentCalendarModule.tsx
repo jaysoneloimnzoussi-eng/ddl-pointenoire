@@ -44,7 +44,8 @@ import {
   LayoutDashboard,
   Route,
   QrCode,
-  FolderLock
+  FolderLock,
+  CloudDownload
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { storageService } from '../../services/storageService';
@@ -934,6 +935,16 @@ export const MobileAgentCalendarModule: React.FC = () => {
           >
             <WifiOff className="w-3 h-3" />
             <span>{isSimulatedOffline ? 'Simu Hors-Ligne ACTIF' : 'Simuler Hors-Ligne'}</span>
+          </button>
+
+          {/* Google Calendar Cloud Sync / Transfer Button */}
+          <button
+            onClick={() => setActiveModule('MOD-04')}
+            className="px-2.5 py-1.5 rounded-md text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+            title="Transférer tous les établissements et rendez-vous depuis Google Calendar"
+          >
+            <CloudDownload className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Transférer depuis Google Agenda</span>
           </button>
 
           {/* Google Calendar View Switcher (Jour, Semaine, Mois, Planning) */}

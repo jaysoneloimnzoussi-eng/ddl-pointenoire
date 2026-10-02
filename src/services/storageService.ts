@@ -3,13 +3,13 @@ import { TERRITORIAL_REFERENTIAL, ACTIVITY_CATEGORIES, TAXATION_RULES, APP_USERS
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const LOCAL_STORAGE_KEYS = {
-  ESTABLISHMENTS: 'ddl_pn_establishments_v3',
-  PAYMENTS: 'ddl_pn_payments_v3',
-  ACTS: 'ddl_pn_legal_acts_v3',
-  SUBSCRIPTIONS: 'ddl_pn_subscriptions_v3',
-  DIPLOMAS: 'ddl_pn_diplomas_v3',
-  TOURNEES_EVENTS: 'ddl_pn_agent_tournees_v3',
-  OFFLINE_QUEUE: 'ddl_pn_offline_queue_v3',
+  ESTABLISHMENTS: 'ddl_pn_establishments_v5',
+  PAYMENTS: 'ddl_pn_payments_v5',
+  ACTS: 'ddl_pn_legal_acts_v5',
+  SUBSCRIPTIONS: 'ddl_pn_subscriptions_v5',
+  DIPLOMAS: 'ddl_pn_diplomas_v5',
+  TOURNEES_EVENTS: 'ddl_pn_agent_tournees_v5',
+  OFFLINE_QUEUE: 'ddl_pn_offline_queue_v5',
   SUPABASE_URL: 'ddl_pn_supabase_url'
 };
 

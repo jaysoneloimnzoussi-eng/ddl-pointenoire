@@ -344,47 +344,47 @@ export const PrintModal: React.FC<PrintModalProps> = ({
               /* ===================================================================
                  PROTOTYPES MAJEURS A4 RÉPUBLICAINS (ACTES JURIDIQUES & ATTESTATIONS)
                  =================================================================== */
-              <div className="print-page-a4 w-[210mm] max-w-full bg-white p-6 sm:p-7 text-slate-900 relative border border-slate-300 shadow-xl leading-snug print:p-6 print:border-none print:shadow-none print:m-0 print:max-h-[290mm] print:overflow-hidden">
+              <div className="print-page-a4 w-[210mm] max-w-full bg-white p-5 sm:p-6 text-slate-900 relative border border-slate-300 shadow-xl leading-tight print:p-4 print:border-none print:shadow-none print:m-0 print:max-h-[275mm] print:overflow-hidden">
                 {/* 1. OFFICIAL CONGO ADMINISTRATIVE HEADER */}
-                <div className="flex items-start justify-between pb-3 border-b-2 border-[#022448]">
+                <div className="flex items-start justify-between pb-2 border-b-2 border-[#022448]">
                   {/* Left: Hierarchical Authority Stack */}
-                  <div className="text-center w-60 text-xs font-serif leading-tight">
-                    <p className="font-extrabold text-xs uppercase text-[#006d2f] font-republic tracking-wide">
+                  <div className="text-center w-56 text-xs font-serif leading-tight">
+                    <p className="font-extrabold text-[11px] uppercase text-[#006d2f] font-republic tracking-wide">
                       RÉPUBLIQUE DU CONGO
                     </p>
-                    <p className="text-[9px] italic font-semibold text-slate-600">
+                    <p className="text-[8.5px] italic font-semibold text-slate-600">
                       Unité • Travail • Progrès
                     </p>
-                    <div className="w-12 h-0.5 bg-amber-500 mx-auto my-1" />
-                    <p className="font-bold text-[8.5px] uppercase text-[#022448]">
-                      MINISTÈRE DE LA CULTURE, DES ARTS, DU PATRIMOINE NATIONAL ET DE L’INDUSTRIE TOURISTIQUE
+                    <div className="w-10 h-0.5 bg-amber-500 mx-auto my-0.5" />
+                    <p className="font-bold text-[8px] uppercase text-[#022448]">
+                      MINISTÈRE DE LA CULTURE, DES ARTS ET DES LOISIRS
                     </p>
-                    <div className="w-8 h-0.5 bg-slate-300 mx-auto my-0.5" />
-                    <p className="font-semibold text-[8px] uppercase">DIRECTION GÉNÉRALE DES LOISIRS</p>
-                    <p className="font-bold text-[8.5px] text-[#006d2f] uppercase mt-0.5">
+                    <div className="w-6 h-0.5 bg-slate-300 mx-auto my-0.5" />
+                    <p className="font-semibold text-[7.5px] uppercase">DIRECTION GÉNÉRALE DES LOISIRS</p>
+                    <p className="font-bold text-[8px] text-[#006d2f] uppercase mt-0.5">
                       DIRECTION DÉPARTEMENTALE DES LOISIRS DE POINTE-NOIRE
                     </p>
-                    <p className="text-[8px] font-mono-ref text-slate-600 mt-0.5">
+                    <p className="text-[7.5px] font-mono-ref text-slate-600 mt-0.5">
                       SERVICE ASSISTANCE ET AUTORISATION (SAA)
                     </p>
                   </div>
 
                   {/* Center: Coat of Arms / Republic Seal */}
                   <div className="flex flex-col items-center pt-0.5">
-                    <OfficialRepublicLogo size="sm" showMotto={false} />
-                    <RepublicTricolorBar className="w-20 mt-1 h-0.5" />
+                    <OfficialRepublicLogo size="xs" showMotto={false} />
+                    <RepublicTricolorBar className="w-16 mt-0.5 h-0.5" />
                   </div>
 
                   {/* Right: Date, Reference & Real Verifiable QR Code */}
-                  <div className="text-right w-60 font-serif text-xs flex flex-col items-end">
-                    <p className="italic text-slate-700 text-[10.5px]">
+                  <div className="text-right w-56 font-serif text-xs flex flex-col items-end">
+                    <p className="italic text-slate-700 text-[10px]">
                       Pointe-Noire, le {data.date_emission || data.record_date || new Date().toISOString().split('T')[0]}
                     </p>
-                    <p className="font-mono-ref font-bold text-slate-900 mt-0.5 text-[10.5px]">
+                    <p className="font-mono-ref font-bold text-slate-900 mt-0.5 text-[10px]">
                       N° {data.reference_number || data.receipt_reference || 'REF-DDL-PN-2026/01'}
                     </p>
                     {data.type && (
-                      <span className="inline-block my-0.5 px-2 py-0.2 bg-red-100 text-red-900 text-[9px] font-bold rounded border border-red-300 uppercase">
+                      <span className="inline-block my-0.5 px-2 py-0.2 bg-red-100 text-red-900 text-[8.5px] font-bold rounded border border-red-300 uppercase">
                         {data.type.replace(/_/g, ' ')}
                       </span>
                     )}
@@ -398,7 +398,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                           date: data.date_emission || data.record_date,
                           arrondissement: data.arrondissement
                         }}
-                        size={52}
+                        size={46}
                         showDetails={false}
                       />
                     </div>
@@ -406,23 +406,23 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                 </div>
 
                 {/* 2. BODY OF DOCUMENT BY INDIVIDUAL PROTOTYPE */}
-                <div className="mt-3.5 font-serif">
+                <div className="mt-2.5 font-serif">
                   {/* ==============================================================
                       ACTE JURIDIQUE: MISE EN DEMEURE SOUS HUITAINE (72H)
                      ============================================================== */}
                   {documentType === 'ACTE_JURIDIQUE_A4' && data.type === 'MISE_EN_DEMEURE' ? (
-                    <div className="space-y-2.5">
-                      <div className="text-center my-2">
-                        <h2 className="text-base sm:text-lg font-black uppercase tracking-wide text-red-800 font-republic underline decoration-red-600 underline-offset-4">
+                    <div className="space-y-2">
+                      <div className="text-center my-1.5">
+                        <h2 className="text-base font-black uppercase tracking-wide text-red-800 font-republic underline decoration-red-600 underline-offset-4">
                           MISE EN DEMEURE FORMELLE SOUS HUITAINE (72 HEURES)
                         </h2>
-                        <p className="text-[10px] uppercase font-bold text-slate-600 mt-0.5 tracking-wider">
+                        <p className="text-[9.5px] uppercase font-bold text-slate-600 mt-0.5 tracking-wider">
                           Sous peine de fermeture administrative immédiate avec apposition des scellés
                         </p>
                       </div>
 
                       {/* Destinataire Notification Box */}
-                      <div className="bg-slate-50 border border-slate-300 p-2.5 rounded-lg text-[11px] leading-snug space-y-0.5">
+                      <div className="bg-slate-50 border border-slate-300 p-2 rounded-lg text-[10.5px] leading-tight space-y-0.5">
                         <div className="flex justify-between">
                           <span><strong>Destinataire :</strong> {data.promoter_name} (Promoteur / Exploitant)</span>
                           <span className="font-mono-ref font-bold text-slate-600">Réf : {data.reference_number}</span>
@@ -430,33 +430,33 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                         <p><strong>Établissement :</strong> <span className="font-extrabold uppercase text-[#022448]">« {data.establishment_name} »</span></p>
                         <p><strong>Arrondissement :</strong> {data.arrondissement} • <strong>Adresse :</strong> {data.address || 'Pointe-Noire'}</p>
                         {data.agent_notificateur && (
-                          <p className="text-[10px] text-slate-500 pt-0.5 border-t border-slate-200">
+                          <p className="text-[9.5px] text-slate-500 pt-0.5 border-t border-slate-200">
                             Agent notificateur assermenté : <strong>{data.agent_notificateur}</strong>
                           </p>
                         )}
                       </div>
 
                       {/* Visas Légaux Solennels */}
-                      <div className="text-[10px] space-y-0.5 text-slate-600 border-l-2 border-red-700 pl-2.5 italic">
-                        <p className="font-bold text-slate-800 not-italic uppercase text-[9px]">Visas légaux :</p>
+                      <div className="text-[9px] space-y-0.5 text-slate-600 border-l-2 border-red-700 pl-2 italic">
+                        <p className="font-bold text-slate-800 not-italic uppercase text-[8.5px]">Visas légaux :</p>
                         <p>Vu la Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs en République du Congo ;</p>
                         <p>Vu le Décret N° 2021-412 du 28 octobre 2021 portant organisation de la Direction Générale des Loisirs ;</p>
                         <p>Vu les rapports de constatation dressés par les agents du Service Assistance et Autorisation (SAA).</p>
                       </div>
 
                       {/* Constatations & Motif */}
-                      <div className="text-[11px] text-justify leading-snug space-y-2">
+                      <div className="text-[10.5px] text-justify leading-snug space-y-1.5">
                         <p>
-                          Il a été formellement constaté par les agents assermentés du Service Assistance et Autorisation (SAA) que l'établissement susvisé se trouve en situation d'irrégularité administrative :
+                          Il a été formellement constaté par les agents assermentés du Service Assistance et Autorisation (SAA) que l'établissement susvisé se trouve en infraction :
                         </p>
-                        <div className="bg-red-50 border-l-4 border-red-600 p-2 font-semibold text-red-950 text-[11px] leading-snug">
+                        <div className="bg-red-50 border-l-4 border-red-600 p-2 font-semibold text-red-950 text-[10.5px] leading-snug">
                           « {data.motif} »
                         </div>
                         <p>
-                          En conséquence de quoi, <strong>IL VOUS EST IMPARTI UN DÉLAI DE {data.delai_huitaine_date || '72 HEURES OUVRÉES'}</strong>, à compter de la notification du présent acte, pour vous présenter à la Direction Départementale des Loisirs munis des pièces justificatives et procéder à la régularisation fiscale et administrative intégrale de votre exploitation.
+                          En conséquence de quoi, <strong>IL VOUS EST IMPARTI UN DÉLAI DE {data.delai_huitaine_date || '72 HEURES OUVRÉES'}</strong>, à compter de la présente notification, pour vous présenter à la Direction Départementale des Loisirs munis des pièces justificatives et régulariser votre situation.
                         </p>
-                        <p className="font-bold text-slate-900 text-[10.5px]">
-                          PASSÉ CE DÉLAI DE RIGUEUR, il sera immédiatement procédé à la FERMETURE ADMINISTRATIVE de votre établissement avec apposition des scellés de la République par le Service Assistance et Autorisation (SAA) assisté de la Force Publique.
+                        <p className="font-bold text-slate-900 text-[10px]">
+                          PASSÉ CE DÉLAI DE RIGUEUR, il sera procédé à la FERMETURE ADMINISTRATIVE immédiate de votre local avec apposition des scellés de la République par le Service Assistance et Autorisation (SAA) assisté de la Force Publique.
                         </p>
                       </div>
                     </div>
@@ -464,55 +464,55 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                     /* ==============================================================
                         ACTE JURIDIQUE: CONVOCATION OFFICIELLE CONTRADICTOIRE
                        ============================================================== */
-                    <div className="space-y-2.5">
-                      <div className="text-center my-2">
-                        <h2 className="text-base sm:text-lg font-black uppercase tracking-wide text-purple-900 font-republic underline decoration-purple-600 underline-offset-4">
+                    <div className="space-y-2">
+                      <div className="text-center my-1.5">
+                        <h2 className="text-base font-black uppercase tracking-wide text-purple-900 font-republic underline decoration-purple-600 underline-offset-4">
                           CONVOCATION ADMINISTRATIVE OFFICIELLE
                         </h2>
-                        <p className="text-[10px] uppercase font-bold text-slate-600 mt-0.5 tracking-wider">
+                        <p className="text-[9.5px] uppercase font-bold text-slate-600 mt-0.5 tracking-wider">
                           À comparution obligatoire sous visa de la Loi N° 21-2019
                         </p>
                       </div>
 
                       {/* Destinataire */}
-                      <div className="bg-slate-50 border border-slate-300 p-2.5 rounded-lg text-[11px] leading-snug space-y-0.5">
+                      <div className="bg-slate-50 border border-slate-300 p-2 rounded-lg text-[10.5px] leading-tight space-y-0.5">
                         <p><strong>Destinataire :</strong> Madame / Monsieur {data.promoter_name} (Promoteur / Exploitant)</p>
                         <p><strong>Établissement :</strong> <span className="font-extrabold uppercase text-[#022448]">« {data.establishment_name} »</span></p>
                         <p><strong>Arrondissement :</strong> {data.arrondissement} • <strong>Adresse :</strong> {data.address || 'Pointe-Noire'}</p>
                       </div>
 
-                      <div className="text-[11px] text-justify leading-snug space-y-2">
+                      <div className="text-[10.5px] text-justify leading-snug space-y-1.5">
                         <p>
-                          Dans le cadre de l’instruction de votre dossier d’exploitation et de la régulation des structures de loisirs de la ville de Pointe-Noire, <strong>vous êtes formellement convoqué(e) à vous présenter en personne</strong> :
+                          Dans le cadre de l’instruction de votre dossier et de la régulation des loisirs à Pointe-Noire, <strong>vous êtes formellement convoqué(e) à comparution obligatoire</strong> :
                         </p>
 
                         {/* Rendez-vous Card */}
-                        <div className="bg-purple-50 border-2 border-purple-300 p-2.5 rounded-xl text-center space-y-1">
-                          <p className="text-[10px] font-bold text-purple-950 uppercase">Date & Heure de Comparution Obligatoire :</p>
-                          <p className="text-xs font-extrabold font-mono-ref text-purple-900">
+                        <div className="bg-purple-50 border border-purple-300 p-2 rounded-lg text-center space-y-0.5">
+                          <p className="text-[9.5px] font-bold text-purple-950 uppercase">Date & Heure de Comparution :</p>
+                          <p className="text-[11px] font-extrabold font-mono-ref text-purple-900">
                             📅 {data.delai_huitaine_date || 'Le jour ouvrable convenu'} à 10 Heures Précises
                           </p>
-                          <p className="text-[10.5px] text-purple-950">
-                            <strong>Lieu :</strong> Direction Départementale des Loisirs de Pointe-Noire — <strong>Bureau N° 3 (Service Assistance et Autorisation - SAA)</strong>, Centre-Ville, face Port Autonome.
+                          <p className="text-[10px] text-purple-950">
+                            <strong>Lieu :</strong> DDL-PN — <strong>Bureau N° 3 (Service Assistance et Autorisation - SAA)</strong>, Centre-Ville, face Port Autonome.
                           </p>
                         </div>
 
                         {/* Mandatory Documents Checklist */}
                         <div>
-                          <p className="font-bold text-slate-800 text-[10.5px] mb-1">
+                          <p className="font-bold text-slate-800 text-[10px] mb-0.5">
                             Pièces obligatoires à fournir lors de l'audition :
                           </p>
-                          <ol className="list-decimal list-inside space-y-0.5 text-[10.5px] text-slate-700 bg-white p-2 rounded border border-slate-200">
+                          <ol className="list-decimal list-inside space-y-0.5 text-[9.5px] text-slate-700 bg-white p-1.5 rounded border border-slate-200">
                             <li>Pièce d’Identité (CNI ou Passeport en cours de validité) ;</li>
                             <li>Extrait RCCM ou déclaration légale d'activité ;</li>
                             <li>Bail commercial ou titre d'occupation du local ;</li>
-                            <li>Dernières quittances de redevances délivrées par la Régie SAA / SAF ;</li>
+                            <li>Dernières quittances de redevances délivrées par la Régie SAF / SAA ;</li>
                             <li>Certificat d'installation du limiteur sonore agréé (seuil maximal 85 dB).</li>
                           </ol>
                         </div>
 
-                        <p className="text-[10px] italic text-slate-600">
-                          En cas d’empêchement, vous êtes tenu(e) de mandater un représentant muni d’une procuration écrite. Tout défaut entraînera l’application des mesures conservatoires prévues par la réglementation.
+                        <p className="text-[9.5px] italic text-slate-600">
+                          En cas d’empêchement, mandatez un représentant muni d’une procuration écrite. Tout défaut entraînera l’application des mesures conservatoires prévues par la loi.
                         </p>
                       </div>
                     </div>
@@ -520,47 +520,47 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                     /* ==============================================================
                         ACTE JURIDIQUE: ARRÊTÉ DE FERMETURE ADMINISTRATIVE
                        ============================================================== */
-                    <div className="space-y-3">
-                      <div className="text-center my-3">
-                        <span className="text-[11px] font-mono-ref font-bold text-red-700 uppercase tracking-widest block">
+                    <div className="space-y-2">
+                      <div className="text-center my-1.5">
+                        <span className="text-[10px] font-mono-ref font-bold text-red-700 uppercase tracking-widest block">
                           DÉCISION EXÉCUTOIRE IMMÉDIATE
                         </span>
-                        <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wide text-red-900 font-republic mt-1">
+                        <h2 className="text-base font-black uppercase tracking-wide text-red-900 font-republic mt-0.5">
                           ARRÊTÉ PORTANT FERMETURE ADMINISTRATIVE IMMÉDIATE
                         </h2>
-                        <p className="text-xs uppercase font-bold text-slate-700 mt-1">
+                        <p className="text-[9.5px] uppercase font-bold text-slate-700">
                           Et Apposition des Scellés de la République
                         </p>
                       </div>
 
                       {/* Visas & Considérants */}
-                      <div className="text-[10.5px] leading-relaxed space-y-1 text-slate-700 italic border-l-2 border-red-700 pl-3">
+                      <div className="text-[9.5px] leading-snug space-y-0.5 text-slate-700 italic border-l-2 border-red-700 pl-2">
                         <p>Vu la Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs ;</p>
                         <p>Vu le Décret N° 2021-412 du 28 octobre 2021 organisant les services de la DGL ;</p>
-                        <p>Considérant la mise en demeure formelle restée sans suite dans le délai légal imparti ;</p>
-                        <p>Considérant les nuisances répétées, l'exercice sans titre officiel et le trouble avéré à l'ordre public départemental ;</p>
+                        <p>Considérant la mise en demeure formelle restée sans suite dans le délai imparti ;</p>
+                        <p>Considérant les nuisances répétées, l'exercice sans titre officiel et le trouble avéré à l'ordre public ;</p>
                       </div>
 
                       {/* Articles */}
-                      <div className="text-xs space-y-2 text-justify leading-relaxed">
-                        <p className="font-extrabold uppercase text-[#022448] text-center text-sm py-1 border-t border-b border-slate-300">
+                      <div className="text-[10px] space-y-1.5 text-justify leading-snug">
+                        <p className="font-extrabold uppercase text-[#022448] text-center text-xs py-0.5 border-t border-b border-slate-300">
                           LE DIRECTEUR DÉPARTEMENTAL DES LOISIRS ARRÊTE :
                         </p>
 
                         <p>
-                          <strong>ARTICLE 1er :</strong> Est ordonnée la fermeture administrative immédiate et totale de l’établissement de loisirs dénommé <strong className="text-red-900 uppercase">« {data.establishment_name} »</strong>, exploité par {data.promoter_name}, sis à {data.arrondissement} ({data.address || 'Pointe-Noire'}).
+                          <strong>ARTICLE 1er :</strong> Est ordonnée la fermeture administrative immédiate de l’établissement de loisirs dénommé <strong className="text-red-900 uppercase">« {data.establishment_name} »</strong>, exploité par {data.promoter_name}, sis à {data.arrondissement} ({data.address || 'Pointe-Noire'}).
                         </p>
 
                         <p>
-                          <strong>ARTICLE 2 :</strong> Il est fait interdiction absolue à quiconque d'exploiter lesdits locaux ou de recevoir du public. Les agents assermentés du Service Assistance et Autorisation (SAA) sont mandatés pour procéder à l’apposition des scellés officiels de la République sur les accès de l'établissement.
+                          <strong>ARTICLE 2 :</strong> Il est fait interdiction absolue d'exploiter lesdits locaux ou de recevoir du public. Les agents assermentés du Service Assistance et Autorisation (SAA) procèdent sans délai à l’apposition des scellés officiels de la République.
                         </p>
 
                         <p>
-                          <strong>ARTICLE 3 :</strong> Tout bris, détérioration ou violation des scellés apposés expose les contrevenants aux sanctions pénales en vigueur relatives à la violation de scellés publics.
+                          <strong>ARTICLE 3 :</strong> Tout bris ou violation des scellés apposés expose les contrevenants aux poursuites judiciaires et sanctions pénales prévues par les lois de la République.
                         </p>
 
                         <p>
-                          <strong>ARTICLE 4 :</strong> Les forces de police et de sécurité publique sont requises pour prêter main-forte à l'exécution sans délai du présent arrêté.
+                          <strong>ARTICLE 4 :</strong> Les forces de sécurité publique sont requises pour prêter main-forte à l'exécution du présent arrêté.
                         </p>
                       </div>
                     </div>
@@ -568,29 +568,29 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                     /* ==============================================================
                         ACTE JURIDIQUE: ORDRE DE MISSION SAA / CONTRÔLE
                        ============================================================== */
-                    <div className="space-y-4">
-                      <div className="text-center my-4">
-                        <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wide text-[#022448] font-republic underline decoration-blue-600 underline-offset-8">
+                    <div className="space-y-2">
+                      <div className="text-center my-1.5">
+                        <h2 className="text-base font-black uppercase tracking-wide text-[#022448] font-republic underline decoration-blue-600 underline-offset-4">
                           ORDRE DE MISSION DE CONTRÔLE RÉPUBLICAIN IN SITU
                         </h2>
-                        <p className="text-xs uppercase font-bold text-slate-600 mt-2 tracking-wider">
+                        <p className="text-[9.5px] uppercase font-bold text-slate-600 mt-0.5 tracking-wider">
                           Service Assistance et Autorisation (SAA)
                         </p>
                       </div>
 
-                      <div className="bg-slate-50 border border-slate-300 p-4 rounded-lg text-xs leading-relaxed space-y-2">
+                      <div className="bg-slate-50 border border-slate-300 p-2 rounded-lg text-[10.5px] leading-tight space-y-1">
                         <p><strong>Agents Mandatés :</strong> <span className="font-bold text-[#006d2f]">{data.agent_notificateur || 'Agents Assermentés du Service SAA'}</span></p>
-                        <p><strong>Objet de la Mission :</strong> Contrôle contradictoire de régularité d'exploitation, vérification des quittances et conformité des installations de loisirs.</p>
+                        <p><strong>Objet de la Mission :</strong> Contrôle de conformité d'exploitation, vérification des quittances et contrôle sonométrique.</p>
                         <p><strong>Établissement Visé :</strong> <span className="font-bold uppercase text-[#022448]">« {data.establishment_name} »</span> ({data.promoter_name})</p>
                         <p><strong>Secteur d'Intervention :</strong> {data.arrondissement} • {data.address || 'Pointe-Noire'}</p>
                       </div>
 
-                      <div className="text-xs leading-relaxed text-justify space-y-3">
+                      <div className="text-[10px] leading-snug text-justify space-y-1.5">
                         <p>
-                          Le Directeur Départemental des Loisirs de Pointe-Noire ordonne aux agents assermentés ci-dessus désignés de se transporter au sein de l'établissement concerné afin de procéder aux opérations légales d'inspection, d'évaluation sonométrique et de vérification des quittances d'encaissement.
+                          Le Directeur Départemental des Loisirs ordonne aux agents assermentés désignés de procéder aux opérations légales d'inspection, d'évaluation sonométrique et de vérification des quittances d'encaissement.
                         </p>
                         <p>
-                          Les autorités administratives, civiles et militaires sont priées de faciliter l'accomplissement de la présente mission républicaine et de prêter main-forte en cas de réquisition expresse.
+                          Les autorités administratives, civiles et militaires sont priées de faciliter l'accomplissement de la présente mission républicaine.
                         </p>
                       </div>
                     </div>
@@ -715,30 +715,29 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                   )}
 
                   {/* 3. SOLEMN OFFICIAL SIGNATURE BLOCK */}
-                  <div className="mt-8 pt-4 border-t border-slate-300 flex items-start justify-between text-xs">
+                  <div className="mt-3.5 pt-2 border-t border-slate-300 flex items-start justify-between text-xs">
                     {/* Left: Ampliations */}
-                    <div className="text-left text-[9.5px] text-slate-600 font-serif space-y-0.5 max-w-[240px]">
+                    <div className="text-left text-[8.5px] text-slate-600 font-serif space-y-0.5 max-w-[220px]">
                       <p className="font-bold text-slate-800 uppercase">Ampliations :</p>
-                      <p>• Service Administratif, Financier et du Matériel (SAFM)</p>
+                      <p>• Service Administratif et Financier (SAF)</p>
                       <p>• Service Assistance et Autorisation (SAA)</p>
-                      <p>• Service des Statistiques, de l'Information et de la Documentation (SSID)</p>
-                      <p>• Service de la Promotion et de l'Animation (SPA)</p>
+                      <p>• Service Promotion et Animation (SPA)</p>
                       <p>• Archives DDL-PN / Chrono</p>
                       <p>• Intéressé(e)</p>
                     </div>
 
                     {/* Right: Signature du Directeur Départemental */}
-                    <div className="text-center font-serif w-80">
-                      <p className="text-[11px] text-slate-700 mb-0.5 font-semibold">
+                    <div className="text-center font-serif w-72">
+                      <p className="text-[10px] text-slate-700 mb-0.5 font-semibold">
                         Fait à Pointe-Noire, le {data.record_date || data.date_emission || new Date().toLocaleDateString('fr-FR')}
                       </p>
-                      <p className="font-extrabold text-slate-900 text-[11px] uppercase">
-                        Le Directeur Départemental des Loisirs de Pointe-Noire,
+                      <p className="font-extrabold text-slate-900 text-[10.5px] uppercase">
+                        Le Directeur Départemental des Loisirs,
                       </p>
-                      <div className="h-14 flex items-center justify-center text-slate-400 text-xs italic font-serif my-1">
-                        [Signature officielle et Grand Sceau de la République]
+                      <div className="h-9 flex items-center justify-center text-slate-400 text-[10px] italic font-serif my-0.5">
+                        [Signature officielle et Sceau de la République]
                       </div>
-                      <p className="font-black text-[#022448] text-xs tracking-wide uppercase font-republic">
+                      <p className="font-black text-[#022448] text-[11px] tracking-wide uppercase font-republic">
                         Jean Richard NTSEKE NGOUAKA
                       </p>
                     </div>
