@@ -59,7 +59,7 @@ export function executeReliablePrint(elementId: string = 'ddlpn-printable-sheet'
             <style>
               @page {
                 size: A4 portrait;
-                margin: 8mm 10mm 10mm 10mm;
+                margin: 6mm 8mm 6mm 8mm;
               }
               body {
                 background: white !important;
@@ -73,6 +73,11 @@ export function executeReliablePrint(elementId: string = 'ddlpn-printable-sheet'
               .print-page-a4 {
                 width: 100% !important;
                 max-width: 210mm !important;
+                max-height: 284mm !important;
+                overflow: hidden !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+                box-sizing: border-box !important;
                 margin: 0 auto !important;
                 box-shadow: none !important;
                 border: none !important;

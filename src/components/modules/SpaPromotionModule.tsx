@@ -161,10 +161,10 @@ export const SpaPromotionModule: React.FC = () => {
       pillarId: 'MERCREDI_FAMILLE',
       scheduledDate: '2026-10-07',
       scheduledTime: '14:00',
-      targetEstablishment: 'Espace Loisirs Ponton (Mpita)',
-      content: `🌟 [COUP DE PROJECTEUR LOISIRS SAINS DDL-PN]\n\n👨‍👩‍👧‍👦 Cette semaine, la DDL-PN met à l'honneur « L'Espace Loisirs Ponton » sis à Mpita (Arrondissement 1 Lumumba) !\n\nCertifié conforme par le Service Promotion et Animation (SPA), cet établissement propose des jeux traditionnels (scrabble, dames, échecs), un cadre paysager sécurisé pour les enfants et une acoustique apaisée.\n\nBravo au promoteur pour son engagement dans la Charte des Loisirs Sains et Éco-Responsables !\n\n🔍 Vérifiez les agréments officiels via notre portail numérique DDL-PN.\n\n#PointeNoire #LoisirsEnFamille #EspacePonton #CongoBrazzaville`,
+      targetEstablishment: 'Complexe La Villa Blanche (Mpita)',
+      content: `🌟 [COUP DE PROJECTEUR LOISIRS SAINS DDL-PN]\n\n👨‍👩‍👧‍👦 Cette semaine, la DDL-PN met à l'honneur « Le Complexe La Villa Blanche » sis à Mpita (Arrondissement 1 Lumumba) !\n\nCertifié conforme par le Service Promotion et Animation (SPA), cet établissement propose des jeux traditionnels (scrabble, dames, échecs), un cadre paysager sécurisé pour les enfants et une acoustique apaisée.\n\nBravo au promoteur pour son engagement dans la Charte des Loisirs Sains et Éco-Responsables !\n\n🔍 Vérifiez la conformité officielle via notre portail numérique DDL-PN.\n\n#PointeNoire #LoisirsEnFamille #LaVillaBlanche #CongoBrazzaville`,
       status: 'PROGRAMME',
-      hashtags: ['#PointeNoire', '#LoisirsEnFamille', '#EspacePonton'],
+      hashtags: ['#PointeNoire', '#LoisirsEnFamille', '#LaVillaBlanche'],
       estimatedReach: 6200
     },
     {
@@ -196,9 +196,9 @@ export const SpaPromotionModule: React.FC = () => {
       return `🌈 [DÉCOUVERTE LOISIRS SAINS DU MERCREDI]\n\nLa Direction Départementale des Loisirs vous fait découvrir aujourd'hui : « ${targetEst?.name || 'Un espace labellisé'} » sis à ${targetEst?.arrondissement || 'Pointe-Noire'}.\n\nReconnu pour son ambiance familiale, son respect des normes d'hygiène et son niveau sonore maîtrisé, cet établissement illustre la vision des loisirs sains portée par Son Excellence Monsieur le Ministre.\n\nFélicitations au promoteur M. ${targetEst?.promoter_name || 'Exploitant'} pour sa labellisation !\n\n#DDLPN #LoisirsSains #PointeNoire #FamilleDord #CongoBrazzaville`;
     }
     if (selectedPillarId === 'VENDREDI_ACOUSTIQUE') {
-      return `🔊 [CAMPAGNE CIVISME ACOUSTIQUE DU VENDREDI SOIR]\n\nCe week-end, la brigade du Service Assistance et Autorisation (SAA) sera déployée dans les 6 arrondissements de Pointe-Noire pour accompagner les promoteurs et contrôler les émissions sonores in situ.\n\nObjectif : Protéger le sommeil des enfants, des personnes âgées et des travailleurs sans entraver la vitalité économique de notre ville océane.\n\nChers exploitants, maintenez vos décibels sous les 85 dB et privilégiez les limiteurs acoustiques agréés.\n\n#DDLPN #Sonométrie #PointeNoire #AssainissementAcoustique #Congo`;
+      return `🔊 [CAMPAGNE CIVISME ACOUSTIQUE DU VENDREDI SOIR]\n\nCe week-end, la brigade du Service Assistance et Autorisation (SAA) sera déployée dans les 6 arrondissements de Pointe-Noire pour accompagner les promoteurs et contrôler les émissions sonores in situ.\n\nObjectif : Protéger le sommeil des enfants, des personnes âgées et des travailleurs sans entraver la vitalité économique de notre ville océane.\n\nChers exploitants, maintenez vos décibels sous les 85 dB et privilégiez les limiteurs acoustiques agréés.\n\n#DDLPN #Sonométrie #PointeNoire #ConformiteAcoustique #Congo`;
     }
-    return `🌟 [AGENDA OFFICIEL DU WEEK-END LABELLISÉ DDL-PN]\n\nÀ la recherche de sorties saines et sans débordements ce week-end à Pointe-Noire ?\n\nConsultez notre sélection d'établissements certifiés ayant souscrit à la Charte des Loisirs Responsables :\n• ${targetEst?.name || 'Le Grand Baobab VIP'}\n• Espaces récréatifs de la Côte Sauvage\n• Salons de détente de Mpita et Centre-Ville\n\nExigez la qualité et la sécurité pour vos moments de détente !\n\n#DDLPN #PointeNoireWeekEnd #SortirAPointeNoire #LoisirsSains2026`;
+    return `🌟 [AGENDA OFFICIEL DU WEEK-END LABELLISÉ DDL-PN]\n\nÀ la recherche de sorties saines et sans débordements ce week-end à Pointe-Noire ?\n\nConsultez notre sélection d'établissements certifiés ayant souscrit à la Charte des Loisirs Responsables :\n• ${targetEst?.name || 'Atlantic Palace Hôtel'}\n• Espaces récréatifs de la Côte Sauvage\n• Salons de détente de Mpita et Centre-Ville\n\nExigez la qualité et la sécurité pour vos moments de détente !\n\n#DDLPN #PointeNoireWeekEnd #SortirAPointeNoire #LoisirsSains2026`;
   }, [selectedPillarId, targetEst]);
 
   // Sync initial post content
@@ -213,7 +213,7 @@ export const SpaPromotionModule: React.FC = () => {
     {
       id: 'ACC-001',
       establishmentId: 'EST-PN-001',
-      establishmentName: 'Le Grand Baobab VIP Lounge',
+      establishmentName: 'Atlantic Palace Hôtel & Lounge',
       promoterName: 'Christian BITEMO',
       arrondissement: '1_LUMUMBA',
       stage: 'LABEL_ATTRIBUE',
@@ -229,7 +229,7 @@ export const SpaPromotionModule: React.FC = () => {
     {
       id: 'ACC-002',
       establishmentId: 'EST-PN-002',
-      establishmentName: 'Club 77 Discothèque',
+      establishmentName: 'Hôtel Elaïs & Espace Loisirs',
       promoterName: 'Jean-Pierre TCHICAYA',
       arrondissement: '1_LUMUMBA',
       stage: 'PLAN_MISE_AUX_NORMES',
@@ -244,8 +244,8 @@ export const SpaPromotionModule: React.FC = () => {
     },
     {
       id: 'ACC-003',
-      establishmentId: 'EST-PN-003',
-      establishmentName: 'La Brise de l\'Atlantique Bar-Plage',
+      establishmentId: 'EST-PN-004',
+      establishmentName: 'Hôtel Palm Beach & Bar Plage',
       promoterName: 'Solange MOUNTOU',
       arrondissement: '1_LUMUMBA',
       stage: 'AUDIT_IN_SITU',

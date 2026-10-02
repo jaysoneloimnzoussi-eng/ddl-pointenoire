@@ -43,7 +43,7 @@ export const LegalActsGeneratorModule: React.FC = () => {
       setMotif('Non-respect réitéré de la mise en demeure sous 72h, exercice illicite d\'activités de loisirs et défaut d\'agrément officiel.');
     } else if (newType === 'ORDRE_MISSION') {
       setDelai('Mission de contrôle du 2 au 5 octobre 2026');
-      setMotif('Contrôle contradictoire in situ de la conformité administrative, vérification des quittances et assainissement du secteur.');
+      setMotif('Contrôle contradictoire in situ de la conformité administrative, vérification des quittances et régulation du secteur des loisirs.');
     }
   };
 

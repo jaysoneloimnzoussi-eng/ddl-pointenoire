@@ -3,13 +3,13 @@ import { TERRITORIAL_REFERENTIAL, ACTIVITY_CATEGORIES, TAXATION_RULES, APP_USERS
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const LOCAL_STORAGE_KEYS = {
-  ESTABLISHMENTS: 'ddl_pn_establishments_v2',
-  PAYMENTS: 'ddl_pn_payments_v2',
-  ACTS: 'ddl_pn_legal_acts_v2',
-  SUBSCRIPTIONS: 'ddl_pn_subscriptions_v2',
-  DIPLOMAS: 'ddl_pn_diplomas_v2',
-  TOURNEES_EVENTS: 'ddl_pn_agent_tournees_v2',
-  OFFLINE_QUEUE: 'ddl_pn_offline_queue_v2',
+  ESTABLISHMENTS: 'ddl_pn_establishments_v3',
+  PAYMENTS: 'ddl_pn_payments_v3',
+  ACTS: 'ddl_pn_legal_acts_v3',
+  SUBSCRIPTIONS: 'ddl_pn_subscriptions_v3',
+  DIPLOMAS: 'ddl_pn_diplomas_v3',
+  TOURNEES_EVENTS: 'ddl_pn_agent_tournees_v3',
+  OFFLINE_QUEUE: 'ddl_pn_offline_queue_v3',
   SUPABASE_URL: 'ddl_pn_supabase_url'
 };
 
@@ -57,17 +57,62 @@ export function calculateEstablishmentFee(activityCode: string, surfaceM2: numbe
 // Seed generation for offline fallback
 function generateSeedEstablishments(): Establishment[] {
   const establishments: Establishment[] = [];
-  const rawEstablishmentData = [
-    { name: 'Le Grand Baobab VIP Lounge', prom: 'Christian BITEMO', phone: '+242 06 612 88 90', quart: 'Mpita', act: 'A1.2', reg: 'FORMEL', surf: 220, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-089', coord: [-4.7982, 11.8512] },
-    { name: 'Club 77 Discothèque', prom: 'Jean-Pierre TCHICAYA', phone: '+242 06 630 14 52', quart: 'Centre-Ville', act: 'A1.1', reg: 'FORMEL', surf: 310, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-044', coord: [-4.7915, 11.8598] },
-    { name: 'La Brise de l\'Atlantique Bar-Plage', prom: 'Solange MOUNTOU', phone: '+242 05 510 40 33', quart: 'Côte Sauvage', act: 'A2.2', reg: 'FORMEL', surf: 450, stat: 'transmis_brazzaville', coord: [-4.8105, 11.8420] },
-    { name: 'Le Havana Club & Cigar Lounge', prom: 'Alain MPOUELE', phone: '+242 06 940 77 12', quart: 'Centre-Ville', act: 'A1.2', reg: 'FORMEL', surf: 180, stat: 'attestation_depot', coord: [-4.7930, 11.8620] },
-    { name: 'Espace Loisirs Ponton', prom: 'Frédéric MOUKOKO', phone: '+242 06 655 22 99', quart: 'Mpita', act: 'A3.1', reg: 'FORMEL', surf: 520, stat: 'en_instruction', coord: [-4.8010, 11.8540] }
+  const rawEstablishmentData: Array<{
+    name: string;
+    prom: string;
+    phone: string;
+    quart: string;
+    arr: ArrondissementCode;
+    act: string;
+    reg: RegimeType;
+    surf: number;
+    stat: EstablishmentStatus;
+    dgl?: string;
+    coord: [number, number];
+    limiter: boolean;
+    db: number;
+  }> = [
+    // 1. Arrondissement 1 Patrice Émery Lumumba
+    { name: 'Atlantic Palace Hôtel & Lounge', prom: 'Christian BITEMO', phone: '+242 06 612 88 90', quart: 'Centre-Ville', arr: '1_LUMUMBA', act: 'A1.2', reg: 'FORMEL', surf: 350, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-089', coord: [-4.7912, 11.8580], limiter: true, db: 78 },
+    { name: 'Hôtel Elaïs & Espace Loisirs', prom: 'Jean-Pierre TCHICAYA', phone: '+242 06 630 14 52', quart: 'Centre-Ville', arr: '1_LUMUMBA', act: 'A1.1', reg: 'FORMEL', surf: 450, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-044', coord: [-4.7940, 11.8615], limiter: true, db: 81 },
+    { name: 'Le Kactus Club & Discothèque', prom: 'Alain MPOUELE', phone: '+242 06 940 77 12', quart: 'Centre-Ville', arr: '1_LUMUMBA', act: 'A1.1', reg: 'FORMEL', surf: 280, stat: 'attestation_depot', coord: [-4.7925, 11.8590], limiter: true, db: 84 },
+    { name: 'Hôtel Palm Beach & Bar Plage', prom: 'Solange MOUNTOU', phone: '+242 05 510 40 33', quart: 'Côte Sauvage', arr: '1_LUMUMBA', act: 'A2.2', reg: 'FORMEL', surf: 500, stat: 'transmis_brazzaville', coord: [-4.8105, 11.8420], limiter: true, db: 76 },
+    { name: 'Complexe La Pyramide', prom: 'Frédéric MOUKOKO', phone: '+242 06 655 22 99', quart: 'Côte Sauvage', arr: '1_LUMUMBA', act: 'A1.2', reg: 'FORMEL', surf: 320, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-072', coord: [-4.8080, 11.8445], limiter: true, db: 80 },
+    { name: 'Le No Stress Bar Lounge', prom: 'Brice MAVOUNGOU', phone: '+242 06 520 11 44', quart: 'Côte Sauvage', arr: '1_LUMUMBA', act: 'A1.2', reg: 'FORMEL', surf: 200, stat: 'attestation_depot', coord: [-4.8120, 11.8410], limiter: true, db: 82 },
+    { name: 'Complexe La Villa Blanche', prom: 'Sylvie LOEMBA', phone: '+242 06 680 92 10', quart: 'Mpita', arr: '1_LUMUMBA', act: 'A3.1', reg: 'FORMEL', surf: 380, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-115', coord: [-4.7995, 11.8530], limiter: true, db: 74 },
+    { name: 'Hôtel Twiga & Lounge', prom: 'Guy Serge BOUKAKA', phone: '+242 05 533 18 20', quart: 'Côte Sauvage', arr: '1_LUMUMBA', act: 'A1.2', reg: 'FORMEL', surf: 300, stat: 'transmis_brazzaville', coord: [-4.8140, 11.8395], limiter: true, db: 79 },
+    { name: 'Le Privilège Club VIP', prom: 'Parfait PAMBOU', phone: '+242 06 671 05 90', quart: 'Centre-Ville', arr: '1_LUMUMBA', act: 'A1.1', reg: 'FORMEL', surf: 250, stat: 'en_instruction', coord: [-4.7950, 11.8570], limiter: false, db: 88 },
+    { name: 'L\'Orchidée Lounge & Salon de thé', prom: 'Honorine MATONDO', phone: '+242 06 915 44 30', quart: 'Centre-Ville', arr: '1_LUMUMBA', act: 'A3.1', reg: 'FORMEL', surf: 160, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-060', coord: [-4.7935, 11.8630], limiter: true, db: 68 },
+
+    // 2. Arrondissement 2 Mvou-Mvou
+    { name: 'Le Balafon Bar-Dancing', prom: 'Dieudonné NGOUALA', phone: '+242 06 622 19 88', quart: 'Grand Marché', arr: '2_MVOUMVOU', act: 'A2.1', reg: 'INFORMEL', surf: 180, stat: 'attestation_depot', coord: [-4.7830, 11.8650], limiter: true, db: 83 },
+    { name: 'Espace Récréatif Mbota Plage', prom: 'Jean-Claude BASSINGA', phone: '+242 05 540 80 12', quart: 'Mbota', arr: '2_MVOUMVOU', act: 'A2.2', reg: 'INFORMEL', surf: 240, stat: 'en_instruction', coord: [-4.7780, 11.8590], limiter: false, db: 86 },
+    { name: 'Le Bambou Bar-Lounge', prom: 'Alexis MOUANDA', phone: '+242 06 690 33 21', quart: 'Mpaka', arr: '2_MVOUMVOU', act: 'A2.1', reg: 'INFORMEL', surf: 140, stat: 'attestation_depot', coord: [-4.7870, 11.8710], limiter: true, db: 81 },
+
+    // 3. Arrondissement 3 Tié-Tié
+    { name: 'Le Safari Bar Dancing', prom: 'Pascal TSOUMOU', phone: '+242 06 820 45 60', quart: 'Fond Tié-Tié', arr: '3_TIETIE', act: 'A1.1', reg: 'INFORMEL', surf: 220, stat: 'attestation_depot', coord: [-4.8150, 11.8820], limiter: true, db: 84 },
+    { name: 'Complexe Loisirs Tié-Tié Canal 7', prom: 'Sylvain MVOULA', phone: '+242 06 644 11 02', quart: 'Tié-Tié Centre', arr: '3_TIETIE', act: 'A1.2', reg: 'FORMEL', surf: 310, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-103', coord: [-4.8190, 11.8890], limiter: true, db: 79 },
+    { name: 'Bar Ponton La Belle', prom: 'Carine MASSAMBA', phone: '+242 05 561 70 85', quart: 'Marché Tié-Tié', arr: '3_TIETIE', act: 'A2.1', reg: 'INFORMEL', surf: 150, stat: 'en_instruction', coord: [-4.8120, 11.8850], limiter: false, db: 89 },
+
+    // 4. Arrondissement 4 Louandjili
+    { name: 'Espace Culturel & Loisirs Yaro', prom: 'Pierre KIBAMBA', phone: '+242 06 635 88 14', quart: 'Loandjili Centre', arr: '4_LOANDJILI', act: 'A3.1', reg: 'FORMEL', surf: 420, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-055', coord: [-4.7610, 11.8820], limiter: true, db: 72 },
+    { name: 'Complexe Siafoumou Loisirs', prom: 'Éric MAKOSSO', phone: '+242 06 910 22 55', quart: 'Siafoumou', arr: '4_LOANDJILI', act: 'A2.2', reg: 'INFORMEL', surf: 190, stat: 'attestation_depot', coord: [-4.7540, 11.8790], limiter: true, db: 82 },
+    { name: 'Les Dauphins de Siafoumou', prom: 'Julien NZOUSSI', phone: '+242 05 522 60 40', quart: 'Siafoumou', arr: '4_LOANDJILI', act: 'A2.1', reg: 'INFORMEL', surf: 160, stat: 'en_instruction', coord: [-4.7580, 11.8840], limiter: false, db: 87 },
+
+    // 5. Arrondissement 5 Mongo-Mpoukou
+    { name: 'Espace Détente Le Jardin du Mayombe', prom: 'Jeanne MILANDOU', phone: '+242 06 650 90 77', quart: 'Mongo-Mpoukou', arr: '5_MONGO_MPOUKOU', act: 'A3.1', reg: 'FORMEL', surf: 350, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-098', coord: [-4.7890, 11.9050], limiter: true, db: 70 },
+    { name: 'Loisirs Plein Air Mongo-Kamba', prom: 'Rodrigue BITEL', phone: '+242 06 840 12 33', quart: 'Mongo-Kamba', arr: '5_MONGO_MPOUKOU', act: 'A2.2', reg: 'INFORMEL', surf: 210, stat: 'attestation_depot', coord: [-4.7820, 11.9120], limiter: true, db: 80 },
+    { name: 'Espace Convivial Vindoulou', prom: 'Séraphin BANTSIMBA', phone: '+242 05 570 33 99', quart: 'Vindoulou', arr: '5_MONGO_MPOUKOU', act: 'A2.1', reg: 'INFORMEL', surf: 175, stat: 'en_instruction', coord: [-4.7950, 11.9180], limiter: false, db: 85 },
+
+    // 6. Arrondissement 6 Ngoyo
+    { name: 'Complexe Touristique Mâ-Loango', prom: 'Gabriel POATY', phone: '+242 06 660 77 00', quart: 'Ngoyo Plage', arr: '6_NGOYO', act: 'A1.2', reg: 'FORMEL', surf: 600, stat: 'autorise_dgl', dgl: 'AGR-DGL-2025-012', coord: [-4.8450, 11.8650], limiter: true, db: 77 },
+    { name: 'Plage Océane Ngoyo Détente', prom: 'Patricia TCHISSAMBOU', phone: '+242 06 930 50 18', quart: 'Ngoyo Côte', arr: '6_NGOYO', act: 'A2.2', reg: 'FORMEL', surf: 480, stat: 'transmis_brazzaville', coord: [-4.8510, 11.8600], limiter: true, db: 75 },
+    { name: 'Espace Loisirs Djeno Carrefour', prom: 'Fabrice LOUFOUA', phone: '+242 05 588 44 22', quart: 'Djeno', arr: '6_NGOYO', act: 'A2.1', reg: 'INFORMEL', surf: 230, stat: 'attestation_depot', coord: [-4.8620, 11.8750], limiter: true, db: 82 }
   ];
 
   rawEstablishmentData.forEach((item, index) => {
-    const arrCode: ArrondissementCode = '1_LUMUMBA';
-    const regime = item.reg as RegimeType;
+    const arrCode = item.arr;
+    const regime = item.reg;
     const { filingFee, ratePerSqm, totalDue } = calculateEstablishmentFee(item.act, item.surf, regime);
     const amountPaid = item.stat === 'autorise_dgl' ? totalDue : (item.stat === 'attestation_depot' ? Math.round(totalDue * 0.5) : filingFee);
 
@@ -88,10 +133,12 @@ function generateSeedEstablishments(): Establishment[] {
       total_due: totalDue,
       amount_paid: amountPaid,
       balance_due: totalDue - amountPaid,
-      status: item.stat as EstablishmentStatus,
+      status: item.stat,
       identified_by: 'Agent SAA Loubaki (Badge N° 08)',
       identified_date: '2026-09-01',
       coordinates: [item.coord[0], item.coord[1]],
+      has_acoustic_limiter: item.limiter,
+      decibel_level: item.db,
       installments_chosen: 2,
       created_at: '2026-09-01T08:00:00Z',
       updated_at: '2026-09-01T08:00:00Z'
@@ -127,14 +174,34 @@ function generateSeedActs(): OfficialLegalAct[] {
       id: 'ACT-2026-001',
       type: 'MISE_EN_DEMEURE',
       reference_number: 'MD-088/MCAPNIT/DGL/DDL-PN-2026',
-      establishment_id: 'EST-PN-001',
-      establishment_name: 'Le Grand Baobab VIP Lounge',
-      promoter_name: 'Christian BITEMO',
+      establishment_id: 'EST-PN-003',
+      establishment_name: 'Le Kactus Club & Discothèque',
+      promoter_name: 'Alain MPOUELE',
       arrondissement: 'Arrondissement 1 Lumumba',
-      address: 'Zone Industrielle OCH, Avenue des Pionniers',
+      address: 'Avenue Moe Pratt, Centre-Ville, Pointe-Noire',
       date_emission: '2026-09-20',
-      delai_huitaine_date: '2026-09-27',
-      motif: 'Exploitation sans agrément d’ouverture et émission de nuisances sonores constatées de nuit.',
+      delai_huitaine_date: '2026-09-23',
+      motif: 'Dépassement du seuil légal de 85 décibels constaté après 22h et défaut de scellé sur le limiteur acoustique.',
+      signataire_nom: 'Jean Richard NTSEKE NGOUAKA',
+      signataire_titre: 'Directeur Départemental des Loisirs de Pointe-Noire',
+      agent_notificateur: 'Agent SAA Loubaki (Badge N° 08)',
+      visa_lois: [
+        'Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des activités de loisirs',
+        'Décret N° 2021-412 du 28 octobre 2021 portant organisation de la DGL'
+      ]
+    },
+    {
+      id: 'ACT-2026-002',
+      type: 'CONVOCATION',
+      reference_number: 'CONV-104/MCAPNIT/DGL/DDL-PN-2026',
+      establishment_id: 'EST-PN-009',
+      establishment_name: 'Le Privilège Club VIP',
+      promoter_name: 'Parfait PAMBOU',
+      arrondissement: 'Arrondissement 1 Lumumba',
+      address: 'Rue M’Boko, Centre-Ville, Pointe-Noire',
+      date_emission: '2026-09-22',
+      delai_huitaine_date: '2026-09-25',
+      motif: 'Régularisation du dossier technique d’autorisation d’ouverture et présentation des quittances SAA.',
       signataire_nom: 'Jean Richard NTSEKE NGOUAKA',
       signataire_titre: 'Directeur Départemental des Loisirs de Pointe-Noire',
       agent_notificateur: 'Agent SAA Loubaki (Badge N° 08)',
@@ -151,15 +218,15 @@ function generateSeedSubscriptions(): SpaMerchantSubscription[] {
     {
       id: 'SUB-2026-001',
       establishment_id: 'EST-PN-001',
-      establishment_name: 'Le Grand Baobab VIP Lounge',
+      establishment_name: 'Atlantic Palace Hôtel & Lounge',
       plan: 'GOLD',
-      monthly_fee_fcfa: 100000,
+      monthly_fee_fcfa: 120000,
       start_date: '2026-01-01',
       end_date: '2026-12-31',
       status: 'ACTIF',
       benefits: [
         'En-tête prioritaire sur le portail Loisirs Sains DDL-PN',
-        'Relais bi-mensuel des événements sur la page officielle'
+        'Relais bi-mensuel des événements sur la page officielle Facebook'
       ]
     }
   ];
@@ -170,7 +237,7 @@ function generateSeedDiplomas(): SpaHonorDiploma[] {
     {
       id: 'DIP-2026-001',
       establishment_id: 'EST-PN-001',
-      establishment_name: 'Le Grand Baobab VIP Lounge',
+      establishment_name: 'Atlantic Palace Hôtel & Lounge',
       promoter_name: 'Christian BITEMO',
       arrondissement: 'Arrondissement 1 Patrice Émery Lumumba',
       label: 'Diplôme d’Honneur des Loisirs Sains & d’Excellence Acoustique',
