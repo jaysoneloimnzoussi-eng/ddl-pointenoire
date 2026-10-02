@@ -55,7 +55,7 @@ Que souhaitez-vous rédiger ou analyser aujourd'hui ?`,
 
   if (!isOpen) return null;
 
-  const handleSendMessage = (customText?: string) => {
+  const handleSendMessage = async (customText?: string) => {
     const textToSend = customText || inputPrompt;
     if (!textToSend.trim() || isGenerating) return;
 
@@ -69,10 +69,31 @@ Que souhaitez-vous rédiger ou analyser aujourd'hui ?`,
     setInputPrompt('');
     setIsGenerating(true);
 
-    setTimeout(() => {
-      let aiResponseText = '';
-      const lower = textToSend.toLowerCase();
+    let aiResponseText = '';
+    const lower = textToSend.toLowerCase();
 
+    // Check if custom text can be handled directly by server-side Gemini
+    let usedServerAI = false;
+    if (!lower.includes('rapport') && !lower.includes('trimestre') && !lower.includes('mise en demeure')) {
+      try {
+        const response = await fetch('/api/ai/assistant', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: textToSend })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.text) {
+            aiResponseText = data.text;
+            usedServerAI = true;
+          }
+        }
+      } catch {
+        // Fall back gracefully to local generation engine
+      }
+    }
+
+    if (!usedServerAI) {
       if (lower.includes('rapport') || lower.includes('trimestre') || lower.includes('t3') || lower.includes('t2')) {
         const isT2 = lower.includes('t2') || lower.includes('deuxième');
         const rep = isT2 ? AiReportService.getT2ExactReport('2026') : AiReportService.getT3ExactReport('2026');
@@ -217,17 +238,17 @@ ${AiReportService.enrichSection('Rédaction Administrative', textToSend, 'détai
 
 *Cette analyse tient compte de la répartition légale 70% Trésor / 30% Régie DDL et des attributions de la Direction Départementale des Loisirs de Pointe-Noire dirigée par M. Jean Richard NTSEKE NGOUAKA.*`;
       }
+    }
 
-      setMessages(prev => [
-        ...prev,
-        {
-          sender: 'ai',
-          text: aiResponseText,
-          time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
-      setIsGenerating(false);
-    }, 800);
+    setMessages(prev => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: aiResponseText,
+        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+    setIsGenerating(false);
   };
 
   const handleCopyText = (text: string, index: number) => {

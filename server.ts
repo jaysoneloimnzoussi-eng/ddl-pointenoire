@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { GoogleGenAI } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +23,45 @@ async function startServer() {
       timestamp: new Date().toISOString(),
       country: 'République du Congo'
     });
+  });
+
+  // Server-Side Gemini API Integration for DDL-PN Administrative Assistant
+  app.post('/api/ai/assistant', async (req, res) => {
+    const { prompt } = req.body;
+    if (!prompt || typeof prompt !== 'string') {
+      return res.status(400).json({ error: 'Le paramètre prompt est requis.' });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.json({
+        fallback: true,
+        message: 'Clé API Gemini non configurée sur le serveur. Mode local actif.'
+      });
+    }
+
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          systemInstruction: `Vous êtes l'Assistant IA Administratif et Juridique officiel de la Direction Départementale des Loisirs de Pointe-Noire (DDL-PN), République du Congo (Ministère de l'Industrie Culturelle, Touristique, Artistique et des Loisirs / Direction Générale des Loisirs).
+Directeur Départemental : Jean Richard NTSEKE NGOUAKA.
+Vous assistez les cadres et inspecteurs (SAA, SAF, SPA, SSID, DGL) dans la rédaction administrative, l'application de la Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs, la régulation acoustique des établissements nocturnes, le calcul des redevances et la synthèse du PTA 2026.`
+        }
+      });
+
+      return res.json({
+        text: response.text
+      });
+    } catch (err: any) {
+      console.warn('[DDL-PN AI] Erreur de génération Gemini:', err?.message || err);
+      return res.status(500).json({
+        error: 'Erreur lors de la génération IA',
+        details: err?.message
+      });
+    }
   });
 
   // Module 8: RSS 2.0 Syndication Feed
