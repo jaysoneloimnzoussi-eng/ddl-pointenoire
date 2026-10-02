@@ -195,7 +195,7 @@ ${rep.conclusion.faitA} ${rep.conclusion.date}
 
 Vu la Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs en République du Congo ;
 Vu le Décret N° 2010-804 du 31 décembre 2010 relatif à la lutte contre les pollutions sonores et nuisances nocturnes ;
-Vu le rapport de constat contradictoire dressé par les agents du Service Agrément et Assainissement (SAA) en date du 28 septembre 2026 ;
+Vu le rapport de constat contradictoire dressé par les agents du Service Assistance et Autorisation (SAA) en date du 28 septembre 2026 ;
 
 Il a été dûment constaté que votre établissement fonctionne en contravention flagrante des dispositions réglementaires en vigueur (défaut de paiement des redevances d'agrément et d'autorisation officielle d'ouverture).
 

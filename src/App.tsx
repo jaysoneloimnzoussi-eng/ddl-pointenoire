@@ -17,6 +17,7 @@ import { TitlesAndReceiptsModule } from './components/modules/TitlesAndReceiptsM
 import { LegalTextsAndSimulatorModule } from './components/modules/LegalTextsAndSimulatorModule';
 import { PtaTrackerModule } from './components/modules/PtaTrackerModule';
 import { AdminPersonnelModule } from './components/modules/AdminPersonnelModule';
+import { DocumentArchivingModule } from './components/modules/DocumentArchivingModule';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AiAssistantModal } from './components/common/AiAssistantModal';
 import { PublicVerificationView } from './components/common/PublicVerificationView';
@@ -103,6 +104,8 @@ const AppContent: React.FC = () => {
         return <PtaTrackerModule />;
       case 'MOD-14':
         return <AdminPersonnelModule />;
+      case 'MOD-15':
+        return <DocumentArchivingModule />;
       default:
         return <DashboardModule />;
     }

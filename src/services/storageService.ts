@@ -1084,7 +1084,7 @@ class StorageService {
       delai_huitaine_date: params.date,
       motif: params.motif,
       signataire_nom: params.agent.role === 'DIRECTEUR' ? params.agent.name : 'Chef du Service SAA',
-      signataire_titre: params.agent.role === 'DIRECTEUR' ? params.agent.title : 'Chef du Service Agrément et Assainissement',
+      signataire_titre: params.agent.role === 'DIRECTEUR' ? params.agent.title : 'Chef du Service Assistance et Autorisation',
       agent_notificateur: `${params.agent.name} (${params.agent.badge})`,
       visa_lois: [
         'Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs',

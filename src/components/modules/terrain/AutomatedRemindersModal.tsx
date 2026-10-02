@@ -62,7 +62,7 @@ export const AutomatedRemindersModal: React.FC<AutomatedRemindersModalProps> = (
 
     let text = '';
     if (isConvocation) {
-      text = `🏛️ RÉPUBLIQUE DU CONGO\nDIRECTION DÉPARTEMENTALE DES LOISIRS DE POINTE-NOIRE (DDL-PN)\n\nMadame / Monsieur ${evt.promoterName} (${evt.establishmentName}),\n\nRappel officiel de votre convocation contradictoire fixée au ${evt.date} à ${evt.timeStart} au Bureau du Service Agrément et Assainissement (SAA) (Centre-Ville, Pointe-Noire).\nMotif : Régularisation administrative et dépôt du dossier d'agrément.\n\nAgent notificateur : ${evt.agentName} (${evt.agentBadge}).\nTél : ${evt.phone}.`;
+      text = `🏛️ RÉPUBLIQUE DU CONGO\nDIRECTION DÉPARTEMENTALE DES LOISIRS DE POINTE-NOIRE (DDL-PN)\n\nMadame / Monsieur ${evt.promoterName} (${evt.establishmentName}),\n\nRappel officiel de votre convocation contradictoire fixée au ${evt.date} à ${evt.timeStart} au Bureau du Service Assistance et Autorisation (SAA) (Centre-Ville, Pointe-Noire).\nMotif : Régularisation administrative et dépôt du dossier d'agrément.\n\nAgent notificateur : ${evt.agentName} (${evt.agentBadge}).\nTél : ${evt.phone}.`;
     } else {
       text = `🏛️ RÉPUBLIQUE DU CONGO\nDIRECTION DÉPARTEMENTALE DES LOISIRS DE POINTE-NOIRE (DDL-PN)\n\nMadame / Monsieur ${evt.promoterName} (${evt.establishmentName}),\n\nRappel courtois : Conformément à l'accord convenu avec le Service SAA, votre rendez-vous pour le versement du solde / acompte de redevance (${evt.amountDue ? evt.amountDue.toLocaleString('fr-FR') + ' FCFA' : 'solde fixé'}) est programmé le ${evt.date} à ${evt.timeStart}.\n\nMerci de préparer votre dernière quittance.\nAgent SAA : ${evt.agentName} (${evt.agentBadge}).`;
     }

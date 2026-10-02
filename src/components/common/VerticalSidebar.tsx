@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Shield,
   Building2,
+  Archive,
   X
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
@@ -41,6 +42,7 @@ const SIDEBAR_SECTIONS: NavSection[] = [
     items: [
       { id: 'MOD-01', num: '01', label: 'Poste de Commandement', shortLabel: 'Commandement', icon: LayoutDashboard },
       { id: 'MOD-14', num: '14', label: 'Personnel, Accès & Badges QR', shortLabel: 'Personnel & Badges', icon: ShieldCheck, badge: 'Admin' },
+      { id: 'MOD-15', num: '15', label: 'Archivage & GED Départementale', shortLabel: 'Archives & GED', icon: Archive, badge: 'GED' },
       { id: 'MOD-13', num: '13', label: 'Suivi Opérationnel PTA 2026', shortLabel: 'Suivi PTA 2026', icon: Target },
       { id: 'MOD-06', num: '06', label: 'Rapports Trimestriels A4', shortLabel: 'Rapports A4', icon: FileBarChart }
     ]

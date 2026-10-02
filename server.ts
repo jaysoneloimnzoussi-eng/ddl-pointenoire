@@ -80,7 +80,7 @@ Vous assistez les cadres et inspecteurs (SAA, SAF, SPA, SSID, DGL) dans la réda
     <item>
       <title>Lancement de la Campagne d'Assainissement Acoustique et Contrôle SAA 2026</title>
       <link>https://ddl-pointenoire.cg/actualites/campagne-acoustique-2026</link>
-      <description>La brigade du Service Agrément et Assainissement intensifie les contrôles in situ des décibels et des agréments d'exploitation dans les 6 arrondissements de Pointe-Noire.</description>
+      <description>La brigade du Service Assistance et Autorisation intensifie les contrôles in situ des décibels et des agréments d'exploitation dans les 6 arrondissements de Pointe-Noire.</description>
       <category>Régulation</category>
       <pubDate>Mon, 22 Sep 2026 08:30:00 GMT</pubDate>
       <guid isPermaLink="false">ddl-actu-2026-001</guid>

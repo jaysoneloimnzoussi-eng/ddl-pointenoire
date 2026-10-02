@@ -255,6 +255,7 @@ export const QuarterlyReportsModule: React.FC = () => {
         <OfficialReportDocumentView
           report={currentReport}
           onPrint={handlePrintReport}
+          onClose={() => setActiveTab('EDITOR')}
         />
       ) : (
         /* INTERACTIVE SECTIONS & TABLES EDITOR */

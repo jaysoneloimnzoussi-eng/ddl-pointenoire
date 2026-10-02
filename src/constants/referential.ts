@@ -368,7 +368,7 @@ export const PTA_2026_AXES: PtaObjective[] = [
   {
     id: 'PTA-AXE1-01',
     axe_number: 1,
-    axe_title: 'Axe 1 : Recensement Exhaustif & Assainissement SAA',
+    axe_title: 'Axe 1 : Recensement Exhaustif, Assistance & Autorisation (SAA)',
     objective_title: 'Recensement et géoréférencement exhaustif des établissements de loisirs de Pointe-Noire',
     target_value: 150,
     current_value: 117,
@@ -380,7 +380,7 @@ export const PTA_2026_AXES: PtaObjective[] = [
   {
     id: 'PTA-AXE1-02',
     axe_number: 1,
-    axe_title: 'Axe 1 : Recensement Exhaustif & Assainissement SAA',
+    axe_title: 'Axe 1 : Recensement Exhaustif, Assistance & Autorisation (SAA)',
     objective_title: 'Contrôles in situ des seuils acoustiques nocturnes (<85 dB après 22h)',
     target_value: 80,
     current_value: 58,

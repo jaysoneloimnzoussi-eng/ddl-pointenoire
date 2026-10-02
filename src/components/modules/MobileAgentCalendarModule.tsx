@@ -173,7 +173,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
     programBureauPassage: true,
     bureauPassageDate: '2026-10-02',
     bureauPassageTime: '10:00',
-    bureauPassageOffice: 'Bureau N° 3 — Service Agrément et Assainissement (SAA)',
+    bureauPassageOffice: 'Bureau N° 3 — Service Assistance et Autorisation (SAA)',
     bureauPassageMotif: 'Présentation physique, régularisation administrative et dépôt du dossier d\'agrément'
   });
 
@@ -583,7 +583,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
       badge: currentAgent.badge,
       role: (currentAgent as any).userRole || 'AGENT_SAA',
       title: currentAgent.role,
-      service: 'Service Agrément et Assainissement (SAA)',
+      service: 'Service Assistance et Autorisation (SAA)',
       phone: currentAgent.phone,
       email: `${currentAgent.badge.toLowerCase()}@ddlpn.gouv.cg`
     };
@@ -657,7 +657,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
         badge: currentAgent.badge,
         role: (currentAgent as any).userRole || 'AGENT_SAA',
         title: currentAgent.role,
-        service: 'Service Agrément et Assainissement (SAA)',
+        service: 'Service Assistance et Autorisation (SAA)',
         phone: currentAgent.phone,
         email: `${currentAgent.badge.toLowerCase()}@ddlpn.gouv.cg`
       };
@@ -706,7 +706,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
       badge: currentAgent.badge,
       role: 'AGENT_SAA',
       title: currentAgent.role,
-      service: 'Service Agrément et Assainissement (SAA)',
+      service: 'Service Assistance et Autorisation (SAA)',
       phone: currentAgent.phone,
       email: `${currentAgent.badge.toLowerCase()}@ddlpn.gouv.cg`
     };

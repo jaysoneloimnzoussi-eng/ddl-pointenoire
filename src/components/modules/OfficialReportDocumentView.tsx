@@ -10,18 +10,21 @@ import {
   Maximize2,
   FileText,
   Layers,
-  BookOpen
+  BookOpen,
+  X
 } from 'lucide-react';
 
 interface OfficialReportDocumentViewProps {
   report: OfficialQuarterlyReport;
   onPrint?: () => void;
+  onClose?: () => void;
   readOnly?: boolean;
 }
 
 export const OfficialReportDocumentView: React.FC<OfficialReportDocumentViewProps> = ({
   report,
   onPrint,
+  onClose,
   readOnly = false
 }) => {
   const [currentPageView, setCurrentPageView] = useState<'ALL' | number>('ALL');
@@ -888,6 +891,22 @@ ${report.conclusion.titreSignataire}`;
             >
               <Printer className="w-3.5 h-3.5 text-amber-300" />
               <span>Imprimer / Exporter A4 (9 Pages)</span>
+            </button>
+          )}
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
+              className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow transition cursor-pointer hover:scale-105 active:scale-95"
+              title="Fermer l'aperçu du document officiel"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Fermer l'aperçu</span>
             </button>
           )}
         </div>

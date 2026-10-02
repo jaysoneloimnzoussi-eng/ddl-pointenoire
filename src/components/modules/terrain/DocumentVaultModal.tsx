@@ -234,13 +234,81 @@ export const DocumentVaultModal: React.FC<DocumentVaultModalProps> = ({
             Dossier certifié conforme pour transmission DGL Brazzaville.
           </span>
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg"
+            className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg cursor-pointer"
           >
             Fermer
           </button>
         </div>
       </div>
+
+      {/* Embedded Document Preview Modal */}
+      {previewDoc && (
+        <div
+          onClick={() => setPreviewDoc(null)}
+          className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-3 animate-in fade-in cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-300 cursor-default"
+          >
+            <div className="bg-[#022448] text-white p-4 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-amber-300" />
+                <div>
+                  <h4 className="font-bold text-sm text-white">{previewDoc.name}</h4>
+                  <p className="text-[10px] text-slate-300">
+                    {previewDoc.category} • {previewDoc.size_kb || 240} Ko • Numérisé le {new Date(previewDoc.uploaded_at).toLocaleDateString('fr-FR')}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewDoc(null)}
+                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                title="Fermer l'aperçu"
+              >
+                <X className="w-4 h-4" />
+                <span>Fermer l'aperçu</span>
+              </button>
+            </div>
+
+            <div className="flex-1 p-6 overflow-y-auto bg-slate-50 flex flex-col items-center justify-center text-center space-y-4 min-h-[350px]">
+              <div className="w-20 h-20 rounded-2xl bg-blue-100 text-blue-900 flex items-center justify-center shadow-inner">
+                <FileText className="w-10 h-10 text-[#022448]" />
+              </div>
+              <div className="max-w-md">
+                <p className="font-bold text-slate-800 text-sm">{previewDoc.name}</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Document numérique certifié conforme conservé dans le Coffre-Fort DDL-PN.
+                </p>
+                <div className="mt-3 p-3 bg-white border border-slate-200 rounded-lg text-[11px] text-slate-600 font-mono-ref space-y-1 text-left">
+                  <p><strong>Établissement :</strong> {establishment.name}</p>
+                  <p><strong>Promoteur :</strong> {establishment.promoter_name}</p>
+                  <p><strong>Arrondissement :</strong> {establishment.arrondissement}</p>
+                  <p><strong>Agent certificateur :</strong> {previewDoc.uploaded_by}</p>
+                  <p><strong>Empreinte numérique :</strong> SHA256-{(Math.random() * 1e16).toString(36).toUpperCase()}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-100 border-t border-slate-200 flex items-center justify-between shrink-0">
+              <span className="text-[11px] text-slate-500">
+                Aperçu officiel certifié DDL-PN
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewDoc(null)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Fermer l'aperçu</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -32,6 +32,18 @@ export const PrintModal: React.FC<PrintModalProps> = ({
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !data) return null;
 
   const handlePrint = async () => {
@@ -45,8 +57,18 @@ export const PrintModal: React.FC<PrintModalProps> = ({
   };
 
   return (
-    <div className="print-modal-overlay fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="print-modal-container bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[94vh] flex flex-col overflow-hidden border border-slate-300">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      className="print-modal-overlay fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-2 sm:p-4 overflow-y-auto cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="print-modal-container bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[94vh] flex flex-col overflow-hidden border border-slate-300 cursor-default"
+      >
         {/* Modal Controls (Hidden in print) */}
         <div className="no-print bg-[#022448] text-white px-3 sm:px-5 py-3 flex items-center justify-between border-b border-slate-700 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -68,6 +90,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
           <div className="flex items-center gap-2 shrink-0">
             {/* Direct Primary Print Button */}
             <button
+              type="button"
               onClick={handlePrint}
               disabled={isPrinting}
               className="bg-[#006d2f] hover:bg-[#005a26] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition cursor-pointer"
@@ -79,6 +102,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
 
             {/* Standalone Full-Page PDF Button */}
             <button
+              type="button"
               onClick={handleOpenStandalone}
               className="hidden sm:flex bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold items-center gap-1.5 border border-slate-600 transition cursor-pointer"
               title="Ouvrir dans un nouvel onglet pour aperçu grand écran ou enregistrement PDF"
@@ -87,13 +111,19 @@ export const PrintModal: React.FC<PrintModalProps> = ({
               <span>Pleine page / PDF</span>
             </button>
 
-            {/* Close Button */}
+            {/* Prominent Close Button */}
             <button
-              onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition"
-              title="Fermer"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition cursor-pointer hover:scale-105 active:scale-95"
+              title="Fermer l'aperçu du document officiel"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
+              <span>Fermer l'aperçu</span>
             </button>
           </div>
         </div>
@@ -303,7 +333,12 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                  PROTOTYPE 3: RAPPORT TRIMESTRIEL OFFICIEL DDL-PN
                  =================================================================== */
               <div className="w-full">
-                <OfficialReportDocumentView report={data} readOnly={true} />
+                <OfficialReportDocumentView
+                  report={data}
+                  readOnly={true}
+                  onClose={onClose}
+                  onPrint={handlePrint}
+                />
               </div>
             ) : (
               /* ===================================================================
@@ -330,7 +365,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                       DIRECTION DÉPARTEMENTALE DES LOISIRS DE POINTE-NOIRE
                     </p>
                     <p className="text-[8.5px] font-mono-ref text-slate-500 mt-0.5">
-                      SERVICE AGRÉMENT ET ASSAINISSEMENT (SAA)
+                      SERVICE ASSISTANCE ET AUTORISATION (SAA)
                     </p>
                   </div>
 
@@ -407,13 +442,13 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                         <p>Vu la Constitution de la République du Congo ;</p>
                         <p>Vu la Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs en République du Congo ;</p>
                         <p>Vu les textes réglementaires régissant l'ouverture et l'exploitation des établissements de loisirs ;</p>
-                        <p>Vu les rapports de constatation dressés par les agents du Service Agrément et Assainissement (SAA).</p>
+                        <p>Vu les rapports de constatation dressés par les agents du Service Assistance et Autorisation (SAA).</p>
                       </div>
 
                       {/* Constatations & Motif */}
                       <div className="text-xs text-justify leading-relaxed space-y-3">
                         <p>
-                          Il a été formellement constaté par les agents assermentés du Service Agrément et Assainissement (SAA) que l'établissement susvisé se trouve en situation d'irrégularité administrative :
+                          Il a été formellement constaté par les agents assermentés du Service Assistance et Autorisation (SAA) que l'établissement susvisé se trouve en situation d'irrégularité administrative :
                         </p>
                         <div className="bg-red-50 border-l-4 border-red-600 p-3 font-semibold text-red-950 text-xs leading-relaxed">
                           « {data.motif} »
@@ -422,7 +457,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                           En conséquence de quoi, <strong>IL VOUS EST IMPARTI UN DÉLAI IMPÉRATIF DE {data.delai_huitaine_date || '72 HEURES OUVRÉES'}</strong>, à compter de la notification du présent acte, pour vous présenter aux bureaux de la Direction Départementale des Loisirs munis des pièces justificatives et procéder à la régularisation fiscale et administrative intégrale de votre exploitation.
                         </p>
                         <p className="font-bold text-slate-900">
-                          PASSÉ CE DÉLAI DE RIGUEUR, il sera immédiatement procédé, sans autre préavis ni sommation, à la FERMETURE ADMINISTRATIVE de votre établissement avec apposition des scellés de la République par le Service Agrément et Assainissement (SAA) assisté de la Force Publique, sans préjudice des poursuites judiciaires devant Monsieur le Procureur de la République.
+                          PASSÉ CE DÉLAI DE RIGUEUR, il sera immédiatement procédé, sans autre préavis ni sommation, à la FERMETURE ADMINISTRATIVE de votre établissement avec apposition des scellés de la République par le Service Assistance et Autorisation (SAA) assisté de la Force Publique, sans préjudice des poursuites judiciaires devant Monsieur le Procureur de la République.
                         </p>
                       </div>
                     </div>
@@ -462,7 +497,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                             📅 {data.delai_huitaine_date || 'Le jour ouvrable convenu'} à 10 Heures Précises
                           </p>
                           <p className="text-[11px] text-purple-950">
-                            <strong>Lieu :</strong> Direction Départementale des Loisirs de Pointe-Noire — <strong>Bureau N° 3 (Service Agrément et Assainissement)</strong>, Centre-Ville, face Port Autonome.
+                            <strong>Lieu :</strong> Direction Départementale des Loisirs de Pointe-Noire — <strong>Bureau N° 3 (Service Assistance et Autorisation)</strong>, Centre-Ville, face Port Autonome.
                           </p>
                         </div>
 
@@ -521,7 +556,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                         </p>
 
                         <p>
-                          <strong>ARTICLE 2 :</strong> Il est fait interdiction absolue à quiconque d'exploiter lesdits locaux ou de recevoir du public. Les agents assermentés du Service Agrément et Assainissement (SAA) sont mandatés pour procéder à l’apposition des scellés officiels de la République sur les accès de l'établissement.
+                          <strong>ARTICLE 2 :</strong> Il est fait interdiction absolue à quiconque d'exploiter lesdits locaux ou de recevoir du public. Les agents assermentés du Service Assistance et Autorisation (SAA) sont mandatés pour procéder à l’apposition des scellés officiels de la République sur les accès de l'établissement.
                         </p>
 
                         <p>
@@ -543,7 +578,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                           ORDRE DE MISSION DE CONTRÔLE RÉPUBLICAIN IN SITU
                         </h2>
                         <p className="text-xs uppercase font-bold text-slate-600 mt-2 tracking-wider">
-                          Service Agrément et Assainissement (SAA)
+                          Service Assistance et Autorisation (SAA)
                         </p>
                       </div>
 
@@ -686,11 +721,12 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                   {/* 3. SOLEMN OFFICIAL SIGNATURE BLOCK */}
                   <div className="mt-8 pt-4 border-t border-slate-300 flex items-start justify-between text-xs">
                     {/* Left: Ampliations */}
-                    <div className="text-left text-[9.5px] text-slate-600 font-serif space-y-0.5 max-w-[220px]">
+                    <div className="text-left text-[9.5px] text-slate-600 font-serif space-y-0.5 max-w-[240px]">
                       <p className="font-bold text-slate-800 uppercase">Ampliations :</p>
-                      <p>• Préfecture du Département de Pointe-Noire</p>
-                      <p>• Mairie de Pointe-Noire</p>
-                      <p>• Service Agrément et Assainissement (SAA)</p>
+                      <p>• Service Administratif, Financier et du Matériel (SAFM)</p>
+                      <p>• Service Assistance et Autorisation (SAA)</p>
+                      <p>• Service des Statistiques, de l'Information et de la Documentation (SSID)</p>
+                      <p>• Service de la Promotion et de l'Animation (SPA)</p>
                       <p>• Archives DDL-PN / Chrono</p>
                       <p>• Intéressé(e)</p>
                     </div>
@@ -718,8 +754,34 @@ export const PrintModal: React.FC<PrintModalProps> = ({
         </div>
 
         {/* Footer info (no-print) */}
-        <div className="no-print p-2.5 bg-slate-50 border-t border-slate-200 text-center text-[11px] text-slate-500 shrink-0">
-          Astuce : Si le navigateur n'ouvre pas la boîte d'impression, cliquez sur <strong>Pleine page / PDF</strong> pour exporter ou imprimer directement via Ctrl+P.
+        <div className="no-print p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 shrink-0">
+          <span className="text-[11px]">
+            Astuce : Si le navigateur n'ouvre pas la boîte d'impression, cliquez sur <strong>Pleine page / PDF</strong> pour exporter ou imprimer directement via Ctrl+P.
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrint}
+              disabled={isPrinting}
+              className="bg-[#006d2f] hover:bg-[#005a26] text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Imprimer</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
+              className="px-4 py-1.5 bg-slate-800 hover:bg-red-700 text-white font-bold rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+              title="Fermer l'aperçu du document officiel"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Fermer l'aperçu</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

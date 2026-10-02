@@ -16,6 +16,7 @@ import { storageService } from '../../services/storageService';
 import { useSession } from '../../context/SessionContext';
 import { TerrainPaymentRecord } from '../../types';
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
+import { SafD3MonthlyRevenueChart } from './saf/SafD3MonthlyRevenueChart';
 
 export const SafRegieRecettesModule: React.FC = () => {
   const { currentUser, triggerNotification } = useSession();
@@ -151,6 +152,9 @@ export const SafRegieRecettesModule: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* D3.js Monthly SAA Revenue Visualization */}
+      <SafD3MonthlyRevenueChart payments={payments} />
 
       {/* Breakdown by Payment Channel */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-xs">
