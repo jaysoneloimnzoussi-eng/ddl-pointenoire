@@ -8,7 +8,7 @@ const LOCAL_STORAGE_KEYS = {
   ACTS: 'ddl_pn_legal_acts_v5',
   SUBSCRIPTIONS: 'ddl_pn_subscriptions_v5',
   DIPLOMAS: 'ddl_pn_diplomas_v5',
-  TOURNEES_EVENTS: 'ddl_pn_agent_tournees_v5',
+  TOURNEES_EVENTS: 'ddl_pn_agent_tournees_v6',
   OFFLINE_QUEUE: 'ddl_pn_offline_queue_v5',
   SUPABASE_URL: 'ddl_pn_supabase_url'
 };
@@ -287,14 +287,70 @@ function generateSeedTourneeEvents(establishments: Establishment[]): AgentTourne
     'NOTIFICATION_MISE_EN_DEMEURE'
   ];
 
-  establishments.forEach((est, idx) => {
+  // Specific 5 establishments programmed for 2026-10-02 (Jour 2) as requested
+  const day2EstIds = [
+    'EST-PN-001', // Atlantic Palace Hôtel & Lounge
+    'EST-PN-003', // Le Kactus Club & Discothèque
+    'EST-PN-004', // Hôtel Palm Beach & Bar Plage
+    'EST-PN-005', // Complexe La Pyramide
+    'EST-PN-006'  // Le No Stress Lounge Bar
+  ];
+
+  const day2Schedule = [
+    { hourStart: '08:30', hourEnd: '09:45', type: 'ENCAISSEMENT_ACOMPTE' as const, note: 'Rendez-vous convenu avec le tenancier pour encaissement acompte et vérification agrément.' },
+    { hourStart: '10:00', hourEnd: '11:15', type: 'CONVOCATION' as const, note: 'Audition contradictoire au bureau ou in situ sur les droits régie DDL-PN.' },
+    { hourStart: '11:30', hourEnd: '12:45', type: 'CONTROLE_ACOUSTIQUE' as const, note: 'Contrôle sonométrique inopiné (<80 dB) et respect de la tranquillité publique.' },
+    { hourStart: '14:00', hourEnd: '15:15', type: 'ENCAISSEMENT_ACOMPTE' as const, note: 'Recouvrement du 2ème acompte convenu avec la direction de l\'établissement.' },
+    { hourStart: '15:30', hourEnd: '16:45', type: 'NOTIFICATION_MISE_EN_DEMEURE' as const, note: 'Suivi régularisation redevance annuelle d\'exploitation des loisirs.' }
+  ];
+
+  day2EstIds.forEach((id, idx) => {
+    const est = establishments.find(e => e.id === id) || establishments[idx % establishments.length];
+    if (!est) return;
     const assignedAgent = getAgentForEstablishment(est, APP_USERS);
-    const dayOffset = (idx % 7);
-    const eventDate = new Date(2026, 8, 25 + dayOffset).toISOString().split('T')[0];
+    const sched = day2Schedule[idx];
+
+    events.push({
+      id: `EVT-DAY2-${est.id}-${idx}`,
+      agentId: assignedAgent.id,
+      agentName: assignedAgent.name,
+      agentBadge: assignedAgent.badge,
+      establishmentId: est.id,
+      establishmentName: est.name,
+      promoterName: est.promoter_name,
+      phone: est.phone,
+      arrondissement: est.arrondissement,
+      quartier: est.quartier,
+      address: est.address,
+      date: '2026-10-02',
+      timeStart: sched.hourStart,
+      timeEnd: sched.hourEnd,
+      type: sched.type,
+      status: 'A_FAIRE',
+      priority: idx === 1 ? 'URGENTE' : 'NORMALE',
+      amountDue: est.balance_due || est.total_due,
+      notes: sched.note,
+      isSynced: true,
+      createdAt: '2026-09-28T08:00:00Z',
+      updatedAt: '2026-10-02T08:00:00Z'
+    });
+  });
+
+  // Distribute other establishments across late September, October, November
+  establishments.forEach((est, idx) => {
+    if (day2EstIds.includes(est.id)) return; // Already on Oct 2
+
+    const assignedAgent = getAgentForEstablishment(est, APP_USERS);
+    const dayOffset = (idx % 12);
+    // dates from 2026-09-28 to 2026-10-15
+    const dt = new Date(2026, 8, 28);
+    dt.setDate(dt.getDate() + dayOffset);
+    const eventDate = dt.toISOString().split('T')[0];
+
     const type = types[idx % types.length];
     const hour = 8 + (idx % 8);
     const timeStart = `${String(hour).padStart(2, '0')}:00`;
-    const timeEnd = `${String(hour + 1).padStart(2, '0')}:00`;
+    const timeEnd = `${String(hour + 1).padStart(2, '0')}:15`;
 
     events.push({
       id: `EVT-AUTO-${est.id}-${idx}`,

@@ -43,6 +43,7 @@ import {
   Smartphone,
   LayoutDashboard,
   Route,
+  Building2,
   QrCode,
   FolderLock,
   CloudDownload
@@ -105,8 +106,8 @@ export const MobileAgentCalendarModule: React.FC = () => {
     return FIELD_AGENTS.find(a => a.badge === activeAgentBadge) || FIELD_AGENTS[0];
   }, [currentUser, activeAgentBadge]);
 
-  // Calendar Date State (Default date of exercise: 2026-09-29)
-  const [currentDateStr, setCurrentDateStr] = useState<string>('2026-09-29');
+  // Calendar Date State (Default date of exercise: 2026-10-02)
+  const [currentDateStr, setCurrentDateStr] = useState<string>('2026-10-02');
   const [viewMode, setViewMode] = useState<'JOUR' | 'SEMAINE' | 'MOIS' | 'PLANNING'>('SEMAINE');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -121,6 +122,11 @@ export const MobileAgentCalendarModule: React.FC = () => {
 
   useEffect(() => {
     setEvents(storageService.getAgentEventsForUser(currentUser));
+    const handleUpdate = () => {
+      setEvents(storageService.getAgentEventsForUser(currentUser));
+    };
+    window.addEventListener('ddl_pn_data_updated', handleUpdate);
+    return () => window.removeEventListener('ddl_pn_data_updated', handleUpdate);
   }, [currentUser]);
 
   // Network & Sync State
@@ -219,8 +225,127 @@ export const MobileAgentCalendarModule: React.FC = () => {
     RECENSEMENT_IN_SITU: true
   });
 
+  // Day Tournée Sheet Modal states
+  const [isDaySheetModalOpen, setIsDaySheetModalOpen] = useState(false);
+  const [selectedDayDate, setSelectedDayDate] = useState<string>('2026-10-02');
+  const [daySheetActiveTab, setDaySheetActiveTab] = useState<'PROGRAMMES' | 'REPORTES' | 'SOLDE'>('PROGRAMMES');
+  const [recentlyPostponedNotice, setRecentlyPostponedNotice] = useState<{
+    name: string;
+    oldDate: string;
+    newDate: string;
+    delayMonths: number;
+    amountDue: number;
+    timeStart: string;
+  } | null>(null);
+
+  // Postpone Modal states
+  const [isPostponeModalOpen, setIsPostponeModalOpen] = useState(false);
+  const [postponeEvent, setPostponeEvent] = useState<AgentTourneeEvent | null>(null);
+  const [postponeNewDate, setPostponeNewDate] = useState<string>('2026-12-02');
+  const [postponeNewTime, setPostponeNewTime] = useState<string>('10:00');
+  const [postponeReason, setPostponeReason] = useState<string>('');
+
+  const calculateEndTime = (start: string): string => {
+    const [h, m] = (start || '10:00').split(':').map(Number);
+    const endH = (h + 1) % 24;
+    return `${String(endH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+  };
+
+  const openPostponeModal = (evt: AgentTourneeEvent) => {
+    setPostponeEvent(evt);
+    // Default to +2 months as frequently requested by tenanciers
+    const d = new Date(evt.date);
+    d.setMonth(d.getMonth() + 2);
+    setPostponeNewDate(d.toISOString().split('T')[0]);
+    setPostponeNewTime(evt.timeStart || '10:00');
+    setPostponeReason('Accord verbal avec le tenancier in situ pour passage dans 2 mois');
+    setIsPostponeModalOpen(true);
+  };
+
+  const applyPostponePresetDays = (days: number) => {
+    if (!postponeEvent) return;
+    const d = new Date(postponeEvent.date);
+    d.setDate(d.getDate() + days);
+    setPostponeNewDate(d.toISOString().split('T')[0]);
+    setPostponeReason(`Délai convenu avec le tenancier (+${days} jours) pour préparer le versement`);
+  };
+
+  const applyPostponePresetMonths = (months: number) => {
+    if (!postponeEvent) return;
+    const d = new Date(postponeEvent.date);
+    d.setMonth(d.getMonth() + months);
+    setPostponeNewDate(d.toISOString().split('T')[0]);
+    if (months === 2) {
+      setPostponeReason('Accord verbal avec le promoteur pour passage dans 2 mois (délai de trésorerie)');
+    } else {
+      setPostponeReason(`Report convenu d'accord parties (+${months} mois) avec le tenancier`);
+    }
+  };
+
+  const handleConfirmPostpone = () => {
+    if (!postponeEvent || !postponeNewDate) return;
+
+    const oldDate = postponeEvent.date;
+    const reasonText = postponeReason.trim() || 'Report convenu avec le tenancier in situ';
+    const updatedNotes = `${postponeEvent.notes || ''} [Reporté du ${oldDate} au ${postponeNewDate}. Motif: ${reasonText}]`.trim();
+
+    storageService.updateAgentEvent(postponeEvent.id, {
+      date: postponeNewDate,
+      timeStart: postponeNewTime,
+      timeEnd: calculateEndTime(postponeNewTime),
+      status: 'A_FAIRE',
+      notes: updatedNotes
+    });
+
+    const refreshed = storageService.getAgentEventsForUser(currentUser);
+    setEvents(refreshed);
+
+    const oldD = new Date(oldDate);
+    const newD = new Date(postponeNewDate);
+    const diffDays = Math.round((newD.getTime() - oldD.getTime()) / (1000 * 60 * 60 * 24));
+    const diffMonths = Math.max(1, Math.round(diffDays / 30));
+
+    const estName = postponeEvent.establishmentName;
+    const est = establishments.find(e => e.id === postponeEvent.establishmentId);
+    const amountDue = (est?.balance_due ?? postponeEvent.amountDue) || 0;
+
+    setRecentlyPostponedNotice({
+      name: estName,
+      oldDate,
+      newDate: postponeNewDate,
+      delayMonths: diffMonths,
+      amountDue,
+      timeStart: postponeNewTime
+    });
+
+    setIsPostponeModalOpen(false);
+    setPostponeEvent(null);
+
+    triggerNotification(
+      `Le rendez-vous avec « ${estName} » a été reporté avec succès au ${postponeNewDate}. L'établissement a disparu du planning du ${oldDate} et réapparaîtra le ${postponeNewDate}.`,
+      'success'
+    );
+  };
+
+  const openPaymentForEst = (estId: string) => {
+    setTargetEstId(estId);
+    const est = establishments.find(x => x.id === estId);
+    if (est) {
+      setPaymentAmount(Math.min(50000, est.balance_due || 50000));
+    }
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleOpenDaySheet = (dateStr: string) => {
+    setSelectedDayDate(dateStr);
+    setCurrentDateStr(dateStr);
+    setIsDaySheetModalOpen(true);
+  };
+
   // Filter mode: "ONLY_ME" (only current agent's events) or "ALL_AGENTS" (all team)
-  const [agentScope, setAgentScope] = useState<'ONLY_ME' | 'ALL_AGENTS'>('ONLY_ME');
+  const [agentScope, setAgentScope] = useState<'ONLY_ME' | 'ALL_AGENTS'>(() => {
+    return (currentUser.role === 'ADMIN' || currentUser.role === 'DIRECTEUR') ? 'ALL_AGENTS' : 'ONLY_ME';
+  });
 
   // Print modal state
   const [printDoc, setPrintDoc] = useState<{
@@ -359,7 +484,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
   // Navigate Date
   const handleNavigate = (direction: 'PREV' | 'NEXT' | 'TODAY') => {
     if (direction === 'TODAY') {
-      setCurrentDateStr('2026-09-29');
+      setCurrentDateStr('2026-10-02');
       return;
     }
     const current = new Date(currentDateStr);
@@ -792,6 +917,63 @@ export const MobileAgentCalendarModule: React.FC = () => {
     return days;
   }, [currentDateStr]);
 
+  // Dynamic Month days computation
+  const monthDays = useMemo(() => {
+    const curr = new Date(currentDateStr);
+    const year = curr.getFullYear();
+    const month = curr.getMonth(); // 0-indexed
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7; // Monday = 0
+    const prevMonthDays = new Date(year, month, 0).getDate();
+
+    const cells: Array<{
+      dateStr: string;
+      dayNum: number;
+      isCurrentMonth: boolean;
+      isToday: boolean;
+    }> = [];
+
+    // Prev month padding
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const d = prevMonthDays - i;
+      const prevDate = new Date(year, month - 1, d);
+      cells.push({
+        dateStr: prevDate.toISOString().split('T')[0],
+        dayNum: d,
+        isCurrentMonth: false,
+        isToday: false
+      });
+    }
+
+    // Current month days
+    for (let d = 1; d <= daysInMonth; d++) {
+      const currDate = new Date(year, month, d);
+      const dateStr = currDate.toISOString().split('T')[0];
+      cells.push({
+        dateStr,
+        dayNum: d,
+        isCurrentMonth: true,
+        isToday: dateStr === currentDateStr
+      });
+    }
+
+    // Next month padding to fill grid (35 or 42 cells)
+    const totalCells = cells.length > 35 ? 42 : 35;
+    const remaining = totalCells - cells.length;
+    for (let d = 1; d <= remaining; d++) {
+      const nextDate = new Date(year, month + 1, d);
+      cells.push({
+        dateStr: nextDate.toISOString().split('T')[0],
+        dayNum: d,
+        isCurrentMonth: false,
+        isToday: false
+      });
+    }
+
+    return cells;
+  }, [currentDateStr]);
+
   // Working Hours for Day and Week Views
   const HOURS = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
 
@@ -818,10 +1000,10 @@ export const MobileAgentCalendarModule: React.FC = () => {
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleNavigate('TODAY')}>
             <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 shadow-xs flex flex-col items-center justify-center p-0.5 overflow-hidden">
               <div className="w-full bg-[#1a73e8] text-white text-[8px] font-bold text-center uppercase tracking-tighter">
-                SEP
+                {new Date(currentDateStr).toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '').toUpperCase()}
               </div>
               <div className="text-[#1a73e8] font-black text-sm leading-none pt-0.5">
-                29
+                {new Date(currentDateStr).getDate()}
               </div>
             </div>
             <div className="leading-tight hidden sm:block">
@@ -1220,24 +1402,30 @@ export const MobileAgentCalendarModule: React.FC = () => {
                   <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
                 </div>
                 <div className="grid grid-cols-7 gap-1 text-[11px]">
-                  {Array.from({ length: 30 }).map((_, i) => {
-                    const day = i + 1;
-                    const dateStr = `2026-09-${String(day).padStart(2, '0')}`;
-                    const isSelected = dateStr === currentDateStr;
-                    const hasEvents = events.some(e => e.date === dateStr && (agentScope === 'ALL_AGENTS' || e.agentBadge === activeAgentBadge));
+                  {monthDays.map((cell, i) => {
+                    const isSelected = cell.dateStr === currentDateStr;
+                    const dayEvents = events.filter(e => e.date === cell.dateStr && (agentScope === 'ALL_AGENTS' || e.agentBadge === activeAgentBadge));
+                    const hasEvents = dayEvents.length > 0;
                     return (
                       <button
-                        key={day}
-                        onClick={() => setCurrentDateStr(dateStr)}
-                        className={`w-6 h-6 mx-auto rounded-full flex items-center justify-center font-medium transition ${
+                        key={i}
+                        type="button"
+                        onClick={() => handleOpenDaySheet(cell.dateStr)}
+                        title={`${cell.dateStr} : ${dayEvents.length} établissement(s) programmé(s)`}
+                        className={`w-6 h-6 mx-auto rounded-full flex items-center justify-center font-medium transition cursor-pointer relative ${
                           isSelected
-                            ? 'bg-[#1a73e8] text-white font-bold'
-                            : hasEvents
-                            ? 'font-bold text-slate-900 hover:bg-slate-200'
-                            : 'text-slate-600 hover:bg-slate-200'
+                            ? 'bg-[#1a73e8] text-white font-bold ring-2 ring-blue-300'
+                            : hasEvents && cell.isCurrentMonth
+                            ? 'font-extrabold text-blue-900 bg-blue-100/70 hover:bg-blue-200'
+                            : cell.isCurrentMonth
+                            ? 'text-slate-700 hover:bg-slate-200'
+                            : 'text-slate-300 hover:bg-slate-100'
                         }`}
                       >
-                        {day}
+                        <span>{cell.dayNum}</span>
+                        {hasEvents && !isSelected && (
+                          <span className="w-1 h-1 bg-blue-600 rounded-full absolute bottom-0.5" />
+                        )}
                       </button>
                     );
                   })}
@@ -1359,6 +1547,16 @@ export const MobileAgentCalendarModule: React.FC = () => {
                     : `Afficher aussi les ${completedTodayEvents.length} tournée(s) déjà encaissée(s)`}
                 </span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => handleOpenDaySheet(currentDateStr)}
+                className="flex items-center gap-1.5 px-3 py-1 bg-[#022448] hover:bg-[#003870] text-amber-300 rounded-full text-xs font-black shadow-xs transition cursor-pointer"
+                title="Ouvrir la feuille de tournée journalière complète avec listing des montants et reports"
+              >
+                <FileCheck2 className="w-3.5 h-3.5 text-amber-400" />
+                <span>Feuille de Tournée ({currentDayEvents.length})</span>
+              </button>
             </div>
 
             {/* Mobile quick actions */}
@@ -1393,13 +1591,11 @@ export const MobileAgentCalendarModule: React.FC = () => {
                   return (
                     <div
                       key={wd.dateStr}
-                      onClick={() => {
-                        setCurrentDateStr(wd.dateStr);
-                        setViewMode('JOUR');
-                      }}
+                      onClick={() => handleOpenDaySheet(wd.dateStr)}
                       className={`p-2 border-r border-slate-200 text-center cursor-pointer transition ${
                         isCurrent ? 'bg-blue-50/80 font-bold text-blue-800' : 'hover:bg-slate-100 text-slate-700'
                       }`}
+                      title="Cliquer pour afficher la liste des établissements de ce jour"
                     >
                       <div className="text-[10px] uppercase font-bold text-slate-400">{wd.dayName}</div>
                       <div className={`text-base font-extrabold ${isCurrent ? 'text-[#1a73e8]' : 'text-slate-800'}`}>
@@ -1598,6 +1794,29 @@ export const MobileAgentCalendarModule: React.FC = () => {
                               <MessageSquare className="w-3.5 h-3.5" />
                             </a>
 
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                openPaymentForEst(evt.establishmentId);
+                              }}
+                              className="px-2.5 py-1 bg-[#006d2f] hover:bg-[#005a26] text-white rounded text-xs font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
+                            >
+                              <Coins className="w-3 h-3" />
+                              <span>Encaisser</span>
+                            </button>
+
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                openPostponeModal(evt);
+                              }}
+                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded text-xs font-black flex items-center gap-1 shadow-xs transition cursor-pointer"
+                              title="Reporter ce rendez-vous d'accord parties avec le tenancier"
+                            >
+                              <Clock className="w-3 h-3 text-slate-950" />
+                              <span>Reporter</span>
+                            </button>
+
                             {evt.status !== 'EFFECTUE' && (
                               <button
                                 onClick={e => {
@@ -1681,49 +1900,72 @@ export const MobileAgentCalendarModule: React.FC = () => {
                 <span>Lundi</span><span>Mardi</span><span>Mercredi</span><span>Jeudi</span><span>Vendredi</span><span>Samedi</span><span>Dimanche</span>
               </div>
               <div className="grid grid-cols-7 gap-1 text-xs">
-                {Array.from({ length: 35 }).map((_, i) => {
-                  const dayNum = (i % 30) + 1;
-                  const dateStr = `2026-09-${String(dayNum).padStart(2, '0')}`;
-                  const dayEvents = filteredEvents.filter(e => e.date === dateStr);
-                  const isCurrent = dateStr === currentDateStr;
+                {monthDays.map((cell, i) => {
+                  const dayEvents = filteredEvents.filter(e => e.date === cell.dateStr);
+                  const isCurrent = cell.dateStr === currentDateStr;
+                  const dayTotalDue = dayEvents.reduce((sum, e) => {
+                    const est = establishments.find(x => x.id === e.establishmentId);
+                    return sum + ((est?.balance_due ?? e.amountDue) || 0);
+                  }, 0);
+
                   return (
                     <div
                       key={i}
-                      onClick={() => {
-                        setCurrentDateStr(dateStr);
-                        setViewMode('JOUR');
-                      }}
-                      className={`min-h-[90px] p-1.5 border rounded-lg transition cursor-pointer flex flex-col justify-between ${
-                        isCurrent ? 'bg-blue-50/50 border-blue-400' : 'hover:bg-slate-50 border-slate-200'
+                      onClick={() => handleOpenDaySheet(cell.dateStr)}
+                      className={`min-h-[96px] p-2 border rounded-xl transition cursor-pointer flex flex-col justify-between group ${
+                        isCurrent
+                          ? 'bg-blue-50/70 border-blue-500 shadow-xs ring-1 ring-blue-400'
+                          : cell.isCurrentMonth
+                          ? 'hover:bg-slate-50 hover:border-slate-300 border-slate-200 bg-white'
+                          : 'bg-slate-50/50 border-slate-100 opacity-60'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className={`font-mono-ref text-[11px] font-bold ${isCurrent ? 'text-blue-700 font-black' : 'text-slate-700'}`}>
-                          {dayNum}
+                        <span
+                          className={`font-mono-ref text-[11px] font-bold ${
+                            isCurrent
+                              ? 'text-blue-700 font-black'
+                              : cell.isCurrentMonth
+                              ? 'text-slate-800'
+                              : 'text-slate-400'
+                          }`}
+                        >
+                          {cell.dayNum}
                         </span>
                         {dayEvents.length > 0 && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-blue-100 text-blue-900 font-mono-ref">
+                            {dayEvents.length}
+                          </span>
                         )}
                       </div>
 
-                      <div className="space-y-1 mt-1 overflow-hidden">
+                      {/* Events chips in cell */}
+                      <div className="space-y-1 my-1 overflow-hidden">
                         {dayEvents.slice(0, 2).map(de => {
                           const style = getTypeStyle(de.type);
                           return (
                             <div
                               key={de.id}
-                              className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded truncate text-white ${style.bg}`}
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded truncate text-white ${style.bg}`}
+                              title={`${de.timeStart} ${de.establishmentName}`}
                             >
                               {de.timeStart} {de.establishmentName}
                             </div>
                           );
                         })}
                         {dayEvents.length > 2 && (
-                          <span className="text-[8.5px] text-slate-500 font-semibold block text-center">
+                          <span className="text-[8.5px] text-slate-500 font-bold block text-center">
                             +{dayEvents.length - 2} autres
                           </span>
                         )}
                       </div>
+
+                      {/* Bottom financial summary indicator if events */}
+                      {dayTotalDue > 0 && (
+                        <div className="text-[8.5px] font-bold text-amber-800 font-mono-ref truncate border-t border-slate-100 pt-0.5">
+                          {(dayTotalDue / 1000).toFixed(0)}k F dû
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -2915,6 +3157,700 @@ export const MobileAgentCalendarModule: React.FC = () => {
 
             <div className="pt-3 border-t mt-4 text-center text-[10px] text-slate-400">
               Chaque agent dispose de son propre planning de tournée, de son registre d'encaissement et de ses convocations contradictoires.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          12. MODAL: FEUILLE DE TOURNÉE JOURNALIÈRE (LISTE DES ÉTABLISSEMENTS)
+         ======================================================== */}
+      {isDaySheetModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-5 animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[94vh] flex flex-col border border-slate-200 overflow-hidden text-xs">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-950 via-[#022448] to-[#005a26] text-white flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-400 text-slate-950 px-2.5 py-0.5 rounded-full font-mono-ref">
+                    DDL-PN • SERVICE ASSISTANCE ET AUTORISATION (SAA)
+                  </span>
+                  <span className="text-xs text-amber-300 font-mono-ref font-bold">
+                    Exercice 2026
+                  </span>
+                </div>
+                <h3 className="text-lg sm:text-2xl font-black font-republic text-white mt-1 flex items-center gap-2">
+                  <span>Planning Journalier des Établissements & Recouvrements</span>
+                </h3>
+                <p className="text-xs text-slate-200 mt-0.5">
+                  Gestion centralisée des visites, perceptions des droits régie et reports contradictoires
+                </p>
+              </div>
+
+              {/* Day Switcher Controls inside Modal Header */}
+              <div className="flex items-center gap-2 bg-white/10 p-1.5 rounded-2xl border border-white/20">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date(selectedDayDate);
+                    d.setDate(d.getDate() - 1);
+                    const newStr = d.toISOString().split('T')[0];
+                    setSelectedDayDate(newStr);
+                    setCurrentDateStr(newStr);
+                  }}
+                  className="p-1.5 hover:bg-white/20 rounded-xl text-white transition cursor-pointer"
+                  title="Jour précédent"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                <div className="text-center px-2">
+                  <div className="text-[11px] font-black uppercase text-amber-300">
+                    {new Date(selectedDayDate).toLocaleDateString('fr-FR', { weekday: 'long' })}
+                  </div>
+                  <div className="text-xs font-bold text-white font-mono-ref">
+                    {new Date(selectedDayDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date(selectedDayDate);
+                    d.setDate(d.getDate() + 1);
+                    const newStr = d.toISOString().split('T')[0];
+                    setSelectedDayDate(newStr);
+                    setCurrentDateStr(newStr);
+                  }}
+                  className="p-1.5 hover:bg-white/20 rounded-xl text-white transition cursor-pointer"
+                  title="Jour suivant"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+
+                <input
+                  type="date"
+                  value={selectedDayDate}
+                  onChange={e => {
+                    if (e.target.value) {
+                      setSelectedDayDate(e.target.value);
+                      setCurrentDateStr(e.target.value);
+                    }
+                  }}
+                  className="bg-white/20 border border-white/30 text-white rounded-lg px-2 py-1 text-[11px] font-mono-ref focus:outline-none cursor-pointer"
+                  title="Sélectionner une date précise"
+                />
+
+                <button
+                  onClick={() => setIsDaySheetModalOpen(false)}
+                  className="ml-2 p-1.5 hover:bg-red-500/80 rounded-full text-slate-200 hover:text-white transition cursor-pointer"
+                  title="Fermer la fenêtre"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Day Summary KPI Bar */}
+            {(() => {
+              const dayEvents = filteredEvents.filter(e => e.date === selectedDayDate);
+              const dayTotalDue = dayEvents.reduce((sum, e) => {
+                const est = establishments.find(x => x.id === e.establishmentId);
+                return sum + (est?.total_due || e.amountDue || 0);
+              }, 0);
+              const dayTotalPaid = dayEvents.reduce((sum, e) => {
+                const est = establishments.find(x => x.id === e.establishmentId);
+                return sum + (est?.amount_paid || 0);
+              }, 0);
+              const dayTotalBalance = dayEvents.reduce((sum, e) => {
+                const est = establishments.find(x => x.id === e.establishmentId);
+                return sum + ((est?.balance_due ?? e.amountDue) || 0);
+              }, 0);
+
+              const postponedFromThisDay = events.filter(e => e.notes && e.notes.includes(`[Reporté du ${selectedDayDate}`));
+              const completedThisDay = dayEvents.filter(e => e.status === 'EFFECTUE');
+
+              return (
+                <div>
+                  <div className="bg-slate-50 border-b border-slate-200 p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    {/* Left: Count */}
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-700">Établissements programmés :</span>
+                      <span className="px-2.5 py-1 bg-blue-100 text-blue-900 rounded-xl font-black text-sm font-mono-ref border border-blue-200">
+                        {dayEvents.length} établissement{dayEvents.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    {/* Right: Financial Triplet */}
+                    <div className="flex flex-wrap items-center gap-3 font-mono-ref">
+                      <div className="px-3 py-1.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                        <span className="text-[10px] text-slate-400 block uppercase font-bold">Total Exigible</span>
+                        <strong className="text-slate-900 text-xs">{dayTotalDue.toLocaleString('fr-FR')} FCFA</strong>
+                      </div>
+                      <div className="px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-200 shadow-2xs">
+                        <span className="text-[10px] text-emerald-700 block uppercase font-bold">Déjà Réglé</span>
+                        <strong className="text-emerald-800 text-xs">{dayTotalPaid.toLocaleString('fr-FR')} FCFA</strong>
+                      </div>
+                      <div className="px-3.5 py-1.5 bg-amber-100/90 rounded-xl border-2 border-amber-400 shadow-2xs">
+                        <span className="text-[10px] text-amber-900 block uppercase font-black">Solde Restant à Recouvrer</span>
+                        <strong className="text-amber-950 text-sm font-black">{dayTotalBalance.toLocaleString('fr-FR')} FCFA</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Banner when an establishment has just been postponed */}
+                  {recentlyPostponedNotice && (
+                    <div className="mx-4 sm:mx-6 mt-3 p-3.5 bg-amber-50 border-2 border-amber-400 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-2">
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black text-sm shrink-0">
+                          ✓
+                        </span>
+                        <div>
+                          <p className="font-extrabold text-amber-950 text-xs sm:text-sm">
+                            Rendez-vous reporté avec succès d'accord parties avec le tenancier !
+                          </p>
+                          <p className="text-amber-900 text-[11px] mt-0.5">
+                            L'établissement <strong>« {recentlyPostponedNotice.name} »</strong> a bien <strong>disparu du planning de ce jour</strong> et réapparaîtra automatiquement sur le calendrier le <strong>{recentlyPostponedNotice.newDate}</strong> (dans {recentlyPostponedNotice.delayMonths} mois).
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDayDate(recentlyPostponedNotice.newDate);
+                            setCurrentDateStr(recentlyPostponedNotice.newDate);
+                          }}
+                          className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                          title="Aller directement voir le jour où il est reprogrammé"
+                        >
+                          <Calendar className="w-4 h-4" />
+                          <span>Aller voir au {recentlyPostponedNotice.newDate}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRecentlyPostponedNotice(null)}
+                          className="p-1 text-amber-800 hover:text-amber-950"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Filter Tabs */}
+                  <div className="flex items-center gap-2 px-4 sm:px-6 pt-3 border-b border-slate-200 bg-white">
+                    <button
+                      type="button"
+                      onClick={() => setDaySheetActiveTab('PROGRAMMES')}
+                      className={`pb-2.5 px-3 font-bold text-xs border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+                        daySheetActiveTab === 'PROGRAMMES'
+                          ? 'border-blue-600 text-blue-800 font-black'
+                          : 'border-transparent text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Building2 className="w-3.5 h-3.5" />
+                      <span>Établissements programmés ce jour ({dayEvents.length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDaySheetActiveTab('REPORTES')}
+                      className={`pb-2.5 px-3 font-bold text-xs border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+                        daySheetActiveTab === 'REPORTES'
+                          ? 'border-amber-600 text-amber-900 font-black'
+                          : 'border-transparent text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Récemment reportés d'accord parties ({postponedFromThisDay.length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDaySheetActiveTab('SOLDE')}
+                      className={`pb-2.5 px-3 font-bold text-xs border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+                        daySheetActiveTab === 'SOLDE'
+                          ? 'border-emerald-600 text-emerald-800 font-black'
+                          : 'border-transparent text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Soldés / Réglés ({completedThisDay.length})</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Establishments List Body */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5">
+              {(() => {
+                const dayEvents = filteredEvents.filter(e => e.date === selectedDayDate);
+                const postponedFromThisDay = events.filter(e => e.notes && e.notes.includes(`[Reporté du ${selectedDayDate}`));
+                const completedThisDay = dayEvents.filter(e => e.status === 'EFFECTUE');
+
+                // TAB 2: POSTPONED ESTABLISHMENTS
+                if (daySheetActiveTab === 'REPORTES') {
+                  if (postponedFromThisDay.length === 0) {
+                    return (
+                      <div className="text-center py-14 text-slate-400">
+                        <Clock className="w-12 h-12 mx-auto mb-2 text-slate-300 stroke-1" />
+                        <p className="font-bold text-sm text-slate-700">
+                          Aucun établissement reporté pour cette date.
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Tous les rendez-vous programmés pour cette date sont actuellement maintenus.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs">
+                        <strong>Historique des reports contradictoires :</strong> Ces établissements ont été initialement programmés pour le <strong>{selectedDayDate}</strong> puis déplacés suite à un accord avec le promoteur/tenancier in situ. Ils ont disparu de ce jour et sont désormais inscrits à leur nouvelle date.
+                      </div>
+
+                      {postponedFromThisDay.map(pe => {
+                        const est = establishments.find(x => x.id === pe.establishmentId);
+                        const balance = (est?.balance_due ?? pe.amountDue) || 0;
+
+                        return (
+                          <div
+                            key={pe.id}
+                            className="p-4 rounded-2xl bg-amber-50/50 border border-amber-300 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
+                          >
+                            <div className="space-y-1 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono-ref font-bold text-xs bg-amber-200 text-amber-950 px-2 py-0.5 rounded">
+                                  Nouvelle date : {pe.date} ({pe.timeStart})
+                                </span>
+                                <span className="text-[10px] bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded font-bold">
+                                  Reporté
+                                </span>
+                              </div>
+
+                              <h4 className="text-base font-extrabold text-[#022448]">
+                                « {pe.establishmentName} »
+                              </h4>
+
+                              <p className="text-xs text-slate-600">
+                                Tenancier : <strong>{pe.promoterName}</strong> • Tél : {pe.phone} • Quartier : {pe.quartier}
+                              </p>
+
+                              {pe.notes && (
+                                <p className="text-xs text-amber-800 bg-white/80 p-2 rounded-xl border border-amber-200 italic">
+                                  {pe.notes}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col sm:items-end gap-2 shrink-0">
+                              <span className="font-mono-ref font-black text-amber-950 text-xs bg-white px-3 py-1.5 rounded-xl border border-amber-300">
+                                Solde à recouvrer : {balance.toLocaleString('fr-FR')} FCFA
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedDayDate(pe.date);
+                                  setCurrentDateStr(pe.date);
+                                  setDaySheetActiveTab('PROGRAMMES');
+                                }}
+                                className="px-3.5 py-1.5 bg-[#022448] hover:bg-[#003870] text-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                              >
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span>Voir au {pe.date}</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+
+                // TAB 3: COMPLETED ESTABLISHMENTS
+                if (daySheetActiveTab === 'SOLDE') {
+                  if (completedThisDay.length === 0) {
+                    return (
+                      <div className="text-center py-14 text-slate-400">
+                        <CheckCircle2 className="w-12 h-12 mx-auto mb-2 text-slate-300 stroke-1" />
+                        <p className="font-bold text-sm text-slate-700">
+                          Aucun encaissement soldé ce jour pour le moment.
+                        </p>
+                      </div>
+                    );
+                  }
+                }
+
+                // TAB 1 (DEFAULT): PROGRAMMED ESTABLISHMENTS FOR THIS DAY
+                const targetList = daySheetActiveTab === 'SOLDE' ? completedThisDay : dayEvents;
+
+                if (targetList.length === 0) {
+                  return (
+                    <div className="text-center py-14 text-slate-400">
+                      <Calendar className="w-14 h-14 mx-auto mb-3 text-slate-300 stroke-1" />
+                      <p className="font-black text-base text-slate-700">
+                        Aucun établissement programmé pour cette journée.
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                        Tous les rendez-vous ont été honorés ou reportés à une date ultérieure d'accord parties avec les tenanciers.
+                      </p>
+                      <div className="flex justify-center gap-2 mt-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDayDate('2026-10-02');
+                            setCurrentDateStr('2026-10-02');
+                          }}
+                          className="px-4 py-2 bg-[#022448] hover:bg-[#003870] text-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5 transition"
+                        >
+                          <Calendar className="w-4 h-4" />
+                          <span>Aller au 2 Octobre (Jour 2)</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return targetList.map((evt, idx) => {
+                  const style = getTypeStyle(evt.type);
+                  const est = establishments.find(x => x.id === evt.establishmentId);
+                  const balance = (est?.balance_due ?? evt.amountDue) || 0;
+                  const totalDue = (est?.total_due ?? evt.amountDue) || 0;
+                  const paid = est?.amount_paid || 0;
+
+                  return (
+                    <div
+                      key={evt.id}
+                      className={`p-4 sm:p-5 rounded-2xl border-l-4 ${style.border} ${style.bgLight} border border-slate-200/90 shadow-xs hover:shadow-md transition flex flex-col lg:flex-row lg:items-center justify-between gap-4`}
+                    >
+                      {/* Left: Comprehensive info */}
+                      <div className="space-y-2 flex-1 min-w-0">
+                        {/* Header Badges */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono-ref font-black text-xs bg-slate-900 text-white px-2.5 py-0.5 rounded-lg shadow-2xs">
+                            Établissement #{idx + 1} sur {targetList.length}
+                          </span>
+                          <span className="font-mono-ref font-bold text-xs bg-white px-2 py-0.5 rounded-md border border-slate-300 text-slate-800 flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-blue-600" />
+                            <span>{evt.timeStart} - {evt.timeEnd}</span>
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md text-white ${style.bg}`}>
+                            {style.label}
+                          </span>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                            evt.status === 'EFFECTUE'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : evt.status === 'REPORTE'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-blue-100 text-blue-900'
+                          }`}>
+                            {evt.status === 'EFFECTUE' ? 'Visité / Réglé' : evt.status === 'REPORTE' ? 'Reporté' : 'À Faire Aujourd\'hui'}
+                          </span>
+                        </div>
+
+                        {/* Official Establishment Name */}
+                        <div>
+                          <h4 className="text-base sm:text-lg font-black text-[#022448] tracking-tight">
+                            « {evt.establishmentName} »
+                          </h4>
+                          <p className="text-xs text-slate-500 font-semibold">
+                            {est?.activity_type || 'Établissement de loisirs régulé'} • Surface : {est?.surface_m2 || 250} m² • Régime : <span className="font-bold text-slate-700">{est?.regime_type || 'FORMEL'}</span>
+                          </p>
+                        </div>
+
+                        {/* Promoter & Location */}
+                        <div className="text-xs text-slate-700 flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-slate-400">Tenancier / Promoteur :</span>
+                            <strong className="text-slate-900 font-extrabold">{evt.promoterName}</strong>
+                          </span>
+
+                          <span className="flex items-center gap-1 font-mono-ref font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            📞 {evt.phone}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-slate-600 flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>{evt.quartier} ({evt.arrondissement}) — {evt.address}</span>
+                        </p>
+
+                        {evt.notes && (
+                          <div className="text-[11px] text-slate-700 bg-white/80 p-2.5 rounded-xl border border-slate-200/80 italic">
+                            « {evt.notes} »
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Explicit Financial Box & Key Action Buttons */}
+                      <div className="flex flex-col sm:items-end justify-between gap-3 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-200 min-w-[280px]">
+                        {/* 3-Column Financial Summary Card */}
+                        <div className="w-full bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs font-mono-ref space-y-1.5">
+                          <div className="flex justify-between items-center text-[11px] text-slate-500">
+                            <span>Montant Total Dû :</span>
+                            <strong className="text-slate-800 font-bold">{totalDue.toLocaleString('fr-FR')} FCFA</strong>
+                          </div>
+                          <div className="flex justify-between items-center text-[11px] text-slate-500">
+                            <span>Déjà Versé :</span>
+                            <strong className="text-emerald-700 font-bold">{paid.toLocaleString('fr-FR')} FCFA</strong>
+                          </div>
+                          <div className="pt-1.5 border-t border-slate-100 flex justify-between items-center bg-amber-50/80 -mx-3 -mb-3 p-2.5 rounded-b-2xl border-t border-amber-200">
+                            <span className="text-[11px] font-black text-amber-950 uppercase tracking-tight">Reste à Payer :</span>
+                            <span className="text-sm font-black text-amber-950 bg-amber-200/80 px-2 py-0.5 rounded-lg border border-amber-400">
+                              {balance.toLocaleString('fr-FR')} FCFA
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex flex-wrap items-center gap-2 w-full sm:justify-end">
+                          {/* 1. RESCHEDULE / REPORTER LE RENDEZ-VOUS (Prominent Button) */}
+                          <button
+                            type="button"
+                            onClick={() => openPostponeModal(evt)}
+                            className="flex-1 sm:flex-initial px-3.5 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs hover:shadow-md transition cursor-pointer border border-amber-500"
+                            title="Reporter ce rendez-vous d'accord parties avec le tenancier (disparaît de ce jour et réapparaît à la date convenue)"
+                          >
+                            <Clock className="w-4 h-4 text-slate-950" />
+                            <span>Reporter le RDV</span>
+                          </button>
+
+                          {/* 2. ENCAISSER L'ACOMPTE / LE SOLDE */}
+                          <button
+                            type="button"
+                            onClick={() => openPaymentForEst(evt.establishmentId)}
+                            className="flex-1 sm:flex-initial px-3.5 py-2 bg-[#006d2f] hover:bg-[#005a26] text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs hover:shadow-md transition cursor-pointer"
+                            title="Encaisser un acompte ou le solde et délivrer une quittance"
+                          >
+                            <Coins className="w-4 h-4" />
+                            <span>Encaisser</span>
+                          </button>
+
+                          {/* 3. CONTACT DIRECT */}
+                          <a
+                            href={`tel:${evt.phone.replace(/\s+/g, '')}`}
+                            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition"
+                            title="Appeler directement le promoteur"
+                          >
+                            <Phone className="w-4 h-4" />
+                          </a>
+
+                          <a
+                            href={`https://wa.me/${evt.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Bonjour M. ${evt.promoterName}, Direction Départementale des Loisirs de Pointe-Noire (DDL-PN). Nous confirmons notre passage ce jour concernant « ${evt.establishmentName} » pour régularisation des droits d'exploitation.`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl transition border border-emerald-200"
+                            title="Contacter sur WhatsApp avec rappel officiel"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          13. MODAL: REPORTER LE RENDEZ-VOUS (ACCORD DU TENANCIER)
+         ======================================================== */}
+      {isPostponeModalOpen && postponeEvent && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full p-5 sm:p-6 border border-slate-200 text-xs space-y-4">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full font-mono-ref">
+                    ACCORD TENANCIER IN SITU
+                  </span>
+                  <span className="text-xs text-slate-500 font-mono-ref font-bold">
+                    Date initiale : {postponeEvent.date}
+                  </span>
+                </div>
+                <h3 className="text-lg font-black text-[#022448] flex items-center gap-2 mt-1">
+                  <Clock className="w-5 h-5 text-amber-500" />
+                  <span>Reporter le Rendez-vous & Déplacer l'Établissement</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  L'établissement <strong>disparaîtra du planning du {postponeEvent.date}</strong> et réapparaîtra automatiquement sur le calendrier au jour convenu avec le tenancier.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setIsPostponeModalOpen(false);
+                  setPostponeEvent(null);
+                }}
+                className="text-slate-400 font-bold p-1 hover:text-slate-600 cursor-pointer rounded-full hover:bg-slate-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Target Establishment summary */}
+            <div className="bg-gradient-to-r from-slate-50 to-blue-50/50 border border-slate-200 p-3.5 rounded-2xl space-y-1.5">
+              <div className="flex justify-between items-center">
+                <strong className="text-slate-950 font-black text-sm">
+                  « {postponeEvent.establishmentName} »
+                </strong>
+                <span className="font-mono-ref font-black text-amber-950 bg-amber-200 px-2.5 py-0.5 rounded-lg border border-amber-300">
+                  Solde Dû : {((establishments.find(e => e.id === postponeEvent.establishmentId)?.balance_due) ?? postponeEvent.amountDue ?? 0).toLocaleString('fr-FR')} FCFA
+                </span>
+              </div>
+              <div className="text-slate-600 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                <span>Promoteur : <strong className="text-slate-900">{postponeEvent.promoterName}</strong></span>
+                <span>• Tél : <span className="font-mono-ref text-emerald-800 font-bold">{postponeEvent.phone}</span></span>
+                <span>• Quartier : {postponeEvent.quartier}</span>
+              </div>
+            </div>
+
+            {/* Quick Preset Buttons (Prominently featuring +2 months) */}
+            <div>
+              <label className="font-bold text-slate-800 block mb-1.5">
+                Délai convenu avec le tenancier (Raccourcis rapides) :
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => applyPostponePresetDays(3)}
+                  className="p-2.5 bg-slate-50 hover:bg-amber-100 text-slate-800 rounded-xl font-bold text-[11px] transition border border-slate-200 hover:border-amber-300 cursor-pointer text-center"
+                >
+                  +3 Jours (72h)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPostponePresetDays(7)}
+                  className="p-2.5 bg-slate-50 hover:bg-amber-100 text-slate-800 rounded-xl font-bold text-[11px] transition border border-slate-200 hover:border-amber-300 cursor-pointer text-center"
+                >
+                  +1 Semaine
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPostponePresetDays(14)}
+                  className="p-2.5 bg-slate-50 hover:bg-amber-100 text-slate-800 rounded-xl font-bold text-[11px] transition border border-slate-200 hover:border-amber-300 cursor-pointer text-center"
+                >
+                  +2 Semaines
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPostponePresetMonths(1)}
+                  className="p-2.5 bg-slate-50 hover:bg-amber-100 text-slate-800 rounded-xl font-bold text-[11px] transition border border-slate-200 hover:border-amber-300 cursor-pointer text-center"
+                >
+                  +1 Mois (30 jours)
+                </button>
+
+                {/* +2 MOIS: EMPHASIZED BUTTON (As requested by user: "Parce que il peut pousser ça par exemple dans deux mois") */}
+                <button
+                  type="button"
+                  onClick={() => applyPostponePresetMonths(2)}
+                  className="p-2.5 bg-gradient-to-r from-amber-200 via-amber-300 to-amber-200 text-amber-950 rounded-xl font-black text-[11px] transition border-2 border-amber-500 shadow-xs hover:shadow-md cursor-pointer text-center relative"
+                >
+                  <span className="block font-black text-xs">+2 Mois (60 jours)</span>
+                  <span className="text-[9px] uppercase tracking-wider block font-extrabold text-amber-900">Accord Tenancier ⭐</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => applyPostponePresetMonths(3)}
+                  className="p-2.5 bg-slate-50 hover:bg-amber-100 text-slate-800 rounded-xl font-bold text-[11px] transition border border-slate-200 hover:border-amber-300 cursor-pointer text-center"
+                >
+                  +3 Mois (90 jours)
+                </button>
+              </div>
+            </div>
+
+            {/* Date & Time selection */}
+            <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Nouvelle Date Convenue *
+                </label>
+                <input
+                  type="date"
+                  value={postponeNewDate}
+                  onChange={e => setPostponeNewDate(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono-ref font-bold text-slate-900 text-xs focus:ring-2 focus:ring-amber-500/20"
+                  required
+                />
+                <span className="text-[10px] text-amber-800 font-bold block mt-1">
+                  {postponeNewDate ? new Date(postponeNewDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+                </span>
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Nouvel Horaire Convenu *
+                </label>
+                <input
+                  type="time"
+                  value={postponeNewTime}
+                  onChange={e => setPostponeNewTime(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono-ref font-bold text-slate-900 text-xs focus:ring-2 focus:ring-amber-500/20"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Reasons / Justification */}
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">
+                Motif & Raisons formulées par le tenancier :
+              </label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {[
+                  "Accord verbal pour passage dans 2 mois (trésorerie)",
+                  "Délai sollicité pour rassemblement du solde de redevance",
+                  "Promoteur en déplacement / voyage d'affaires",
+                  "Travaux d'insonorisation et mise aux normes en cours"
+                ].map(tag => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setPostponeReason(tag)}
+                    className="text-[10px] bg-slate-100 hover:bg-amber-100 text-slate-800 px-2.5 py-1 rounded-lg transition border border-slate-200 hover:border-amber-300 cursor-pointer"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={postponeReason}
+                onChange={e => setPostponeReason(e.target.value)}
+                placeholder="Ex: Le promoteur a sollicité un délai de 60 jours d'accord parties pour rassembler le solde..."
+                rows={2}
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:bg-white"
+              />
+            </div>
+
+            {/* Footer buttons */}
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPostponeModalOpen(false);
+                  setPostponeEvent(null);
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPostpone}
+                disabled={!postponeNewDate}
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5 border border-amber-500"
+              >
+                <Clock className="w-4 h-4 text-slate-950" />
+                <span>Confirmer le Report & Déplacer</span>
+              </button>
             </div>
           </div>
         </div>
