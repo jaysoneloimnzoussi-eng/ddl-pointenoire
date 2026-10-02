@@ -551,13 +551,13 @@ class StorageService {
   }
 
   // --- Real Supabase Synchronizer ---
-  public async syncWithSupabase(): Promise<{ establishmentsCount: number; recordsCount: number }> {
-    if (this.isSyncing) return { establishmentsCount: this.establishments.length, recordsCount: this.payments.length };
+  public async syncWithSupabase(): Promise<{ establishmentsCount: number; recordsCount: number; success: boolean; message?: string }> {
+    if (this.isSyncing) return { establishmentsCount: this.establishments.length, recordsCount: this.payments.length, success: true };
     
     // When Supabase URL is not configured by user in .env, rely smoothly on local persistent storage
     if (!isSupabaseConfigured) {
       this.notifyDataUpdated();
-      return { establishmentsCount: this.establishments.length, recordsCount: this.payments.length };
+      return { establishmentsCount: this.establishments.length, recordsCount: this.payments.length, success: true, message: 'Mode local persistant actif.' };
     }
 
     this.isSyncing = true;
@@ -606,19 +606,50 @@ class StorageService {
           .order('created_at', { ascending: false });
 
         if (estsError) {
-          console.info('[DDL-PN Supabase] Cloud database unavailable, using local persistent cache:', estsError.message || 'Offline');
+          console.warn('[DDL-PN Supabase] Table Cloud indisponible:', estsError.message || 'Offline');
           return {
             establishmentsCount: this.establishments.length,
-            recordsCount: this.payments.length
+            recordsCount: this.payments.length,
+            success: false,
+            message: estsError.code === '42P01' || estsError.message?.includes('does not exist')
+              ? 'Tables Supabase absentes. Exécutez le script supabase_schema.sql pour initialiser la base.'
+              : `Erreur Supabase : ${estsError.message}`
           };
         }
         estsData = ests;
       } catch (e: any) {
-        console.info('[DDL-PN Supabase] Cloud database offline, active in local persistent mode:', e?.message || 'Offline');
+        console.warn('[DDL-PN Supabase] Cloud database offline, active in local persistent mode:', e?.message || 'Offline');
         return {
           establishmentsCount: this.establishments.length,
-          recordsCount: this.payments.length
+          recordsCount: this.payments.length,
+          success: false,
+          message: 'Erreur réseau avec le serveur Supabase'
         };
+      }
+
+      // If cloud table is empty, auto-seed with official referential
+      if (estsData && estsData.length === 0 && this.establishments.length > 0) {
+        console.log('[DDL-PN Supabase] Table Cloud vide. Initialisation automatique depuis le référentiel DDL-PN...');
+        try {
+          await supabase.from('establishments').insert(
+            this.establishments.map(e => ({
+              id: e.id,
+              name: e.name,
+              owner_name: e.promoter_name,
+              phone: e.phone,
+              address: e.address,
+              arrondissement: e.arrondissement,
+              quartier: e.quartier,
+              activity_type: e.activity_type,
+              regime_type: e.regime_type,
+              latitude: e.coordinates[0],
+              longitude: e.coordinates[1],
+              is_archived: false
+            }))
+          );
+        } catch (seedErr) {
+          console.warn('[DDL-PN Supabase] Note amorçage initial:', seedErr);
+        }
       }
 
       if (estsData && estsData.length > 0) {
@@ -737,13 +768,17 @@ class StorageService {
       this.notifyDataUpdated();
       return {
         establishmentsCount: this.establishments.length,
-        recordsCount: this.payments.length
+        recordsCount: this.payments.length,
+        success: true,
+        message: 'Synchronisation Cloud réussie.'
       };
     } catch (err: any) {
       console.info('[DDL-PN] Synchronization completed in local storage mode:', err?.message || 'ready');
       return {
         establishmentsCount: this.establishments.length,
-        recordsCount: this.payments.length
+        recordsCount: this.payments.length,
+        success: false,
+        message: err?.message || 'Erreur réseau avec Supabase'
       };
     } finally {
       this.isSyncing = false;
@@ -754,7 +789,8 @@ class StorageService {
     return {
       isOnline: this.isOnline,
       queueLength: this.offlineQueue.length,
-      supabaseUrl: this.supabaseUrl
+      supabaseUrl: this.supabaseUrl,
+      isConfigured: isSupabaseConfigured
     };
   }
 
@@ -776,14 +812,14 @@ class StorageService {
     return [...this.offlineQueue];
   }
 
-  public async flushOfflineQueue() {
+  public async flushOfflineQueue(): Promise<{ success: boolean; message: string }> {
     if (!isSupabaseConfigured) {
-      return;
+      return { success: true, message: 'Mode local actif (sans base distante)' };
     }
 
     if (this.offlineQueue.length === 0) {
-      await this.syncWithSupabase();
-      return;
+      const res = await this.syncWithSupabase();
+      return { success: res.success, message: res.message || 'Synchronisation effectuée.' };
     }
 
     console.log(`[DDL-PN Sync] Processing ${this.offlineQueue.length} offline actions to Supabase...`);
@@ -842,7 +878,8 @@ class StorageService {
 
     this.offlineQueue = remainingQueue;
     this.saveQueue();
-    await this.syncWithSupabase();
+    const syncRes = await this.syncWithSupabase();
+    return { success: syncRes.success, message: syncRes.message || 'Synchronisation terminée.' };
   }
 
   // --- Establishments CRUD ---

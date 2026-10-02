@@ -37,7 +37,9 @@ import {
   fetchGoogleCalendarEvents,
   parseEventToEstablishment,
   ExtractedCalendarEstablishment,
-  initAuth
+  initAuth,
+  OFFICIAL_SAMPLE_TOURNEES_EVENTS,
+  parseIcsCalendarFile
 } from '../../services/googleCalendarService';
 import { User } from 'firebase/auth';
 
@@ -62,6 +64,7 @@ export const GoogleWorkspaceGatewayModule: React.FC = () => {
 
   // Edit modal
   const [editingItem, setEditingItem] = useState<ExtractedCalendarEstablishment | null>(null);
+  const [authErrorDetails, setAuthErrorDetails] = useState<string | null>(null);
 
   // Check auth state on mount
   useEffect(() => {
@@ -69,6 +72,7 @@ export const GoogleWorkspaceGatewayModule: React.FC = () => {
       (user, token) => {
         setGoogleUser(user);
         setAccessToken(token);
+        setAuthErrorDetails(null);
       },
       () => {
         setGoogleUser(null);
@@ -81,6 +85,7 @@ export const GoogleWorkspaceGatewayModule: React.FC = () => {
   // Handle Google Sign In
   const handleGoogleLogin = async () => {
     setIsAuthenticating(true);
+    setAuthErrorDetails(null);
     try {
       const result = await googleSignIn();
       setGoogleUser(result.user);
@@ -88,13 +93,83 @@ export const GoogleWorkspaceGatewayModule: React.FC = () => {
       triggerNotification(`Connecté avec succès au compte Google : ${result.user.email}`, 'success');
     } catch (error: any) {
       console.error(error);
-      triggerNotification(
-        error.message || "Échec de la connexion à Google. Veuillez réessayer.",
-        'error'
-      );
+      const msg = error.message || "Échec de la connexion à Google. Veuillez réessayer.";
+      setAuthErrorDetails(msg);
+      triggerNotification(msg, 'error');
     } finally {
       setIsAuthenticating(false);
     }
+  };
+
+  // Instant 1-Click Load for Official DDL-PN Tournées (Works 100% without OAuth / Firebase)
+  const handleLoadOfficialSampleEvents = () => {
+    setIsScanning(true);
+    try {
+      const currentEstablishments = storageService.getEstablishments();
+      const parsed = OFFICIAL_SAMPLE_TOURNEES_EVENTS.map(evt =>
+        parseEventToEstablishment(evt, currentEstablishments)
+      );
+      setExtractedItems(parsed);
+      setHasScanned(true);
+
+      const newIds = new Set<string>();
+      parsed.forEach(p => {
+        if (!p.alreadyExists) {
+          newIds.add(p.eventId);
+        }
+      });
+      setSelectedIds(newIds);
+
+      triggerNotification(
+        `${OFFICIAL_SAMPLE_TOURNEES_EVENTS.length} événements de tournées terrain chargés (${parsed.filter(p => !p.alreadyExists).length} nouveaux établissements prêts pour injection).`,
+        'success'
+      );
+    } catch (err: any) {
+      triggerNotification("Erreur lors du chargement des tournées de démonstration.", 'error');
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  // Upload and parse an .ics iCalendar file directly exported from Google Calendar
+  const handleIcsUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        if (!content) return;
+        const rawEvents = parseIcsCalendarFile(content);
+        if (rawEvents.length === 0) {
+          triggerNotification("Aucun événement valide trouvé dans le fichier .ics sélectionné.", 'warning');
+          return;
+        }
+
+        const currentEstablishments = storageService.getEstablishments();
+        const parsed = rawEvents.map(evt => parseEventToEstablishment(evt, currentEstablishments));
+        setExtractedItems(parsed);
+        setHasScanned(true);
+
+        const newIds = new Set<string>();
+        parsed.forEach(p => {
+          if (!p.alreadyExists) {
+            newIds.add(p.eventId);
+          }
+        });
+        setSelectedIds(newIds);
+
+        triggerNotification(
+          `${rawEvents.length} événements importés avec succès depuis votre fichier Google Agenda !`,
+          'success'
+        );
+      } catch (err: any) {
+        triggerNotification(`Erreur lors de la lecture du fichier .ics : ${err.message}`, 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   // Handle Logout
@@ -348,31 +423,42 @@ export const GoogleWorkspaceGatewayModule: React.FC = () => {
               </button>
             </div>
           ) : (
-            <button
-              onClick={handleGoogleLogin}
-              disabled={isAuthenticating}
-              className="bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs px-4 py-3 rounded-2xl flex items-center gap-2.5 shadow-md border border-slate-200 transition cursor-pointer"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                />
-              </svg>
-              <span>{isAuthenticating ? 'Connexion...' : 'Se connecter avec Google'}</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleGoogleLogin}
+                disabled={isAuthenticating}
+                className="bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2.5 shadow-md border border-slate-200 transition cursor-pointer"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                <span>{isAuthenticating ? 'Connexion...' : 'Se connecter avec Google'}</span>
+              </button>
+
+              <button
+                onClick={handleLoadOfficialSampleEvents}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-2xl flex items-center gap-1.5 shadow-md transition cursor-pointer"
+                title="Charger directement les 5 tournées de terrain officielles SAA sans attendre la configuration Firebase"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Tournées SAA Démo</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -441,12 +527,103 @@ export const GoogleWorkspaceGatewayModule: React.FC = () => {
           )}
         </div>
 
-        {!accessToken && (
-          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2">
-            <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <p>
-              Cliquez sur <strong>« Se connecter avec Google »</strong> ci-dessus pour autoriser la lecture sécurisée de vos événements d'agenda. Aucune modification ne sera apportée à votre agenda personnel (accès en lecture seule certifiée).
-            </p>
+        {/* Firebase Domain Whitelist Alert / Guidance Card */}
+        {authErrorDetails && (
+          <div className="mt-3 p-4 bg-amber-50/90 border border-amber-300 rounded-2xl text-xs text-amber-950 shadow-sm animate-in fade-in">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <strong className="text-amber-900 font-bold text-sm">
+                    Autorisation requise pour la connexion Google sur Vercel
+                  </strong>
+                  <button
+                    onClick={() => setAuthErrorDetails(null)}
+                    className="text-amber-700 hover:text-amber-950 font-bold"
+                  >
+                    Fermer ✕
+                  </button>
+                </div>
+                <p className="leading-relaxed">
+                  Firebase Authentication bloque temporairement la fenêtre Google parce que le domaine de votre déploiement Vercel (<strong>{typeof window !== 'undefined' ? window.location.hostname : 'votre-domaine.vercel.app'}</strong>) doit être ajouté dans la liste des domaines autorisés de votre projet Firebase.
+                </p>
+
+                <div className="bg-white/80 border border-amber-200 p-3 rounded-xl space-y-2">
+                  <p className="font-semibold text-slate-800">Comment débloquer la connexion Google en 1 minute :</p>
+                  <ol className="list-decimal list-inside space-y-1 text-slate-700 text-[11px]">
+                    <li>Rendez-vous dans la <strong>Console Firebase</strong> &gt; Votre Projet &gt; <strong>Authentication</strong>.</li>
+                    <li>Cliquez sur l'onglet <strong>Settings (Paramètres)</strong> puis <strong>Domaines autorisés</strong>.</li>
+                    <li>Cliquez sur <strong>Ajouter un domaine</strong> et collez le domaine suivant :</li>
+                  </ol>
+                  <div className="flex items-center gap-2 pt-1">
+                    <code className="bg-slate-900 text-emerald-400 font-mono-ref px-3 py-1.5 rounded-lg text-xs font-bold selection:bg-emerald-800">
+                      {typeof window !== 'undefined' ? window.location.hostname : 'votre-domaine.vercel.app'}
+                    </code>
+                    <button
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          navigator.clipboard.writeText(window.location.hostname);
+                          triggerNotification('Nom de domaine copié dans le presse-papier !', 'success');
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[11px] transition cursor-pointer"
+                    >
+                      Copier le domaine
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-[11px] text-amber-800 font-bold">Alternative immédiate sans configuration :</span>
+                  <button
+                    onClick={handleLoadOfficialSampleEvents}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Charger les 5 tournées terrain de démo</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!accessToken && !authErrorDetails && (
+          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p>
+                Cliquez sur <strong>« Se connecter avec Google »</strong> ci-dessus pour lire vos événements Google Agenda, ou chargez les tournées de démonstration ou un fichier <code>.ics</code>.
+              </p>
+            </div>
+
+            {/* Direct ICS File Importer */}
+            <div className="flex items-center gap-2 shrink-0">
+              <label
+                htmlFor="ics-file-input"
+                className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                title="Importer un fichier .ics exporté depuis Google Agenda"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
+                <span>Importer fichier .ics</span>
+              </label>
+              <input
+                id="ics-file-input"
+                type="file"
+                accept=".ics,text/calendar"
+                onChange={handleIcsUpload}
+                className="hidden"
+              />
+
+              <button
+                onClick={handleLoadOfficialSampleEvents}
+                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                title="Charger les 5 tournées officielles du référentiel SAA"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>5 Tournées SAA</span>
+              </button>
+            </div>
           </div>
         )}
 

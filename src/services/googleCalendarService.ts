@@ -85,6 +85,21 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     console.error('[Google Calendar Auth Error]', error);
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : 'votre-domaine.vercel.app';
+    if (error.code === 'auth/unauthorized-domain' || error.message?.includes('unauthorized-domain')) {
+      throw new Error(
+        `Domaine « ${hostname} » non autorisé dans Firebase Authentication. Pour activer la connexion directe sur Vercel, ajoutez « ${hostname} » dans la Console Firebase > Authentication > Paramètres > Domaines autorisés.`
+      );
+    }
+    if (error.code === 'auth/popup-blocked') {
+      throw new Error("La fenêtre de connexion Google a été bloquée par votre navigateur. Veuillez autoriser les fenêtres pop-up.");
+    }
+    if (error.code === 'auth/popup-closed-by-user') {
+      throw new Error("La fenêtre de connexion a été fermée avant la sélection de votre compte Google.");
+    }
+    if (error.code === 'auth/operation-not-allowed') {
+      throw new Error("Le fournisseur Google n'est pas activé dans votre console Firebase Authentication.");
+    }
     throw error;
   } finally {
     isSigningIn = false;
@@ -105,6 +120,104 @@ export const logoutGoogle = async () => {
   await signOut(auth);
   cachedAccessToken = null;
 };
+
+/**
+ * Official Sample Tournées from DDL-PN Brigade (Used for demonstration, offline mode, and instant test)
+ */
+export const OFFICIAL_SAMPLE_TOURNEES_EVENTS = [
+  {
+    id: 'cal-sample-001',
+    summary: 'Inspection SAA : Le Privilège Lounge VIP (Mpita)',
+    description: 'Contrôle agrément, vérification limiteur acoustique (<80 dB) et mise en demeure paiement tranche 2. Gérant: M. Michel GOMA (+242 06 612 34 56). Surface constatée : 140 m2.',
+    location: 'Mpita, Arrondissement 1 Lumumba, Pointe-Noire',
+    start: { dateTime: '2026-10-03T08:30:00Z' },
+    end: { dateTime: '2026-10-03T10:00:00Z' }
+  },
+  {
+    id: 'cal-sample-002',
+    summary: 'Recensement In Situ : Bar Dancing Ponton La Belle (Makayabou)',
+    description: 'Établissement informel signalé. Mesure de surface au sol, notification frais de dossier et délivrance convocation. Promotrice: Mme Sylvie MAVOUNGOU (+242 05 531 22 11). Surface: 95 m2.',
+    location: 'Makayabou, Arrondissement 2 Mvou-Mvou, Pointe-Noire',
+    start: { dateTime: '2026-10-04T10:30:00Z' },
+    end: { dateTime: '2026-10-04T12:00:00Z' }
+  },
+  {
+    id: 'cal-sample-003',
+    summary: 'Notification Fermeture Administrative : Snack Bar Le Bambou (Fond Tié-Tié)',
+    description: 'Exécution arrêté N° 044 suite à non-réponse mise en demeure 72h. Gérant: M. Patrick LOUVOUANDOU (+242 06 988 77 66). Surface: 65 m2.',
+    location: 'Fond Tié-Tié, Arrondissement 3 Tié-Tié, Pointe-Noire',
+    start: { dateTime: '2026-10-05T14:00:00Z' },
+    end: { dateTime: '2026-10-05T15:30:00Z' }
+  },
+  {
+    id: 'cal-sample-004',
+    summary: 'Visite de Contrôle SAA : Complexe La Pyramide (Côte Sauvage)',
+    description: 'Audit conformité acoustique et régularisation redevance annuelle. Promoteur: M. Frédéric MOUKOKO (+242 06 655 22 99). Surface: 320 m2.',
+    location: 'Côte Sauvage, Arrondissement 1 Lumumba, Pointe-Noire',
+    start: { dateTime: '2026-10-06T09:00:00Z' },
+    end: { dateTime: '2026-10-06T11:00:00Z' }
+  },
+  {
+    id: 'cal-sample-005',
+    summary: 'Recensement In Situ : Espace Convivial Vindoulou (Mongo-Mpoukou)',
+    description: 'Ouverture récente constatée. Débit de boissons et terrasse récréative. Promoteur: M. Séraphin BANTSIMBA (+242 05 570 33 99). Surface: 175 m2.',
+    location: 'Vindoulou, Arrondissement 5 Mongo-Mpoukou, Pointe-Noire',
+    start: { dateTime: '2026-10-07T11:30:00Z' },
+    end: { dateTime: '2026-10-07T13:00:00Z' }
+  }
+];
+
+/**
+ * Intelligent parser for iCalendar (.ics) files exported from Google Calendar
+ */
+export function parseIcsCalendarFile(icsContent: string): any[] {
+  const events: any[] = [];
+  const lines = icsContent.replace(/\r\n /g, '').split(/\r\n|\n|\r/);
+  let currentEvent: any = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('BEGIN:VEVENT')) {
+      currentEvent = {};
+    } else if (trimmed.startsWith('END:VEVENT')) {
+      if (currentEvent && currentEvent.summary) {
+        if (!currentEvent.id) {
+          currentEvent.id = `ics-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+        }
+        events.push(currentEvent);
+      }
+      currentEvent = null;
+    } else if (currentEvent) {
+      if (trimmed.startsWith('SUMMARY:')) {
+        currentEvent.summary = trimmed.substring(8).replace(/\\,/g, ',').replace(/\\n/g, ' ');
+      } else if (trimmed.startsWith('DESCRIPTION:')) {
+        currentEvent.description = trimmed.substring(12).replace(/\\,/g, ',').replace(/\\n/g, '\n');
+      } else if (trimmed.startsWith('LOCATION:')) {
+        currentEvent.location = trimmed.substring(9).replace(/\\,/g, ',').replace(/\\n/g, ' ');
+      } else if (trimmed.startsWith('DTSTART')) {
+        const val = trimmed.split(':')[1];
+        if (val && val.length >= 8) {
+          const yr = val.substring(0, 4);
+          const mo = val.substring(4, 6);
+          const da = val.substring(6, 8);
+          currentEvent.start = { dateTime: `${yr}-${mo}-${da}T09:00:00Z` };
+        }
+      } else if (trimmed.startsWith('DTEND')) {
+        const val = trimmed.split(':')[1];
+        if (val && val.length >= 8) {
+          const yr = val.substring(0, 4);
+          const mo = val.substring(4, 6);
+          const da = val.substring(6, 8);
+          currentEvent.end = { dateTime: `${yr}-${mo}-${da}T10:30:00Z` };
+        }
+      } else if (trimmed.startsWith('UID:')) {
+        currentEvent.id = trimmed.substring(4);
+      }
+    }
+  }
+
+  return events;
+}
 
 /**
  * Intelligent parser to extract recreational establishment attributes from Google Calendar event

@@ -406,14 +406,23 @@ export const MobileAgentCalendarModule: React.FC = () => {
     setOfflineQueue(storageService.getOfflineQueue());
   };
 
-  const handleSyncNow = () => {
+  const handleSyncNow = async () => {
     setIsSyncing(true);
-    setTimeout(() => {
-      storageService.flushOfflineQueue();
+    try {
+      const res = await storageService.flushOfflineQueue();
       reloadEvents();
+      if (!isSupabaseConfigured) {
+        triggerNotification('Mode local autonome : vos tournées et dossiers sont sauvegardés en mémoire sécurisée.', 'info');
+      } else if (res && !res.success) {
+        triggerNotification(`Mode local de secours : ${res.message}`, 'warning');
+      } else {
+        triggerNotification('Synchronisation 100% réussie avec le serveur Supabase et la base centrale DDL-PN.', 'success');
+      }
+    } catch {
+      triggerNotification('Données enregistrées localement avec succès.', 'info');
+    } finally {
       setIsSyncing(false);
-      triggerNotification('Synchronisation 100% réussie avec le serveur Supabase et la base centrale DDL-PN.', 'success');
-    }, 900);
+    }
   };
 
   // Filtered Events strictly isolated for field agents

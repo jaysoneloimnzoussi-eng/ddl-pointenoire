@@ -1,14 +1,29 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+// Support both standard Vite (VITE_SUPABASE_*) and Vercel Integration (SUPABASE_*) env vars
+const rawUrl =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) ||
+  (typeof import.meta !== 'undefined' && (import.meta.env as any)?.SUPABASE_URL) ||
+  '';
+
+const rawKey =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) ||
+  (typeof import.meta !== 'undefined' && (import.meta.env as any)?.SUPABASE_ANON_KEY) ||
+  '';
+
+const isPlaceholder = (val: string) =>
+  !val ||
+  val.trim() === '' ||
+  val.includes('placeholder') ||
+  val === 'https://placeholder.supabase.co' ||
+  val === 'placeholder-anon-key';
 
 export const isSupabaseConfigured = Boolean(
-  import.meta.env.VITE_SUPABASE_URL &&
-  import.meta.env.VITE_SUPABASE_URL.trim() !== '' &&
-  import.meta.env.VITE_SUPABASE_ANON_KEY &&
-  import.meta.env.VITE_SUPABASE_ANON_KEY.trim() !== ''
+  !isPlaceholder(rawUrl) && !isPlaceholder(rawKey)
 );
+
+const supabaseUrl = isSupabaseConfigured ? rawUrl.trim() : 'https://placeholder.supabase.co';
+const supabaseAnonKey = isSupabaseConfigured ? rawKey.trim() : 'placeholder-anon-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -16,6 +31,55 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
   },
 });
+
+/**
+ * Diagnostic helper to safely test if the Supabase connection and tables are ready
+ */
+export async function testSupabaseConnection(): Promise<{
+  configured: boolean;
+  connected: boolean;
+  message: string;
+  tablesReady?: boolean;
+}> {
+  if (!isSupabaseConfigured) {
+    return {
+      configured: false,
+      connected: false,
+      message: 'Supabase n’est pas configuré. L’application fonctionne en mode local sécurisé autonome.'
+    };
+  }
+
+  try {
+    const { error } = await supabase.from('establishments').select('id').limit(1);
+    if (error) {
+      if (error.code === '42P01' || error.message?.includes('does not exist')) {
+        return {
+          configured: true,
+          connected: false,
+          tablesReady: false,
+          message: 'Base Supabase connectée, mais la table « establishments » n’est pas encore créée. Exécutez le script supabase_schema.sql.'
+        };
+      }
+      return {
+        configured: true,
+        connected: false,
+        message: `Erreur d’accès Supabase : ${error.message}`
+      };
+    }
+    return {
+      configured: true,
+      connected: true,
+      tablesReady: true,
+      message: 'Connexion à la base de données centrale Supabase opérationnelle.'
+    };
+  } catch (err: any) {
+    return {
+      configured: true,
+      connected: false,
+      message: `Erreur de connexion réseau Supabase : ${err?.message || 'Injoignable'}`
+    };
+  }
+}
 
 export interface SupabaseEstablishment {
   id: string;

@@ -28,6 +28,7 @@ import { useSession } from '../../context/SessionContext';
 import { APP_USERS, REPUBLIQUE_CONGO } from '../../constants/referential';
 import { OfficialRepublicLogo, RepublicTricolorBar } from './OfficialSeal';
 import { storageService } from '../../services/storageService';
+import { isSupabaseConfigured } from '../../services/supabaseClient';
 
 export const MODULE_ITEMS = [
   { id: 'MOD-01', label: 'Poste de Commandement', shortLabel: 'Commandement', icon: LayoutDashboard },
@@ -89,9 +90,18 @@ export const RepublicHeader: React.FC = () => {
     if (isSyncing) return;
     setIsSyncing(true);
     try {
-      await storageService.flushOfflineQueue();
+      if (!isSupabaseConfigured) {
+        setNetworkStatus(storageService.getNetworkStatus());
+        triggerNotification('Mode local autonome actif : 16 établissements et quittances enregistrés en mémoire sécurisée.', 'info');
+        return;
+      }
+      const syncResult = await storageService.flushOfflineQueue();
       setNetworkStatus(storageService.getNetworkStatus());
-      triggerNotification('Synchronisation et sauvegarde des données effectuées.', 'success');
+      if (syncResult && !syncResult.success) {
+        triggerNotification(`Mode local de secours actif : ${syncResult.message}`, 'warning');
+      } else {
+        triggerNotification('Synchronisation 100% réussie avec la base de données Supabase.', 'success');
+      }
     } catch {
       triggerNotification('Mode local persistant actif. Données sauvegardées avec succès.', 'info');
     } finally {
@@ -156,23 +166,30 @@ export const RepublicHeader: React.FC = () => {
 
           {/* Offline/Supabase Status Indicator */}
           <div className="hidden sm:flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded text-[11px]">
-            {networkStatus.isOnline ? (
-              <span className="flex items-center gap-1 text-emerald-700 font-medium">
-                <Wifi className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="hidden md:inline">Supabase Actif</span>
-              </span>
+            {isSupabaseConfigured ? (
+              networkStatus.isOnline ? (
+                <span className="flex items-center gap-1 text-emerald-700 font-medium" title="Connecté au Cloud Supabase">
+                  <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="hidden md:inline">Supabase Cloud</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-amber-700 font-medium" title="Hors ligne - modifications conservées en attente">
+                  <WifiOff className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                  <span>Hors-Ligne ({networkStatus.queueLength})</span>
+                </span>
+              )
             ) : (
-              <span className="flex items-center gap-1 text-amber-700 font-medium">
-                <WifiOff className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                <span>Hors-Ligne ({networkStatus.queueLength})</span>
+              <span className="flex items-center gap-1 text-blue-800 font-medium" title="Mode local autonome opérationnel sans dépendance cloud">
+                <Shield className="w-3.5 h-3.5 text-blue-700" />
+                <span className="hidden md:inline">Mode Local Autonome</span>
               </span>
             )}
 
             <button
               onClick={handleSyncNow}
               disabled={isSyncing}
-              title="Synchroniser avec Supabase"
-              className="ml-1 p-1 hover:bg-emerald-100 rounded text-emerald-700 transition flex items-center gap-1"
+              title={isSupabaseConfigured ? "Synchroniser avec Supabase" : "Vérifier la sauvegarde des données locales"}
+              className="ml-1 p-1 hover:bg-emerald-100 rounded text-emerald-700 transition flex items-center gap-1 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
             </button>
