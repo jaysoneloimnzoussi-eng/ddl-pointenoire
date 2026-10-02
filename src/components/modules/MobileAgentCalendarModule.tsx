@@ -177,6 +177,9 @@ export const MobileAgentCalendarModule: React.FC = () => {
     regime_type: 'INFORMEL' as RegimeType,
     surface_m2: 60,
     total_due: 50000,
+    payment_mode: 'NONE' as 'NONE' | 'ACOMPTE' | 'SOLDE',
+    immediate_payment_amount: 0,
+    payment_method: 'Espèces (Régie)' as TerrainPaymentRecord['payment_method'],
     programBureauPassage: true,
     bureauPassageDate: '2026-10-02',
     bureauPassageTime: '10:00',
@@ -757,6 +760,15 @@ export const MobileAgentCalendarModule: React.FC = () => {
     const coords: [number, number] = arrInfo?.sig_coordinates || [-4.7938, 11.8569];
     const totalDue = Number(newEstForm.total_due) > 0 ? Number(newEstForm.total_due) : 50000;
 
+    let initialPaid = 0;
+    if (newEstForm.payment_mode === 'SOLDE') {
+      initialPaid = totalDue;
+    } else if (newEstForm.payment_mode === 'ACOMPTE') {
+      initialPaid = Math.min(totalDue, Math.max(0, Number(newEstForm.immediate_payment_amount) || 0));
+    }
+    const balanceDue = Math.max(0, totalDue - initialPaid);
+    const initialStatus = balanceDue === 0 ? 'attestation_depot' : (initialPaid > 0 ? 'attestation_depot' : (newEstForm.programBureauPassage ? 'convoque' : 'identifie'));
+
     const createdEst = storageService.addEstablishment({
       name: newEstForm.name.trim(),
       promoter_name: newEstForm.promoter_name.trim() || 'Promoteur non renseigné',
@@ -771,18 +783,31 @@ export const MobileAgentCalendarModule: React.FC = () => {
       filing_fee: 50000,
       rate_per_sqm: newEstForm.regime_type === 'FORMEL' ? 1000 : 0,
       total_due: totalDue,
-      amount_paid: 0,
-      balance_due: totalDue,
-      status: newEstForm.programBureauPassage ? 'convoque' : 'identifie',
+      amount_paid: initialPaid,
+      balance_due: balanceDue,
+      status: initialStatus,
       identified_by: `${currentAgent.name} (${currentAgent.badge})`,
       identified_date: new Date().toISOString().split('T')[0],
       coordinates: coords,
       decibel_level: 78,
       has_acoustic_limiter: false,
-      installments_chosen: 2,
+      installments_chosen: balanceDue === 0 ? 1 : 2,
       assigned_agent_id: currentAgent.badge,
       notes: 'Recensement direct Google Agenda SAA'
     });
+
+    if (initialPaid > 0) {
+      storageService.recordPayment({
+        establishment_id: createdEst.id,
+        amount: initialPaid,
+        payment_method: newEstForm.payment_method,
+        collected_by: currentAgent.name,
+        agent_badge: currentAgent.badge,
+        notes: newEstForm.payment_mode === 'SOLDE'
+          ? 'Règlement totalisé (100% Soldé lors du recensement)'
+          : `Acompte initial de ${initialPaid.toLocaleString('fr-FR')} FCFA déduit sur place (Reste: ${balanceDue.toLocaleString('fr-FR')} FCFA)`
+      });
+    }
 
     // If programBureauPassage is checked, create convocation event on Google Agenda
     if (newEstForm.programBureauPassage) {
@@ -2756,6 +2781,86 @@ export const MobileAgentCalendarModule: React.FC = () => {
                     </button>
                   </div>
                 </div>
+              </div>
+
+              {/* RÈGLEMENT IMMÉDIAT (ACOMPTE OU SOLDE) */}
+              <div className="p-3 bg-slate-50 border border-slate-300 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1">
+                    <Coins className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Règlement perçu lors du passage :</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono-ref">
+                    {newEstForm.payment_mode === 'SOLDE' ? 'Soldé à 100%' : (newEstForm.payment_mode === 'ACOMPTE' ? 'Acompte déduit' : 'Paiement ultérieur')}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5 text-[10.5px]">
+                  <button
+                    type="button"
+                    onClick={() => setNewEstForm({ ...newEstForm, payment_mode: 'NONE', immediate_payment_amount: 0 })}
+                    className={`p-1.5 rounded border text-center font-semibold cursor-pointer ${
+                      newEstForm.payment_mode === 'NONE'
+                        ? 'bg-white border-slate-900 text-slate-900 ring-1 ring-slate-900 font-bold'
+                        : 'bg-white/60 text-slate-600 border-slate-200'
+                    }`}
+                  >
+                    1. Pas d'acompte (0 F)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewEstForm({
+                      ...newEstForm,
+                      payment_mode: 'ACOMPTE',
+                      immediate_payment_amount: newEstForm.immediate_payment_amount > 0 ? newEstForm.immediate_payment_amount : Math.round(newEstForm.total_due / 2)
+                    })}
+                    className={`p-1.5 rounded border text-center font-semibold cursor-pointer ${
+                      newEstForm.payment_mode === 'ACOMPTE'
+                        ? 'bg-amber-100 border-amber-600 text-amber-950 ring-1 ring-amber-600 font-bold'
+                        : 'bg-white/60 text-slate-600 border-slate-200'
+                    }`}
+                  >
+                    2. Déduire acompte
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewEstForm({ ...newEstForm, payment_mode: 'SOLDE', immediate_payment_amount: newEstForm.total_due })}
+                    className={`p-1.5 rounded border text-center font-semibold cursor-pointer ${
+                      newEstForm.payment_mode === 'SOLDE'
+                        ? 'bg-emerald-100 border-emerald-600 text-emerald-950 ring-1 ring-emerald-600 font-bold'
+                        : 'bg-white/60 text-slate-600 border-slate-200'
+                    }`}
+                  >
+                    3. Solder (100%)
+                  </button>
+                </div>
+
+                {newEstForm.payment_mode === 'ACOMPTE' && (
+                  <div className="p-2 bg-amber-50 rounded border border-amber-300 space-y-1.5">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <label className="font-bold text-amber-950">Montant de l'acompte (FCFA) :</label>
+                      <span className="font-mono-ref text-amber-800 font-bold">
+                        Reste : {Math.max(0, newEstForm.total_due - newEstForm.immediate_payment_amount).toLocaleString('fr-FR')} F
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      min="5000"
+                      step="5000"
+                      max={newEstForm.total_due}
+                      value={newEstForm.immediate_payment_amount}
+                      onChange={e => setNewEstForm({ ...newEstForm, immediate_payment_amount: Number(e.target.value) })}
+                      className="w-full p-1.5 bg-white border border-amber-400 rounded font-mono-ref font-bold text-xs"
+                    />
+                  </div>
+                )}
+
+                {newEstForm.payment_mode === 'SOLDE' && (
+                  <div className="p-2 bg-emerald-100 border border-emerald-400 rounded text-emerald-950 text-[11px] font-bold flex justify-between items-center">
+                    <span>✅ Encaissé en totalité : {newEstForm.total_due.toLocaleString('fr-FR')} FCFA</span>
+                    <span className="font-mono-ref">Reste = 0 F (Soldé)</span>
+                  </div>
+                )}
               </div>
 
               {/* CONVOCATION PROGRAMMATION BOX (KEY USER REQUIREMENT) */}

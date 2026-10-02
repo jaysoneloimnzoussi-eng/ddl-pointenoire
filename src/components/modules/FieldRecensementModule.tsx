@@ -54,7 +54,10 @@ export const FieldRecensementModule: React.FC = () => {
     regime_type: 'INFORMEL' as RegimeType,
     rccm: '',
     surface_m2: 80,
-    custom_total_due: 50000, // Forfait officiel DDL-PN secteur informel (50 000 FCFA par défaut, modifiable manuellement)
+    custom_total_due: 50000, // Forfait officiel DDL-PN informel modifiable manuellement
+    payment_mode: 'NONE' as 'NONE' | 'ACOMPTE' | 'SOLDE',
+    immediate_payment_amount: 0,
+    payment_method: 'Espèces (Régie)' as TerrainPaymentRecord['payment_method'],
     has_acoustic_limiter: false,
     decibel_level: 82,
     lat: -4.7938,
@@ -105,13 +108,29 @@ export const FieldRecensementModule: React.FC = () => {
   // Handle creation
   const handleCreateEstablishment = (e: React.FormEvent) => {
     e.preventDefault();
-    const manualAmount = Number(newForm.custom_total_due) > 0 ? Number(newForm.custom_total_due) : (newForm.regime_type === 'INFORMEL' ? 50000 : 50000);
+    const manualAmount = Number(newForm.custom_total_due) >= 0 ? Number(newForm.custom_total_due) : 50000;
     const { filingFee, ratePerSqm, totalDue } = calculateEstablishmentFee(
       newForm.activity_code,
       newForm.surface_m2,
       newForm.regime_type,
       manualAmount
     );
+
+    // Deduction logic: immediate payment, acompte or solder
+    let initialPaid = 0;
+    if (newForm.payment_mode === 'SOLDE') {
+      initialPaid = totalDue;
+    } else if (newForm.payment_mode === 'ACOMPTE') {
+      initialPaid = Math.min(totalDue, Math.max(0, Number(newForm.immediate_payment_amount) || 0));
+    }
+
+    const remainingBalance = Math.max(0, totalDue - initialPaid);
+    let initialStatus: EstablishmentStatus = 'identifie';
+    if (initialPaid > 0 && remainingBalance === 0) {
+      initialStatus = 'attestation_depot';
+    } else if (initialPaid > 0) {
+      initialStatus = 'attestation_depot';
+    }
 
     const actLabel = ACTIVITY_CATEGORIES.find(c => c.code === newForm.activity_code)?.label || 'Loisirs';
 
@@ -130,21 +149,55 @@ export const FieldRecensementModule: React.FC = () => {
       filing_fee: filingFee,
       rate_per_sqm: ratePerSqm,
       total_due: totalDue,
-      amount_paid: 0,
-      balance_due: totalDue,
-      status: 'identifie',
+      amount_paid: initialPaid,
+      balance_due: remainingBalance,
+      status: initialStatus,
       identified_by: `${currentUser.name} (${currentUser.badge})`,
       identified_date: new Date().toISOString().split('T')[0],
       coordinates: [newForm.lat, newForm.lng],
       decibel_level: Number(newForm.decibel_level),
       has_acoustic_limiter: newForm.has_acoustic_limiter,
-      installments_chosen: 2,
+      installments_chosen: remainingBalance === 0 ? 1 : 2,
       notes: newForm.notes
     });
 
+    if (initialPaid > 0) {
+      const { payment } = storageService.recordPayment({
+        establishment_id: created.id,
+        amount: initialPaid,
+        payment_method: newForm.payment_method,
+        collected_by: currentUser.name,
+        agent_badge: currentUser.badge,
+        notes: newForm.payment_mode === 'SOLDE'
+          ? 'Règlement totalisé (Dossier soldé à 100% sur le terrain)'
+          : `Acompte initial de ${initialPaid.toLocaleString('fr-FR')} FCFA déduit (Reste à recouvrer : ${remainingBalance.toLocaleString('fr-FR')} FCFA)`
+      });
+
+      triggerNotification(
+        newForm.payment_mode === 'SOLDE'
+          ? `Établissement « ${created.name} » recensé et SOLDÉ à 100% (${initialPaid.toLocaleString('fr-FR')} FCFA encaissés).`
+          : `Établissement « ${created.name} » recensé : acompte de ${initialPaid.toLocaleString('fr-FR')} FCFA déduit (Reste: ${remainingBalance.toLocaleString('fr-FR')} FCFA).`,
+        'success'
+      );
+
+      // Offer printing immediately
+      setPrintDoc({
+        isOpen: true,
+        type: remainingBalance === 0 ? 'ATTESTATION_A4' : 'TICKET_58MM',
+        title: `Reçu & Titre - ${created.name}`,
+        data: {
+          ...created,
+          amount_paid: initialPaid,
+          balance_due: remainingBalance,
+          receipt_reference: payment.receipt_reference
+        }
+      });
+    } else {
+      triggerNotification(`Établissement « ${created.name} » recensé (Montant retenu: ${totalDue.toLocaleString('fr-FR')} FCFA).`, 'success');
+    }
+
     setEstablishments(storageService.getEstablishmentsForUser(currentUser));
     setIsAddModalOpen(false);
-    triggerNotification(`Établissement « ${created.name} » recensé avec succès (ID: ${created.id}).`, 'success');
   };
 
   // Handle payment
@@ -878,6 +931,175 @@ export const FieldRecensementModule: React.FC = () => {
                 </p>
               </div>
 
+              {/* PAIEMENT IMMÉDIAT PAR LE TENANCIER SUR PLACE (Acompte ou Solde Total) */}
+              <div className="p-4 bg-slate-50 border-2 border-slate-300 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
+                    <Coins className="w-4 h-4 text-amber-600" />
+                    <span>Règlement immédiat par le tenancier (Acompte ou Solde)</span>
+                  </label>
+                  <span className="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-slate-300 text-slate-700">
+                    Encaissement in situ
+                  </span>
+                </div>
+
+                {/* 3 options de règlement */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewForm({ ...newForm, payment_mode: 'NONE', immediate_payment_amount: 0 })}
+                    className={`p-2.5 rounded-lg border text-left transition cursor-pointer ${
+                      newForm.payment_mode === 'NONE'
+                        ? 'bg-white border-[#022448] ring-2 ring-[#022448]/20 shadow-xs'
+                        : 'bg-white/60 border-slate-200 hover:bg-white text-slate-600'
+                    }`}
+                  >
+                    <div className="font-bold text-slate-800 text-xs">1. Aucun acompte</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">Paiement ultérieur</div>
+                    <div className="text-[10px] font-mono-ref font-bold text-amber-800 mt-1">
+                      Reste dû : {newForm.custom_total_due.toLocaleString('fr-FR')} F
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const half = Math.round(newForm.custom_total_due / 2);
+                      setNewForm({
+                        ...newForm,
+                        payment_mode: 'ACOMPTE',
+                        immediate_payment_amount: newForm.immediate_payment_amount > 0 ? newForm.immediate_payment_amount : half
+                      });
+                    }}
+                    className={`p-2.5 rounded-lg border text-left transition cursor-pointer ${
+                      newForm.payment_mode === 'ACOMPTE'
+                        ? 'bg-amber-50 border-amber-600 ring-2 ring-amber-600/20 shadow-xs'
+                        : 'bg-white/60 border-slate-200 hover:bg-white text-slate-600'
+                    }`}
+                  >
+                    <div className="font-bold text-amber-950 text-xs">2. Déduire un Acompte</div>
+                    <div className="text-[10px] text-amber-700 mt-0.5">Versement partiel</div>
+                    <div className="text-[10px] font-mono-ref font-bold text-amber-900 mt-1">
+                      Déduction en direct
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewForm({ ...newForm, payment_mode: 'SOLDE', immediate_payment_amount: newForm.custom_total_due })}
+                    className={`p-2.5 rounded-lg border text-left transition cursor-pointer ${
+                      newForm.payment_mode === 'SOLDE'
+                        ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-600/20 shadow-xs'
+                        : 'bg-white/60 border-slate-200 hover:bg-white text-slate-600'
+                    }`}
+                  >
+                    <div className="font-bold text-emerald-950 text-xs">3. Solder la Totalité</div>
+                    <div className="text-[10px] text-emerald-700 mt-0.5">100% payé sur place</div>
+                    <div className="text-[10px] font-mono-ref font-bold text-emerald-900 mt-1">
+                      Reste = 0 FCFA (Soldé)
+                    </div>
+                  </button>
+                </div>
+
+                {/* Si Acompte sélectionné : champ de saisie du montant de l'acompte avec déduction automatique */}
+                {newForm.payment_mode === 'ACOMPTE' && (
+                  <div className="p-3 bg-white rounded-lg border border-amber-300 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <label className="font-bold text-slate-800 text-xs">Montant de l'Acompte versé (FCFA) *</label>
+                      <span className="text-[10px] text-amber-800 font-bold bg-amber-100 px-1.5 py-0.5 rounded">
+                        À déduire du total
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="5000"
+                        step="5000"
+                        max={newForm.custom_total_due}
+                        value={newForm.immediate_payment_amount}
+                        onChange={e => setNewForm({ ...newForm, immediate_payment_amount: Number(e.target.value) })}
+                        className="w-full p-2 bg-amber-50/50 border border-amber-400 rounded font-mono-ref font-black text-amber-950 text-base"
+                      />
+                      <span className="absolute right-3 top-2 text-xs font-bold text-slate-400">FCFA</span>
+                    </div>
+
+                    {/* Raccourcis acomptes */}
+                    <div className="flex flex-wrap gap-1 text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setNewForm({ ...newForm, immediate_payment_amount: 25000 })}
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 border rounded cursor-pointer"
+                      >
+                        25 000 F
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewForm({ ...newForm, immediate_payment_amount: 30000 })}
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 border rounded cursor-pointer"
+                      >
+                        30 000 F
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewForm({ ...newForm, immediate_payment_amount: Math.round(newForm.custom_total_due / 2) })}
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 border rounded cursor-pointer"
+                      >
+                        50% ({Math.round(newForm.custom_total_due / 2).toLocaleString('fr-FR')} F)
+                      </button>
+                    </div>
+
+                    {/* Résumé déduction acompte */}
+                    <div className="p-2 bg-amber-50 rounded border border-amber-200 flex justify-between items-center text-xs font-mono-ref">
+                      <span className="text-slate-600">Reste à payer après déduction :</span>
+                      <strong className="text-amber-950 text-sm">
+                        {Math.max(0, newForm.custom_total_due - newForm.immediate_payment_amount).toLocaleString('fr-FR')} FCFA
+                      </strong>
+                    </div>
+                  </div>
+                )}
+
+                {/* Si Solde sélectionné : confirmation visuelle 100% */}
+                {newForm.payment_mode === 'SOLDE' && (
+                  <div className="p-3 bg-emerald-100/70 border border-emerald-400 rounded-lg flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-700" />
+                      <div>
+                        <div className="font-bold text-emerald-950">Tout l'argent a été donné par le tenancier</div>
+                        <div className="text-[10px] text-emerald-800">
+                          Montant encaissé : {newForm.custom_total_due.toLocaleString('fr-FR')} FCFA • Reste dû : 0 FCFA (Soldé)
+                        </div>
+                      </div>
+                    </div>
+                    <span className="px-2 py-1 bg-emerald-700 text-white rounded font-bold text-[10px]">
+                      100% SOLDÉ
+                    </span>
+                  </div>
+                )}
+
+                {/* Mode de règlement si paiement */}
+                {newForm.payment_mode !== 'NONE' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Mode de règlement *</label>
+                      <select
+                        value={newForm.payment_method}
+                        onChange={e => setNewForm({ ...newForm, payment_method: e.target.value as any })}
+                        className="w-full p-2 bg-white border border-slate-300 rounded text-xs font-semibold"
+                      >
+                        <option value="Espèces (Régie)">Espèces (Régie / Terrain)</option>
+                        <option value="MTN Mobile Money">MTN Mobile Money</option>
+                        <option value="Airtel Money">Airtel Money</option>
+                      </select>
+                    </div>
+                    <div className="flex items-end">
+                      <p className="text-[10px] text-slate-500 italic pb-2">
+                        Une quittance avec QR Code sera automatiquement générée à la validation.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-3 border-t">
                 <button
                   type="button"
@@ -911,8 +1133,46 @@ export const FieldRecensementModule: React.FC = () => {
             </div>
 
             <form onSubmit={handleRecordPayment} className="space-y-4 text-xs">
+              {/* Quick Actions: Solder vs Acompte */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentAmount(paymentModalEst.balance_due)}
+                  className={`p-2.5 rounded-lg border text-left cursor-pointer transition ${
+                    paymentAmount === paymentModalEst.balance_due
+                      ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-600/30'
+                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="font-bold text-emerald-950 text-xs">🟢 Solder la Totalité</div>
+                  <div className="text-[10px] text-emerald-800 font-mono-ref font-bold mt-0.5">
+                    {paymentModalEst.balance_due.toLocaleString('fr-FR')} FCFA (100%)
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentAmount(Math.min(30000, paymentModalEst.balance_due))}
+                  className={`p-2.5 rounded-lg border text-left cursor-pointer transition ${
+                    paymentAmount < paymentModalEst.balance_due
+                      ? 'bg-amber-50 border-amber-600 ring-2 ring-amber-600/30'
+                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="font-bold text-amber-950 text-xs">🟡 Acompte Partiel</div>
+                  <div className="text-[10px] text-amber-800 font-mono-ref font-bold mt-0.5">
+                    Déduire un montant
+                  </div>
+                </button>
+              </div>
+
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Montant Encaissé (FCFA) *</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="font-bold text-slate-700">Montant Encaissé (FCFA) *</label>
+                  <span className="text-[10px] font-bold text-slate-500">
+                    {paymentAmount === paymentModalEst.balance_due ? 'Solde intégral' : 'Acompte partiel'}
+                  </span>
+                </div>
                 <input
                   type="number"
                   required
@@ -922,17 +1182,52 @@ export const FieldRecensementModule: React.FC = () => {
                   onChange={e => setPaymentAmount(Number(e.target.value))}
                   className="w-full p-2.5 border-2 border-emerald-500 rounded font-mono-ref text-lg font-black text-[#006d2f] focus:outline-none"
                 />
-                <div className="flex gap-2 mt-1.5">
-                  {[30000, 50000, 100000, paymentModalEst.balance_due].filter(v => v > 0).map(v => (
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentAmount(paymentModalEst.balance_due)}
+                    className="bg-emerald-700 text-white hover:bg-emerald-800 px-2 py-0.5 rounded text-[10px] font-mono-ref font-bold cursor-pointer"
+                  >
+                    Solder ({paymentModalEst.balance_due.toLocaleString('fr-FR')} F)
+                  </button>
+                  {[20000, 25000, 30000, 50000].filter(v => v < paymentModalEst.balance_due).map(v => (
                     <button
                       key={v}
                       type="button"
                       onClick={() => setPaymentAmount(v)}
-                      className="bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-[10px] font-mono-ref font-bold"
+                      className="bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-[10px] font-mono-ref font-bold cursor-pointer"
                     >
-                      {v.toLocaleString('fr-FR')} F
+                      Acompte {v.toLocaleString('fr-FR')} F
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Live Deduction Summary Card */}
+              <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-300 space-y-1.5 font-mono-ref text-xs">
+                <div className="flex justify-between text-slate-600 text-[11px]">
+                  <span>Redevance totale fixée :</span>
+                  <span className="font-bold text-slate-800">{paymentModalEst.total_due.toLocaleString('fr-FR')} FCFA</span>
+                </div>
+                <div className="flex justify-between text-slate-600 text-[11px]">
+                  <span>Déjà versé antérieurement :</span>
+                  <span className="font-bold text-slate-800">{paymentModalEst.amount_paid.toLocaleString('fr-FR')} FCFA</span>
+                </div>
+                <div className="flex justify-between text-emerald-800 text-[11px] font-bold border-t border-emerald-200 pt-1">
+                  <span>Montant encaissé ce jour :</span>
+                  <span>{paymentAmount.toLocaleString('fr-FR')} FCFA</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-black pt-1 border-t border-emerald-300">
+                  <span className="font-sans text-xs uppercase text-slate-700">Reste à devoir :</span>
+                  {Math.max(0, paymentModalEst.balance_due - paymentAmount) === 0 ? (
+                    <span className="px-2 py-0.5 bg-emerald-700 text-white rounded text-xs font-sans">
+                      🎉 DOSSIER 100% SOLDÉ
+                    </span>
+                  ) : (
+                    <span className="text-amber-800 font-bold">
+                      {Math.max(0, paymentModalEst.balance_due - paymentAmount).toLocaleString('fr-FR')} FCFA
+                    </span>
+                  )}
                 </div>
               </div>
 

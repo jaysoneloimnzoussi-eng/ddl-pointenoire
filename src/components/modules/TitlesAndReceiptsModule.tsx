@@ -839,49 +839,111 @@ export const TitlesAndReceiptsModule: React.FC = () => {
           {/* SUB-FORM FOR OPTION A: ENCAISSEMENT GUICHET */}
           {deskActionType === 'PAY_NOW' ? (
             <form onSubmit={handleExecutePayment} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Montant de l'Acompte / Solde (FCFA) *</label>
-                  <input
-                    type="number"
-                    required
-                    min={5000}
-                    step={5000}
-                    value={depositAmount}
-                    onChange={e => setDepositAmount(Number(e.target.value))}
-                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono-ref font-black text-emerald-900 text-sm"
-                  />
-                </div>
+              {/* Quick Choice: Solder vs Acompte */}
+              {(() => {
+                const effectiveTargetDue = isCreatingNewEst
+                  ? (Number(newEst.custom_total_due) || 50000)
+                  : (currentEst?.balance_due ?? currentEst?.total_due ?? 50000);
 
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Canal de Paiement *</label>
-                  <select
-                    value={paymentMethod}
-                    onChange={e => setPaymentMethod(e.target.value as any)}
-                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold"
-                  >
-                    <option value="Espèces (Régie)">Espèces (Guichet Régie Bureau)</option>
-                    <option value="MTN Mobile Money">MTN Mobile Money</option>
-                    <option value="Airtel Money">Airtel Money</option>
-                    <option value="Virement Trésor Public">Virement Trésor Public</option>
-                  </select>
-                </div>
+                return (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-bold text-slate-800">Action rapide sur le paiement :</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setDepositAmount(effectiveTargetDue)}
+                          className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-bold text-xs cursor-pointer shadow-2xs"
+                        >
+                          🟢 Solder tout ({effectiveTargetDue.toLocaleString('fr-FR')} F)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDepositAmount(Math.round(effectiveTargetDue / 2))}
+                          className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg font-semibold text-xs cursor-pointer"
+                        >
+                          🟡 Acompte 50% ({Math.round(effectiveTargetDue / 2).toLocaleString('fr-FR')} F)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDepositAmount(25000)}
+                          className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg font-semibold text-xs cursor-pointer"
+                        >
+                          Acompte 25 000 F
+                        </button>
+                      </div>
+                    </div>
 
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Agent SAA Affilié (Attribution) *</label>
-                  <select
-                    value={assignedAgentId}
-                    onChange={e => setAssignedAgentId(e.target.value)}
-                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-medium"
-                  >
-                    {APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'ADMIN').map(user => (
-                      <option key={user.id} value={user.id}>
-                        {user.name} ({user.badge})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="font-bold text-slate-700 block mb-1">Montant de l'Acompte / Solde (FCFA) *</label>
+                        <input
+                          type="number"
+                          required
+                          min={1000}
+                          step={5000}
+                          value={depositAmount}
+                          onChange={e => setDepositAmount(Number(e.target.value))}
+                          className="w-full p-2.5 bg-white border-2 border-emerald-600 rounded-xl font-mono-ref font-black text-emerald-900 text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-slate-700 block mb-1">Canal de Paiement *</label>
+                        <select
+                          value={paymentMethod}
+                          onChange={e => setPaymentMethod(e.target.value as any)}
+                          className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold"
+                        >
+                          <option value="Espèces (Régie)">Espèces (Guichet Régie Bureau)</option>
+                          <option value="MTN Mobile Money">MTN Mobile Money</option>
+                          <option value="Airtel Money">Airtel Money</option>
+                          <option value="Virement Trésor Public">Virement Trésor Public</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-slate-700 block mb-1">Agent SAA Affilié (Attribution) *</label>
+                        <select
+                          value={assignedAgentId}
+                          onChange={e => setAssignedAgentId(e.target.value)}
+                          className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-medium"
+                        >
+                          {APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'ADMIN').map(user => (
+                            <option key={user.id} value={user.id}>
+                              {user.name} ({user.badge})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Live Deduction Box */}
+                    <div className="p-3 bg-white rounded-xl border border-emerald-300 space-y-1 font-mono-ref text-xs">
+                      <div className="flex justify-between text-slate-600">
+                        <span>Total dû :</span>
+                        <span className="font-bold text-slate-800">{effectiveTargetDue.toLocaleString('fr-FR')} FCFA</span>
+                      </div>
+                      <div className="flex justify-between text-emerald-800 font-bold border-t border-slate-100 pt-1">
+                        <span>Montant versé au guichet :</span>
+                        <span>{depositAmount.toLocaleString('fr-FR')} FCFA</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm font-black pt-1 border-t border-emerald-200">
+                        <span className="font-sans text-xs uppercase text-slate-700">Reste après déduction :</span>
+                        {Math.max(0, effectiveTargetDue - depositAmount) === 0 ? (
+                          <span className="px-2 py-0.5 bg-emerald-700 text-white rounded text-xs font-sans">
+                            🎉 100% SOLDÉ (Attestation Dépôt / Titre valide)
+                          </span>
+                        ) : (
+                          <span className="text-amber-800 font-bold">
+                            {Math.max(0, effectiveTargetDue - depositAmount).toLocaleString('fr-FR')} FCFA
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Notes / Motif de Règlement</label>
