@@ -365,7 +365,7 @@ export const DashboardModule: React.FC = () => {
             Tableau de Bord Exécutif & Régulation des Loisirs
           </h2>
           <p className="text-xs sm:text-sm text-slate-200 mt-1 max-w-3xl leading-snug">
-            Observatoire départemental consolidé en temps réel : supervision de la brigade SAA, monitoring fiscal Trésor/Régie (70/30), analyse sectorielle (Formel $m^2$ / Informel forfait) et parité de genre.
+            Observatoire départemental consolidé en temps réel : supervision des agents SAA, monitoring fiscal Trésor/Régie (70/30), analyse sectorielle (Formel $m^2$ / Informel forfait) et parité de genre.
           </p>
         </div>
 

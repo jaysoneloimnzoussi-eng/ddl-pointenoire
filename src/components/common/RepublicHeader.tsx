@@ -51,8 +51,8 @@ export const RepublicHeader: React.FC = () => {
     logout,
     activeModule,
     setActiveModule,
-    isTabletBrigadeMode,
-    setIsTabletBrigadeMode,
+    isTabletTerrainMode,
+    setIsTabletTerrainMode,
     isSidebarCollapsed,
     setIsSidebarCollapsed,
     isMobileSidebarOpen,
@@ -181,19 +181,19 @@ export const RepublicHeader: React.FC = () => {
           {/* Quick Tablet / Field Mode Toggle */}
           <button
             onClick={() => {
-              const nextVal = !isTabletBrigadeMode;
-              setIsTabletBrigadeMode(nextVal);
+              const nextVal = !isTabletTerrainMode;
+              setIsTabletTerrainMode(nextVal);
               if (nextVal) {
                 setActiveModule('MOD-03');
-                triggerNotification('Mode Tablette Brigade SAA activé plein écran.', 'info');
+                triggerNotification('Mode Tablette Terrain SAA activé plein écran.', 'info');
               }
             }}
             className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded transition ${
-              isTabletBrigadeMode
+              isTabletTerrainMode
                 ? 'bg-[#006d2f] text-white shadow-sm ring-2 ring-[#006d2f]/30'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
             }`}
-            title="Basculer vers le mode tactile brigade terrain"
+            title="Basculer vers le mode tactile terrain"
           >
             <Smartphone className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Mode Tablette</span>

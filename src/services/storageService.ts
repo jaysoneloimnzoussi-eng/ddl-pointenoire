@@ -1,4 +1,4 @@
-import { Establishment, TerrainPaymentRecord, OfficialLegalAct, SpaMerchantSubscription, SpaHonorDiploma, ArrondissementCode, RegimeType, EstablishmentStatus, AgentTourneeEvent, AppUser } from '../types';
+import { Establishment, TerrainPaymentRecord, OfficialLegalAct, SpaMerchantSubscription, SpaHonorDiploma, ArrondissementCode, RegimeType, EstablishmentStatus, AgentTourneeEvent, AppUser, AttachedDocument } from '../types';
 import { TERRITORIAL_REFERENTIAL, ACTIVITY_CATEGORIES, TAXATION_RULES, APP_USERS } from '../constants/referential';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
@@ -176,7 +176,7 @@ function generateSeedDiplomas(): SpaHonorDiploma[] {
       label: 'Diplôme d’Honneur des Loisirs Sains & d’Excellence Acoustique',
       award_date: '2026-06-30',
       reference_number: 'DIP-HONNEUR-DDLPN-2026-001',
-      reasons: ['Respect exemplaire des normes acoustiques (<80 dB) certifié par la Brigade SAA']
+      reasons: ['Respect exemplaire des normes d\'exploitation certifié par le Service SAA']
     }
   ];
 }
@@ -250,7 +250,7 @@ function generateSeedTourneeEvents(establishments: Establishment[]): AgentTourne
       amountDue: est.balance_due || est.total_due,
       notes: type === 'CONVOCATION'
         ? 'Convocation pour régularisation administrative et paiement des droits régie DDL.'
-        : (type === 'ENCAISSEMENT_ACOMPTE' ? 'Rendez-vous convenu avec la tenancière pour recouvrement de l\'acompte.' : 'Visite de contrôle de conformité brigade SAA.'),
+        : (type === 'ENCAISSEMENT_ACOMPTE' ? 'Rendez-vous convenu avec la tenancière pour recouvrement de l\'acompte.' : 'Visite de contrôle de conformité Service SAA.'),
       isSynced: true,
       createdAt: '2026-09-20T08:00:00Z',
       updatedAt: '2026-09-29T08:00:00Z'
@@ -529,7 +529,7 @@ class StorageService {
               record_date: rec.record_date || (rec.created_at ? rec.created_at.split('T')[0] : '2026-09-07'),
               collected_by: (rec.agent_id && agentMap[rec.agent_id]) || 'Agent SAA Loubaki',
               agent_badge: 'SAA-PN-008',
-              notes: rec.notes || 'Enregistrement de conformité et encaissement brigade SAA.'
+              notes: rec.notes || 'Enregistrement de conformité et encaissement Service SAA.'
             });
           });
         }
@@ -588,7 +588,7 @@ class StorageService {
             amount_paid: amountPaid,
             balance_due: balance,
             status,
-            identified_by: (e.assigned_agent_id && agentMap[e.assigned_agent_id]) || 'Agent Brigade SAA',
+            identified_by: (e.assigned_agent_id && agentMap[e.assigned_agent_id]) || 'Agent Service SAA',
             identified_date: e.created_at ? e.created_at.split('T')[0] : '2026-09-07',
             last_inspection_date: e.updated_at ? e.updated_at.split('T')[0] : '2026-09-07',
             coordinates: coords,
@@ -857,6 +857,24 @@ class StorageService {
     return false;
   }
 
+  public attachDocumentToEstablishment(estId: string, doc: Omit<AttachedDocument, 'id' | 'uploaded_at'>): AttachedDocument {
+    const est = this.getEstablishmentById(estId);
+    if (!est) throw new Error('Établissement introuvable');
+
+    const newDoc: AttachedDocument = {
+      ...doc,
+      id: `DOC-${Date.now()}`,
+      uploaded_at: new Date().toISOString()
+    };
+
+    const currentDocs = est.documents || [];
+    this.updateEstablishment(estId, {
+      documents: [...currentDocs, newDoc]
+    });
+
+    return newDoc;
+  }
+
   // --- Payments / Receipts ---
   public getPayments(): TerrainPaymentRecord[] {
     return [...this.payments];
@@ -1065,8 +1083,8 @@ class StorageService {
       date_emission: new Date().toISOString().split('T')[0],
       delai_huitaine_date: params.date,
       motif: params.motif,
-      signataire_nom: params.agent.role === 'DIRECTEUR' ? params.agent.name : 'Chef Brigade SAA',
-      signataire_titre: params.agent.role === 'DIRECTEUR' ? params.agent.title : 'Chef de Brigade du Service Agrément & Assainissement',
+      signataire_nom: params.agent.role === 'DIRECTEUR' ? params.agent.name : 'Chef du Service SAA',
+      signataire_titre: params.agent.role === 'DIRECTEUR' ? params.agent.title : 'Chef du Service Agrément et Assainissement',
       agent_notificateur: `${params.agent.name} (${params.agent.badge})`,
       visa_lois: [
         'Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs',

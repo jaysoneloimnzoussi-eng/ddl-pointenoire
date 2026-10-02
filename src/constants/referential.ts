@@ -249,7 +249,7 @@ export const APP_USERS: AppUser[] = [
     role: 'AGENT_SAA',
     title: 'Contrôleur Qualité et Conformité (Matricule : 315713H)',
     phone: '06 425 0604',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'ambetos.saa@ddl-pointenoire.cg'
   },
   {
@@ -259,7 +259,7 @@ export const APP_USERS: AppUser[] = [
     role: 'AGENT_SAA',
     title: 'Statistiques et Documentation (Matricule : 249 500F)',
     phone: '065531376 / 05 627 2029',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'obomba.saa@ddl-pointenoire.cg'
   },
   {
@@ -269,7 +269,7 @@ export const APP_USERS: AppUser[] = [
     role: 'AGENT_SAA',
     title: 'Agent de Terrain DDL',
     phone: '+242 06 933 8110',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'kiounga.saa@ddl-pointenoire.cg'
   },
   {
@@ -279,7 +279,7 @@ export const APP_USERS: AppUser[] = [
     role: 'AGENT_SAA',
     title: 'Agent de Terrain DDL',
     phone: '06 955 8937',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'wawaeloge@gmail.com'
   },
   {
@@ -289,7 +289,7 @@ export const APP_USERS: AppUser[] = [
     role: 'AGENT_SAA',
     title: 'Contrôleur Qualité et Conformité',
     phone: '+242 06 6536116 / 05 749 4748',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'franckmpika555@gmail.com'
   },
   {
@@ -299,7 +299,7 @@ export const APP_USERS: AppUser[] = [
     role: 'AGENT_SAA',
     title: 'Agent de Terrain DDL',
     phone: '06 902 3655',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'ngoma.saa@ddl-pointenoire.cg'
   },
   {
@@ -309,7 +309,7 @@ export const APP_USERS: AppUser[] = [
     role: 'AGENT_SAA',
     title: 'Contrôleur Qualité & Conformité',
     phone: '05 087 6707',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'elenga.saa@ddl-pointenoire.cg'
   },
   {
@@ -319,7 +319,7 @@ export const APP_USERS: AppUser[] = [
     role: 'AGENT_SAA',
     title: 'Contrôleur Qualité et Conformité',
     phone: '06 000 00 07',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'ibara.saa@ddl-pointenoire.cg'
   },
   {
@@ -329,7 +329,7 @@ export const APP_USERS: AppUser[] = [
     role: 'AGENT_SAA',
     title: 'Contrôleur Qualité et Conformité',
     phone: '06 675 73 87 / 06 125 8401',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'galoum.saa@ddl-pointenoire.cg'
   },
   {
@@ -339,7 +339,7 @@ export const APP_USERS: AppUser[] = [
     role: 'AGENT_SAA',
     title: 'Responsable Qualité',
     phone: '068817104',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'jacquesmatoko.emploi@gmail.com'
   },
   {
@@ -375,7 +375,7 @@ export const PTA_2026_AXES: PtaObjective[] = [
     unit: 'Établissements',
     progress_percent: 78,
     deadline: '31 Décembre 2026',
-    lead_service: 'Brigade SAA'
+    lead_service: 'Service SAA'
   },
   {
     id: 'PTA-AXE1-02',
@@ -387,7 +387,7 @@ export const PTA_2026_AXES: PtaObjective[] = [
     unit: 'Inspections acoustiques',
     progress_percent: 72.5,
     deadline: '30 Novembre 2026',
-    lead_service: 'Brigade SAA'
+    lead_service: 'Service SAA'
   },
   {
     id: 'PTA-AXE2-01',
@@ -411,7 +411,7 @@ export const PTA_2026_AXES: PtaObjective[] = [
     unit: '% des encaissements',
     progress_percent: 94,
     deadline: 'En continu',
-    lead_service: 'SAF / Brigade SAA'
+    lead_service: 'SAF / Service SAA'
   },
   {
     id: 'PTA-AXE3-01',
@@ -473,7 +473,7 @@ export const LEGAL_TEXTS = [
     ref: 'Arrêté Départemental N° 018/MCAPNIT/DGL/DDL-PN-2026',
     title: 'Arrêté portant réglementation des horaires nocturnes et seuils sonores des débits de boissons et discothèques de Pointe-Noire',
     articles: [
-      { num: 'Art. 1', text: 'L’émission sonore extérieure ne peut excéder 85 décibels mesurés en limite de propriété après 22h00. L’installation d’un limiteur-enregistreur acoustique scellé par la brigade SAA est obligatoire pour les boîtes de nuit et cabarets.' },
+      { num: 'Art. 1', text: 'L’émission sonore extérieure ne peut excéder 85 décibels mesurés en limite de propriété après 22h00. L’installation d’un limiteur-enregistreur acoustique scellé par le Service SAA est obligatoire pour les boîtes de nuit et cabarets.' },
       { num: 'Art. 3', text: 'En cas de constat d’infraction flagrante ou d’absence d’agrément, une mise en demeure sous huitaine (72 heures ouvrées) est immédiatement notifiée à l’exploitant.' },
       { num: 'Art. 7', text: 'L’inobservation de la mise en demeure entraîne de plein droit la fermeture administrative immédiate des locaux avec apposition des scellés de la République.' }
     ]

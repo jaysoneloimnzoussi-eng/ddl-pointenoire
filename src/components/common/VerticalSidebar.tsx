@@ -46,7 +46,7 @@ const SIDEBAR_SECTIONS: NavSection[] = [
     ]
   },
   {
-    title: 'CONTRÔLE & BRIGADE SAA',
+    title: 'CONTRÔLE & CONFORMITÉ SAA',
     items: [
       { id: 'MOD-02', num: '02', label: 'Recensement & Recouvrement SAA', shortLabel: 'Recensement SAA', icon: ClipboardList, badge: '118' },
       { id: 'MOD-03', num: '03', label: 'Portail Terrain & Google Agenda SAA', shortLabel: 'Portail Terrain SAA', icon: Smartphone, badge: 'Agent' },
@@ -80,16 +80,16 @@ export const VerticalSidebar: React.FC = () => {
     setIsSidebarCollapsed,
     isMobileSidebarOpen,
     setIsMobileSidebarOpen,
-    isTabletBrigadeMode,
-    setIsTabletBrigadeMode,
+    isTabletTerrainMode,
+    setIsTabletTerrainMode,
     currentUser,
     logout
   } = useSession();
 
   const handleSelectModule = (id: string) => {
     setActiveModule(id);
-    if (id !== 'MOD-03' && isTabletBrigadeMode) {
-      setIsTabletBrigadeMode(false);
+    if (id !== 'MOD-03' && isTabletTerrainMode) {
+      setIsTabletTerrainMode(false);
     }
     // Auto close mobile drawer on select
     setIsMobileSidebarOpen(false);

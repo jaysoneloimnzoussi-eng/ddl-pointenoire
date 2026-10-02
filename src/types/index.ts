@@ -27,6 +27,16 @@ export type EstablishmentStatus =
 
 export type RegimeType = 'FORMEL' | 'INFORMEL';
 
+export interface AttachedDocument {
+  id: string;
+  name: string;
+  category: 'BAIL_COMMERCIAL' | 'RCCM' | 'PIECE_IDENTITE' | 'PHOTO_FACADE' | 'AUTRE';
+  file_url: string;
+  uploaded_at: string;
+  uploaded_by: string;
+  size_kb?: number;
+}
+
 export interface Establishment {
   id: string;
   name: string;
@@ -60,6 +70,7 @@ export interface Establishment {
   first_payment_date?: string;
   annual_renewal_date?: string;
   assigned_agent_id?: string;
+  documents?: AttachedDocument[];
   created_at: string;
   updated_at: string;
 }

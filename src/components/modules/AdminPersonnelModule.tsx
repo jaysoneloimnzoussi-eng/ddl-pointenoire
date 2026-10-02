@@ -67,7 +67,7 @@ export const AdminPersonnelModule: React.FC = () => {
     matricule: '',
     badge: '',
     title: 'Contrôleur Qualité et Conformité (Police des Loisirs)',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     zone: 'Arrondissement 1 Lumumba',
     phone: '+242 06 ',
     email: '',
@@ -106,7 +106,7 @@ export const AdminPersonnelModule: React.FC = () => {
 
   // Auto-generate badge and login when name or role changes in form
   const handleRoleChangeInForm = (role: UserRole) => {
-    let service = 'Brigade SAA - Terrain';
+    let service = 'Service SAA - Terrain';
     let title = 'Agent Contrôleur Qualité et Conformité';
     let badgePrefix = 'SAA-PN';
 
@@ -185,7 +185,7 @@ export const AdminPersonnelModule: React.FC = () => {
       matricule: '',
       badge: '',
       title: 'Contrôleur Qualité et Conformité (Police des Loisirs)',
-      service: 'Brigade SAA - Terrain',
+      service: 'Service SAA - Terrain',
       zone: 'Arrondissement 1 Lumumba',
       phone: '+242 06 ',
       email: '',
@@ -334,7 +334,7 @@ export const AdminPersonnelModule: React.FC = () => {
               >
                 <option value="ALL">Tous les rôles ({accounts.length})</option>
                 <option value="AGENT_SAA">Agents SAA Terrain</option>
-                <option value="CHEF_SAA">Chefs de Brigade SAA</option>
+                <option value="CHEF_SAA">Responsables Service SAA</option>
                 <option value="REGISSEUR">Régisseurs SAF</option>
                 <option value="CHEF_SPA">Cadres SPA</option>
                 <option value="ADMIN">Administrateurs</option>
@@ -603,8 +603,8 @@ export const AdminPersonnelModule: React.FC = () => {
                   onChange={e => handleRoleChangeInForm(e.target.value as UserRole)}
                   className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-800 outline-none"
                 >
-                  <option value="AGENT_SAA">Agent de Brigade SAA (Terrain)</option>
-                  <option value="CHEF_SAA">Chef de Brigade / Resp. SAA</option>
+                  <option value="AGENT_SAA">Agent du Service SAA (Terrain)</option>
+                  <option value="CHEF_SAA">Chef / Responsable Service SAA</option>
                   <option value="REGISSEUR">Régisseur SAF (Recettes & Trésor)</option>
                   <option value="CHEF_SPA">Cadre Promotion Loisirs (SPA)</option>
                   <option value="ADMIN">Administrateur Technique</option>
@@ -841,7 +841,7 @@ export const AdminPersonnelModule: React.FC = () => {
                       </div>
 
                       <div>
-                        <span className="text-slate-400 font-bold block text-[7px]">Fonction & Brigade :</span>
+                        <span className="text-slate-400 font-bold block text-[7px]">Fonction & Service :</span>
                         <p className="text-[8px] font-bold text-slate-700 leading-tight">
                           {selectedAgent.title}
                         </p>

@@ -27,8 +27,25 @@ export const LegalActsGeneratorModule: React.FC = () => {
   const [actType, setActType] = useState<OfficialLegalAct['type']>('MISE_EN_DEMEURE');
   const [delai, setDelai] = useState<string>('72 heures ouvrées (sous huitaine)');
   const [motif, setMotif] = useState<string>(
-    'Exploitation illicite sans agrément préalable d’ouverture, non-paiement des redevances et tapage nocturne avéré.'
+    'Exploitation sans agrément officiel préalable, défaut de constitution du dossier administratif et non-versement des redevances d’État.'
   );
+
+  const handleTypeChange = (newType: OfficialLegalAct['type']) => {
+    setActType(newType);
+    if (newType === 'MISE_EN_DEMEURE') {
+      setDelai('72 heures ouvrées (sous huitaine)');
+      setMotif('Exploitation sans agrément officiel préalable, défaut de constitution du dossier administratif et non-versement des redevances d’État.');
+    } else if (newType === 'CONVOCATION') {
+      setDelai('Mardi 6 octobre 2026 à 10h00');
+      setMotif('Comparution contradictoire obligatoire en vue de l\'instruction du dossier d\'agrément et de la régularisation fiscale et administrative.');
+    } else if (newType === 'ARRETE_FERMETURE') {
+      setDelai('Exécution immédiate à notification');
+      setMotif('Non-respect réitéré de la mise en demeure sous 72h, exercice illicite d\'activités de loisirs et défaut d\'agrément officiel.');
+    } else if (newType === 'ORDRE_MISSION') {
+      setDelai('Mission de contrôle du 2 au 5 octobre 2026');
+      setMotif('Contrôle contradictoire in situ de la conformité administrative, vérification des quittances et assainissement du secteur.');
+    }
+  };
 
   // Print modal
   const [printDoc, setPrintDoc] = useState<{
@@ -212,13 +229,13 @@ export const LegalActsGeneratorModule: React.FC = () => {
                 <label className="font-bold text-slate-700 block mb-1">Nature de l'acte juridique *</label>
                 <select
                   value={actType}
-                  onChange={e => setActType(e.target.value as any)}
+                  onChange={e => handleTypeChange(e.target.value as any)}
                   className="w-full p-2 border border-slate-300 rounded font-bold text-[#022448]"
                 >
                   <option value="MISE_EN_DEMEURE">Mise en demeure sous huitaine (72 heures)</option>
                   <option value="CONVOCATION">Convocation officielle contradictoire SAA</option>
                   <option value="ARRETE_FERMETURE">Arrêté portant fermeture administrative immédiate</option>
-                  <option value="ORDRE_MISSION">Ordre de mission d'inspection brigade</option>
+                  <option value="ORDRE_MISSION">Ordre de mission d'inspection SAA</option>
                 </select>
               </div>
 
@@ -250,13 +267,49 @@ export const LegalActsGeneratorModule: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Motif circonstancié de l'infraction *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-700">Motif circonstancié de l'infraction *</label>
+                  <span className="text-[10px] text-slate-400">Modèles pré-rédigés :</span>
+                </div>
+
+                {/* Quick Presets */}
+                <div className="flex flex-wrap gap-1 mb-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setMotif('Exploitation sans agrément officiel préalable, défaut de déclaration d\'activité et non-paiement des redevances d’État.')}
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-medium border border-slate-300"
+                  >
+                    Défaut d'agrément
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMotif('Absence de dépôt du dossier réglementaire d\'instruction et défaut de pièces justificatives obligatoires.')}
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-medium border border-slate-300"
+                  >
+                    Dossier non constitué
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMotif('Non-respect de l\'accord d\'échéance convenu sur le terrain pour le solde de la redevance départementale.')}
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-medium border border-slate-300"
+                  >
+                    Solde d'acompte non réglé
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMotif('Défaut de comparution injustifié à la convocation contradictoire préalable et refus de conciliation.')}
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-medium border border-slate-300"
+                  >
+                    Non-comparution
+                  </button>
+                </div>
+
                 <textarea
                   rows={4}
                   required
                   value={motif}
                   onChange={e => setMotif(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded"
+                  className="w-full p-2 border border-slate-300 rounded font-serif text-slate-800"
                 />
               </div>
 

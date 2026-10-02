@@ -44,7 +44,7 @@ export const SpaPromotionModule: React.FC = () => {
   const [isAddDipModal, setIsAddDipModal] = useState(false);
   const [dipEstId, setDipEstId] = useState(establishments[0]?.id || '');
   const [dipLabel, setDipLabel] = useState('Diplôme d’Honneur des Loisirs Sains & d’Excellence Acoustique');
-  const [dipReasons, setDipReasons] = useState('Respect exemplaire des normes acoustiques (<80 dB) certifié par la Brigade SAA');
+  const [dipReasons, setDipReasons] = useState('Respect exemplaire des normes acoustiques (<80 dB) certifié par la Service SAA');
 
   // Copy RSS
   const handleCopyRss = () => {
@@ -201,7 +201,7 @@ export const SpaPromotionModule: React.FC = () => {
                   </p>
 
                   <div className="mt-3 bg-white/70 p-3 rounded border border-amber-200 text-xs">
-                    <p className="font-bold text-slate-700 text-[11px] mb-1">Mérites constatés par la Brigade :</p>
+                    <p className="font-bold text-slate-700 text-[11px] mb-1">Mérites constatés par le Service SAA :</p>
                     <ul className="list-disc list-inside space-y-0.5 text-slate-600 text-[11px]">
                       {dip.reasons.map((r, i) => (
                         <li key={i}>{r}</li>
@@ -399,7 +399,7 @@ export const SpaPromotionModule: React.FC = () => {
                 🏛️ [COMMUNIQUÉ OFFICIEL] DIRECTION DÉPARTEMENTALE DES LOISIRS DE POINTE-NOIRE (DDL-PN)
               </p>
               <p className="mt-2">
-                Dans le cadre de l’exécution du Plan de Travail Annuel (PTA 2026), la Brigade du Service Agrément et Assainissement (SAA) félicite les établissements labellisés pour leur engagement citoyen et le respect scrupuleux de la Charte Acoustique Nocturne.
+                Dans le cadre de l’exécution du Plan de Travail Annuel (PTA 2026), le Service Agrément et Assainissement (SAA) félicite les établissements labellisés pour leur engagement citoyen et le respect scrupuleux de la Charte Acoustique Nocturne.
               </p>
               <p className="mt-2">
                 📢 Rappel aux exploitants : L'échéance de dépôt des dossiers d'agrément et d'attestation provisoire est fixée aux guichets de la régie DDL-PN.

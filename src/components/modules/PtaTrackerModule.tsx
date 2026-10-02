@@ -69,7 +69,7 @@ const DEFAULT_PTA_2026: PtaContent = {
   ],
   recommendations: [
     { priority: 'CRITIQUE', title: '1. Allocation Budgétaire Minimale', desc: 'Allouer une enveloppe minimale de 3 696 000 FCFA pour l\'exécution des missions prioritaires de régulation et d\'animation.' },
-    { priority: 'CRITIQUE', title: '2. Acquisition de Moyens Logistiques', desc: 'Acquérir 1 véhicule de service et 2 motos pour assurer les descentes régulières de la Brigade SAA dans les 7 zones.' },
+    { priority: 'CRITIQUE', title: '2. Acquisition de Moyens Logistiques', desc: 'Acquérir 1 véhicule de service et 2 motos pour assurer les missions régulières du Service SAA dans les 7 zones.' },
     { priority: 'HAUTE', title: '3. Simplification des Procédures Administratives', desc: 'Réduire le nombre de pièces exigées pour l\'autorisation d\'ouverture afin d\'accélérer la régularisation du secteur informel.' },
     { priority: 'HAUTE', title: '4. Renforcement des Ressources Humaines', desc: 'Affecter 5 agents fonctionnaires supplémentaires à la DDL-PN (2 Autorisation SAA, 2 Statistiques, 1 Promotion SPA).' },
     { priority: 'MOYENNE', title: '5. Validation des Conventions de Partenariat', desc: 'Faciliter la signature rapide des conventions avec Globaline, l\'Institut Français et Wing Wah.' }

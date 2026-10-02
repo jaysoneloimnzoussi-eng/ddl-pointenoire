@@ -174,19 +174,19 @@ ${rep.conclusion.faitA} ${rep.conclusion.date}
 
 Vu la Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs en République du Congo ;
 Vu le Décret N° 2010-804 du 31 décembre 2010 relatif à la lutte contre les pollutions sonores et nuisances nocturnes ;
-Vu le rapport de constat contradictoire dressé par la Brigade du Service Assistance et Autorisation (SAA) en date du 28 septembre 2026 ;
+Vu le rapport de constat contradictoire dressé par les agents du Service Agrément et Assainissement (SAA) en date du 28 septembre 2026 ;
 
-Il a été dûment constaté que votre établissement fonctionne en contravention flagrante des dispositions réglementaires en vigueur (défaut de paiement des redevances d'agrément et émissions sonores supérieures à 85 dB troublant la quiétude du voisinage).
+Il a été dûment constaté que votre établissement fonctionne en contravention flagrante des dispositions réglementaires en vigueur (défaut de paiement des redevances d'agrément et d'autorisation officielle d'ouverture).
 
 En conséquence, il vous est imparti un **délai impératif et non prorogeable de soixante-douze (72) heures** à compter de la notification de la présente pour :
 1. Vous présenter au siège de la DDL-PN munis de vos pièces d'identité et justificatifs d'exploitation ;
-2. Procéder au règlement intégral des droits d'instruction ou à la signature d'un protocole d'acompte ;
-3. Installer un dispositif de limitation acoustique certifié étalonné à moins de 80 dB.
+2. Procéder au règlement des droits d'instruction ou à la signature d'un protocole d'acompte ;
+3. Vous conformer aux normes réglementaires en vigueur.
 
 **Faute par vous de vous conformer aux prescriptions ci-dessus dans le délai prescrit, il sera procédé sans autre avis à la fermeture administrative immédiate de vos locaux avec apposition des scellés de la République et poursuites judiciaires.**
 
 Fait à Pointe-Noire, le ${new Date().toLocaleDateString('fr-FR')}
-*Pour la Brigade SAA : Jacques MATOKO*
+*Pour le Service SAA : Jacques MATOKO*
 *Le Directeur Départemental des Loisirs : Jean Richard NTSEKE NGOUAKA*`;
       } else if (lower.includes('pta') || lower.includes('plan de travail')) {
         aiResponseText = `### 🎯 CADRE STRATÉGIQUE DU PLAN DE TRAVAIL ANNUEL (PTA)

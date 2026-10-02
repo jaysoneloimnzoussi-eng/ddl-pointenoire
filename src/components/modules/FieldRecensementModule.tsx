@@ -57,7 +57,7 @@ export const FieldRecensementModule: React.FC = () => {
     decibel_level: 82,
     lat: -4.7938,
     lng: 11.8569,
-    notes: 'Recensement direct brigade SAA Pointe-Noire'
+    notes: 'Recensement direct Service SAA Pointe-Noire'
   });
 
   // Direct payment modal
@@ -423,7 +423,7 @@ export const FieldRecensementModule: React.FC = () => {
                   {selectedEst.id}
                 </span>
                 <h3 className="text-xl font-black text-[#022448] uppercase mt-1">{selectedEst.name}</h3>
-                <p className="text-xs text-slate-500">Fiche contradictoire officielle d'enquête brigade SAA</p>
+                <p className="text-xs text-slate-500">Fiche contradictoire officielle d'enquête Service SAA</p>
               </div>
               <button
                 onClick={() => setSelectedEst(null)}

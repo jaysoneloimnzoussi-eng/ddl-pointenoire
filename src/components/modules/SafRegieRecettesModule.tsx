@@ -147,7 +147,7 @@ export const SafRegieRecettesModule: React.FC = () => {
             <span className="text-xs font-bold text-blue-800">FCFA</span>
           </div>
           <p className="text-[11px] text-blue-800 mt-2">
-            Carburant brigade SAA, fournitures et missions in situ
+            Carburant Service SAA, fournitures et missions in situ
           </p>
         </div>
       </div>

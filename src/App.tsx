@@ -29,7 +29,7 @@ const AppContent: React.FC = () => {
     isAuthenticated,
     login,
     activeModule,
-    isTabletBrigadeMode,
+    isTabletTerrainMode,
     activeNotification,
     clearNotification
   } = useSession();
@@ -151,7 +151,7 @@ const AppContent: React.FC = () => {
         <VerticalSidebar />
 
         {/* Main Content Area */}
-        <main className={`flex-1 overflow-y-auto ${isTabletBrigadeMode ? 'p-2 sm:p-3' : 'p-3 sm:p-6'} bg-[#f8fafd]`}>
+        <main className={`flex-1 overflow-y-auto ${isTabletTerrainMode ? 'p-2 sm:p-3' : 'p-3 sm:p-6'} bg-[#f8fafd]`}>
           <div className="max-w-[1720px] mx-auto">
             <ErrorBoundary key={activeModule} fallbackTitle={`Erreur dans le module ${activeModule}`}>
               {renderActiveModule()}

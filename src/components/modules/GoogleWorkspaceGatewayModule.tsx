@@ -123,7 +123,7 @@ export const GoogleWorkspaceGatewayModule: React.FC = () => {
     setIsScanning(true);
     setTimeout(() => {
       setIsScanning(false);
-      triggerNotification('Scan Google Agenda complété : 4 tournées de brigade identifiées et parsées.', 'success');
+      triggerNotification('Scan Google Agenda complété : 4 tournées SAA identifiées et parsées.', 'success');
     }, 800);
   };
 
@@ -216,7 +216,7 @@ export const GoogleWorkspaceGatewayModule: React.FC = () => {
           </div>
           <div>
             <p className="text-[10px] text-slate-400 font-bold uppercase">Compte Synchronisé</p>
-            <p className="font-bold text-slate-800">{currentUser.email || 'brigade.saa@ddl-pointenoire.cg'}</p>
+            <p className="font-bold text-slate-800">{currentUser.email || 'service.saa@ddl-pointenoire.cg'}</p>
             <p className="text-emerald-700 text-[10px] font-semibold">Connexion Active (Token certifié)</p>
           </div>
         </div>

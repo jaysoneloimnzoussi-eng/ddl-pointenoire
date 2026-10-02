@@ -11,8 +11,8 @@ interface SessionContextType {
   logout: () => void;
   activeModule: string;
   setActiveModule: (moduleId: string) => void;
-  isTabletBrigadeMode: boolean;
-  setIsTabletBrigadeMode: (val: boolean) => void;
+  isTabletTerrainMode: boolean;
+  setIsTabletTerrainMode: (val: boolean) => void;
   isSidebarCollapsed: boolean;
   setIsSidebarCollapsed: (val: boolean | ((prev: boolean) => boolean)) => void;
   isMobileSidebarOpen: boolean;
@@ -48,7 +48,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return localStorage.getItem('ddl_pn_active_module') || 'MOD-01';
   });
 
-  const [isTabletBrigadeMode, setIsTabletBrigadeMode] = useState<boolean>(false);
+  const [isTabletTerrainMode, setIsTabletTerrainMode] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('ddl_pn_sidebar_collapsed') === 'true';
   });
@@ -120,8 +120,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         logout,
         activeModule,
         setActiveModule,
-        isTabletBrigadeMode,
-        setIsTabletBrigadeMode,
+        isTabletTerrainMode,
+        setIsTabletTerrainMode,
         isSidebarCollapsed,
         setIsSidebarCollapsed,
         isMobileSidebarOpen,

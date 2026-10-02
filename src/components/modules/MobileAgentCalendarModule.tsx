@@ -41,7 +41,10 @@ import {
   Info,
   CalendarDays,
   Smartphone,
-  LayoutDashboard
+  LayoutDashboard,
+  Route,
+  QrCode,
+  FolderLock
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { storageService } from '../../services/storageService';
@@ -50,19 +53,23 @@ import { AgentTourneeEvent, Establishment, TerrainPaymentRecord, AppUser, Regime
 import { APP_USERS, TERRITORIAL_REFERENTIAL } from '../../constants/referential';
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
 import { OfficialRepublicLogo } from '../common/OfficialSeal';
+import { OptimizedRouteModal } from './terrain/OptimizedRouteModal';
+import { PromoterPublicPortalModal } from './terrain/PromoterPublicPortalModal';
+import { AutomatedRemindersModal } from './terrain/AutomatedRemindersModal';
+import { DocumentVaultModal } from './terrain/DocumentVaultModal';
 
-// Liste officielle des agents et commandement de la Brigade SAA (strictement issus de APP_USERS)
+// Liste officielle des agents du Service SAA (strictement issus de APP_USERS)
 const FIELD_AGENTS = APP_USERS.filter(u => u.role === 'AGENT_SAA' || u.role === 'CHEF_SAA' || u.role === 'ADMIN' || u.role === 'DIRECTEUR').map(u => ({
   id: u.id,
   badge: u.badge,
   name: u.name,
   role: u.title,
   zone: u.role === 'ADMIN'
-    ? 'Commandement Central & Supervision SAA - Tous Arrondissements'
+    ? 'Supervision Centrale SAA - Tous Arrondissements'
     : u.role === 'DIRECTEUR'
     ? 'Cabinet de Direction Départementale'
     : u.badge === 'SAA-PN-001'
-    ? 'Commandement Central Brigade SAA - Tous Arrondissements'
+    ? 'Supervision Centrale SAA - Tous Arrondissements'
     : u.badge === 'SAA-PN-008'
     ? 'Arrondissements 1 Lumumba & 2 Mvou-Mvou'
     : u.badge === 'SAA-PN-005'
@@ -134,6 +141,12 @@ export const MobileAgentCalendarModule: React.FC = () => {
   const [isSoundMeterModalOpen, setIsSoundMeterModalOpen] = useState(false);
   const [isOfflineQueueModalOpen, setIsOfflineQueueModalOpen] = useState(false);
   const [isAgentLoginModalOpen, setIsAgentLoginModalOpen] = useState(false);
+  const [isRouteModalOpen, setIsRouteModalOpen] = useState(false);
+  const [isRemindersModalOpen, setIsRemindersModalOpen] = useState(false);
+  const [isPortalModalOpen, setIsPortalModalOpen] = useState(false);
+  const [selectedPortalEst, setSelectedPortalEst] = useState<Establishment | null>(null);
+  const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
+  const [selectedVaultEst, setSelectedVaultEst] = useState<Establishment | null>(null);
 
   // Auto-hide completed today toggle (Automatic disappearance after payment)
   const [hideCompletedToday, setHideCompletedToday] = useState(true);
@@ -174,7 +187,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
   const [paymentAmount, setPaymentAmount] = useState<number>(50000);
   const [paymentMethod, setPaymentMethod] = useState<TerrainPaymentRecord['payment_method']>('MTN Mobile Money');
   const [payerName, setPayerName] = useState<string>('');
-  const [paymentNotes, setPaymentNotes] = useState<string>('Encaissement direct in situ par la Brigade SAA');
+  const [paymentNotes, setPaymentNotes] = useState<string>('Encaissement direct in situ par les agents SAA');
   
   // Tenancière agreement and next installment appointment states
   const [scheduleNextRdv, setScheduleNextRdv] = useState<boolean>(true);
@@ -205,8 +218,8 @@ export const MobileAgentCalendarModule: React.FC = () => {
     RECENSEMENT_IN_SITU: true
   });
 
-  // Filter mode: "ONLY_ME" (only current agent's events) or "ALL_BRIGADE" (all team)
-  const [agentScope, setAgentScope] = useState<'ONLY_ME' | 'ALL_BRIGADE'>('ONLY_ME');
+  // Filter mode: "ONLY_ME" (only current agent's events) or "ALL_AGENTS" (all team)
+  const [agentScope, setAgentScope] = useState<'ONLY_ME' | 'ALL_AGENTS'>('ONLY_ME');
 
   // Print modal state
   const [printDoc, setPrintDoc] = useState<{
@@ -232,7 +245,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
     };
     const handleOffline = () => {
       setIsRealOnline(false);
-      triggerNotification('Mode Hors-Ligne activé. Vos actions de brigade sont sécurisées localement.', 'warning');
+      triggerNotification('Mode Hors-Ligne activé. Vos interventions sont sécurisées localement.', 'warning');
     };
 
     window.addEventListener('online', handleOnline);
@@ -289,7 +302,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
         if (!matchAgent) return false;
       } else {
         // For Admin: respect agentScope selection
-        if (agentScope !== 'ALL_BRIGADE') {
+        if (agentScope !== 'ALL_AGENTS') {
           const matchAgent =
             evt.agentBadge === activeAgentBadge ||
             evt.agentId === activeAgentBadge;
@@ -327,9 +340,9 @@ export const MobileAgentCalendarModule: React.FC = () => {
 
   // Agent daily statistics
   const agentDailyStats = useMemo(() => {
-    const todayEvents = events.filter(e => e.date === currentDateStr && (agentScope === 'ALL_BRIGADE' || e.agentBadge === activeAgentBadge));
+    const todayEvents = events.filter(e => e.date === currentDateStr && (agentScope === 'ALL_AGENTS' || e.agentBadge === activeAgentBadge));
     const allPayments = storageService.getPayments();
-    const todayPayments = allPayments.filter(p => p.record_date === currentDateStr && (agentScope === 'ALL_BRIGADE' || p.agent_badge === activeAgentBadge));
+    const todayPayments = allPayments.filter(p => p.record_date === currentDateStr && (agentScope === 'ALL_AGENTS' || p.agent_badge === activeAgentBadge));
     const totalCollected = todayPayments.reduce((sum, p) => sum + p.amount_paid, 0);
     const convocationsCount = todayEvents.filter(e => e.type === 'CONVOCATION').length;
     const pendingTournees = todayEvents.filter(e => e.status !== 'EFFECTUE').length;
@@ -423,7 +436,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
           border: 'border-slate-300',
           text: 'text-slate-800',
           pillBg: '#475569',
-          label: 'Intervention Brigade'
+          label: 'Intervention SAA'
         };
     }
   };
@@ -726,7 +739,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
     if (selectedEvent?.id === evtId) {
       setSelectedEvent(prev => (prev ? { ...prev, status: 'EFFECTUE' } : null));
     }
-    triggerNotification('Opération de brigade validée et enregistrée in situ.', 'success');
+    triggerNotification('Intervention SAA validée et enregistrée in situ.', 'success');
   };
 
   // Save Decibel Measurement
@@ -814,7 +827,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
               <span className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-1.5">
                 <span className="font-semibold text-slate-900">Google Agenda</span>
                 <span className="text-[10px] bg-blue-100 text-blue-900 font-mono-ref px-1.5 py-0.5 rounded font-extrabold">
-                  BRIGADE SAA
+                  SERVICE SAA
                 </span>
               </span>
               <span className="text-[10px] text-slate-500 font-medium block">
@@ -940,7 +953,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
             <button
               onClick={() => setIsAgentLoginModalOpen(true)}
               className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 bg-slate-100 hover:bg-slate-200 rounded-full border border-slate-300 transition text-left cursor-pointer"
-              title="Superviser un autre agent de brigade"
+              title="Superviser un autre agent SAA"
             >
               <div className="w-7 h-7 rounded-full bg-[#006d2f] text-amber-300 font-extrabold text-xs flex items-center justify-center border border-amber-400">
                 {currentAgent.avatar}
@@ -1008,18 +1021,39 @@ export const MobileAgentCalendarModule: React.FC = () => {
             </span>
           </div>
 
+          {/* New Powerful Tools: Route Optimization & WhatsApp Reminders */}
+          <button
+            type="button"
+            onClick={() => setIsRouteModalOpen(true)}
+            className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold rounded-lg text-xs flex items-center gap-1 border border-emerald-400/40 transition cursor-pointer"
+            title="Calculer l'itinéraire le plus court par quartier pour aujourd'hui"
+          >
+            <Route className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="hidden sm:inline">Itinéraire GPS</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsRemindersModalOpen(true)}
+            className="px-2.5 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 font-bold rounded-lg text-xs flex items-center gap-1 border border-purple-400/40 transition cursor-pointer"
+            title="Envoyer les rappels automatiques WhatsApp et SMS aux tenanciers (48h)"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-purple-400" />
+            <span className="hidden sm:inline">Relances 48h</span>
+          </button>
+
           {currentUser.role === 'ADMIN' ? (
             <>
-              {/* Scope Toggle: Only Me / All Brigade (Only for Admin) */}
+              {/* Scope Toggle: Agent individuel / Tous les agents (Only for Admin) */}
               <button
-                onClick={() => setAgentScope(prev => prev === 'ONLY_ME' ? 'ALL_BRIGADE' : 'ONLY_ME')}
+                onClick={() => setAgentScope(prev => prev === 'ONLY_ME' ? 'ALL_AGENTS' : 'ONLY_ME')}
                 className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
                   agentScope === 'ONLY_ME'
                     ? 'bg-blue-600 text-white border-blue-400'
                     : 'bg-white/10 text-slate-300 border-white/20 hover:bg-white/20'
                 }`}
               >
-                {agentScope === 'ONLY_ME' ? 'Vue Agent individuel' : 'Supervision Toute la brigade'}
+                {agentScope === 'ONLY_ME' ? 'Vue Agent individuel' : 'Supervision Tous les agents'}
               </button>
 
               <button
@@ -1179,7 +1213,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
                     const day = i + 1;
                     const dateStr = `2026-09-${String(day).padStart(2, '0')}`;
                     const isSelected = dateStr === currentDateStr;
-                    const hasEvents = events.some(e => e.date === dateStr && (agentScope === 'ALL_BRIGADE' || e.agentBadge === activeAgentBadge));
+                    const hasEvents = events.some(e => e.date === dateStr && (agentScope === 'ALL_AGENTS' || e.agentBadge === activeAgentBadge));
                     return (
                       <button
                         key={day}
@@ -1202,7 +1236,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
               {/* "Mes Agendas" / Color Filters */}
               <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Mes Agendas de Brigade
+                  Agendas du Service SAA
                 </span>
                 <div className="space-y-1.5">
                   {[
@@ -1231,6 +1265,20 @@ export const MobileAgentCalendarModule: React.FC = () => {
 
               {/* Quick field tools */}
               <div className="space-y-1 pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => setIsRouteModalOpen(true)}
+                  className="w-full text-left p-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-bold flex items-center gap-2 transition"
+                >
+                  <Route className="w-4 h-4 text-emerald-700" />
+                  <span>Itinéraire Optimisé GPS</span>
+                </button>
+                <button
+                  onClick={() => setIsRemindersModalOpen(true)}
+                  className="w-full text-left p-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 text-xs font-bold flex items-center gap-2 transition"
+                >
+                  <MessageSquare className="w-4 h-4 text-purple-700" />
+                  <span>Relances WhatsApp (48h)</span>
+                </button>
                 <button
                   onClick={() => setIsSoundMeterModalOpen(true)}
                   className="w-full text-left p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-900 text-xs font-semibold flex items-center gap-2 transition"
@@ -1818,6 +1866,39 @@ export const MobileAgentCalendarModule: React.FC = () => {
                 </button>
               </div>
 
+              {/* Portal & GED Buttons */}
+              <div className="grid grid-cols-2 gap-2 text-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const est = establishments.find(e => e.id === selectedEvent.establishmentId);
+                    if (est) {
+                      setSelectedPortalEst(est);
+                      setIsPortalModalOpen(true);
+                    }
+                  }}
+                  className="p-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black rounded-lg flex items-center justify-center gap-1.5 shadow-xs transition"
+                >
+                  <QrCode className="w-3.5 h-3.5 text-slate-950" />
+                  <span>Portail Tenancier (MoMo)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const est = establishments.find(e => e.id === selectedEvent.establishmentId);
+                    if (est) {
+                      setSelectedVaultEst(est);
+                      setIsVaultModalOpen(true);
+                    }
+                  }}
+                  className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold border border-blue-200 rounded-lg flex items-center justify-center gap-1.5 shadow-xs transition"
+                >
+                  <FolderLock className="w-3.5 h-3.5 text-blue-700" />
+                  <span>Coffre-Fort GED</span>
+                </button>
+              </div>
+
               {/* Mark as Done */}
               {selectedEvent.status !== 'EFFECTUE' && (
                 <button
@@ -2216,7 +2297,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
                   Effet automatique sur l'Agenda Google :
                 </span>
                 <p>
-                  L'échéance de {medDelaiJours === 3 ? '72 heures' : '8aine'} sera automatiquement positionnée dans l'Agenda Google de la brigade pour vérification du paiement ou exécution de l'arrêté de fermeture administrative.
+                  L'échéance de {medDelaiJours === 3 ? '72 heures' : '8aine'} sera automatiquement positionnée dans l'Agenda Google du service pour vérification du paiement ou exécution de l'arrêté de fermeture administrative.
                 </p>
               </div>
 
@@ -2578,11 +2659,11 @@ export const MobileAgentCalendarModule: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Instructions / Notes de brigade</label>
+                <label className="font-bold text-slate-700 block mb-1">Instructions / Notes d'intervention</label>
                 <input
                   type="text"
                   name="eventNotes"
-                  placeholder="Ex: Constat sonore ou vérification paiement 1er acompte"
+                  placeholder="Ex: Vérification paiement acompte ou conformité administrative"
                   className="w-full p-2 border rounded"
                 />
               </div>
@@ -2608,7 +2689,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
       )}
 
       {/* ========================================================
-          9. MODAL: SONOMÈTRE NUMÉRIQUE DE BRIGADE (DÉCIBELMÈTRE)
+          9. MODAL: SONOMÈTRE NUMÉRIQUE SAA (DÉCIBELMÈTRE)
          ======================================================== */}
       {isSoundMeterModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 animate-in fade-in">
@@ -2616,7 +2697,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
             <div className="flex items-center justify-between border-b pb-3 mb-3">
               <h3 className="text-base font-extrabold text-blue-900 flex items-center gap-1.5">
                 <Volume2 className="w-5 h-5 text-blue-600" />
-                <span>Sonomètre Numérique de Brigade</span>
+                <span>Sonomètre Numérique SAA</span>
               </h3>
               <button onClick={() => setIsSoundMeterModalOpen(false)} className="text-slate-400 font-bold p-1">✕</button>
             </div>
@@ -2721,7 +2802,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
                       <span className="text-[9px] font-mono-ref text-slate-400">{item.timestamp?.slice(11, 19)}</span>
                     </div>
                     <div className="text-[11px] mt-1 font-medium">
-                      {item.payload?.establishment_name || item.payload?.establishmentName || 'Opération brigade'}
+                      {item.payload?.establishment_name || item.payload?.establishmentName || 'Intervention SAA'}
                     </div>
                     {item.payload?.amount && (
                       <div className="text-emerald-700 font-mono-ref font-bold text-[10px]">
@@ -2770,7 +2851,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
               <div>
                 <h3 className="text-base font-extrabold text-[#022448] flex items-center gap-1.5">
                   <UserCheck className="w-5 h-5 text-blue-600" />
-                  <span>Sélection de l'Agent de Brigade SAA</span>
+                  <span>Sélection de l'Agent SAA</span>
                 </h3>
                 <p className="text-[10px] text-slate-500">Accès individuel au Google Agenda et carnet d'encaissement</p>
               </div>
@@ -2827,6 +2908,55 @@ export const MobileAgentCalendarModule: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Optimized Route Modal */}
+      <OptimizedRouteModal
+        isOpen={isRouteModalOpen}
+        onClose={() => setIsRouteModalOpen(false)}
+        events={filteredEvents}
+        currentDateStr={currentDateStr}
+        agentName={currentAgent.name}
+        agentBadge={currentAgent.badge}
+        onSelectEvent={evt => setSelectedEvent(evt)}
+        onMarkDone={evtId => handleMarkEventDone(evtId)}
+      />
+
+      {/* Automated Reminders (SMS & WhatsApp 48h) Modal */}
+      <AutomatedRemindersModal
+        isOpen={isRemindersModalOpen}
+        onClose={() => setIsRemindersModalOpen(false)}
+        events={filteredEvents}
+        currentDateStr={currentDateStr}
+      />
+
+      {/* Promoter Public Portal & MoMo Payment Modal */}
+      <PromoterPublicPortalModal
+        isOpen={isPortalModalOpen}
+        onClose={() => {
+          setIsPortalModalOpen(false);
+          setSelectedPortalEst(null);
+        }}
+        establishment={selectedPortalEst}
+        onPaymentSuccess={payment => {
+          reloadEvents();
+          triggerNotification(`Paiement de ${payment.amount_paid.toLocaleString('fr-FR')} FCFA validé via le portail Mobile Money ! Quittance N° ${payment.receipt_reference}.`, 'success');
+        }}
+      />
+
+      {/* Document Vault & Digital GED Modal */}
+      <DocumentVaultModal
+        isOpen={isVaultModalOpen}
+        onClose={() => {
+          setIsVaultModalOpen(false);
+          setSelectedVaultEst(null);
+        }}
+        establishment={selectedVaultEst}
+        agentName={currentAgent.name}
+        onDocumentAdded={() => {
+          reloadEvents();
+          triggerNotification('Pièce justificative chiffrée et versée au dossier avec succès.', 'success');
+        }}
+      />
 
       {/* Global Printable Document Modal */}
       <PrintModal

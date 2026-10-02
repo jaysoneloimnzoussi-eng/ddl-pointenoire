@@ -41,7 +41,7 @@ export const OFFICIAL_USER_ACCOUNTS: UserAccount[] = [
     role: 'AGENT_SAA',
     title: 'Contrôleur Qualité et Conformité (Matricule : 315713H)',
     phone: '06 425 0604',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'ambetos.saa@ddl-pointenoire.cg',
     defaultPassword: 'Ambetos@315',
     isActive: true
@@ -54,7 +54,7 @@ export const OFFICIAL_USER_ACCOUNTS: UserAccount[] = [
     role: 'AGENT_SAA',
     title: 'Statistiques et Documentation (Matricule : 249 500F)',
     phone: '065531376 / 05 627 2029',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'obomba.saa@ddl-pointenoire.cg',
     defaultPassword: 'Obomba@249',
     isActive: true
@@ -67,7 +67,7 @@ export const OFFICIAL_USER_ACCOUNTS: UserAccount[] = [
     role: 'AGENT_SAA',
     title: 'Agent de Terrain DDL',
     phone: '+242 06 933 8110',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'kiounga.saa@ddl-pointenoire.cg',
     defaultPassword: 'Kiounga@002',
     isActive: true
@@ -80,7 +80,7 @@ export const OFFICIAL_USER_ACCOUNTS: UserAccount[] = [
     role: 'AGENT_SAA',
     title: 'Agent de Terrain DDL',
     phone: '06 955 8937',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'wawaeloge@gmail.com',
     defaultPassword: 'Wawa@2026',
     isActive: true
@@ -93,7 +93,7 @@ export const OFFICIAL_USER_ACCOUNTS: UserAccount[] = [
     role: 'AGENT_SAA',
     title: 'Contrôleur Qualité et Conformité',
     phone: '+242 06 6536116 / 05 749 4748',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'franckmpika555@gmail.com',
     defaultPassword: 'Mpika@2026',
     isActive: true
@@ -106,7 +106,7 @@ export const OFFICIAL_USER_ACCOUNTS: UserAccount[] = [
     role: 'AGENT_SAA',
     title: 'Agent de Terrain DDL',
     phone: '06 902 3655',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'ngoma.saa@ddl-pointenoire.cg',
     defaultPassword: 'Ngoma@2026',
     isActive: true
@@ -119,7 +119,7 @@ export const OFFICIAL_USER_ACCOUNTS: UserAccount[] = [
     role: 'AGENT_SAA',
     title: 'Contrôleur Qualité & Conformité',
     phone: '05 087 6707',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'elenga.saa@ddl-pointenoire.cg',
     defaultPassword: 'Elenga@2026',
     isActive: true
@@ -132,7 +132,7 @@ export const OFFICIAL_USER_ACCOUNTS: UserAccount[] = [
     role: 'AGENT_SAA',
     title: 'Contrôleur Qualité et Conformité',
     phone: '06 000 00 07',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'ibara.saa@ddl-pointenoire.cg',
     defaultPassword: 'Ibara@2026',
     isActive: true
@@ -145,7 +145,7 @@ export const OFFICIAL_USER_ACCOUNTS: UserAccount[] = [
     role: 'AGENT_SAA',
     title: 'Contrôleur Qualité et Conformité',
     phone: '06 675 73 87 / 06 125 8401',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'galoum.saa@ddl-pointenoire.cg',
     defaultPassword: 'Galoum@2026',
     isActive: true
@@ -158,7 +158,7 @@ export const OFFICIAL_USER_ACCOUNTS: UserAccount[] = [
     role: 'AGENT_SAA',
     title: 'Responsable Qualité',
     phone: '068817104',
-    service: 'Brigade SAA - Terrain',
+    service: 'Service SAA - Terrain',
     email: 'mpemba.saa@ddl-pointenoire.cg',
     defaultPassword: 'Mpemba@2026',
     isActive: true
