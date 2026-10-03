@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 
 interface LogoProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
@@ -62,3 +63,86 @@ export const RepublicTricolorBar: React.FC<{ className?: string }> = ({ classNam
     </div>
   );
 };
+
+export interface RepublicQrCodeProps {
+  payload?: any;
+  data?: any;
+  size?: number;
+  showDetails?: boolean;
+  className?: string;
+}
+
+export const RepublicQrCode: React.FC<RepublicQrCodeProps> = ({
+  payload,
+  data,
+  size = 80,
+  showDetails = false,
+  className = ''
+}) => {
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const targetData = payload ?? data;
+
+  useEffect(() => {
+    let content = '';
+    if (typeof targetData === 'string') {
+      content = targetData;
+    } else if (targetData && typeof targetData === 'object') {
+      const refCode = targetData.ref || targetData.pv_number || targetData.receipt || targetData.id || 'DDL-PN-2026';
+      const etabName = targetData.establishment_name || targetData.name || targetData.etab || '';
+      const dateStr = targetData.date || '';
+      const verifyUrl = `https://ddl-pointenoire.vercel.app/#/verify?ref=${encodeURIComponent(refCode)}&etab=${encodeURIComponent(etabName)}&date=${encodeURIComponent(dateStr)}`;
+      
+      content = `${verifyUrl}\n[AUTHENTICITÉ RÉPUBLIQUE DU CONGO - DDL-PN]\n` +
+        Object.entries(targetData)
+          .map(([k, v]) => `${k.toUpperCase()}: ${v}`)
+          .join('\n') +
+        `\nSIGNATAIRE: NTSEKE NGOUAKA Jean Richard\nVALIDITÉ: OFFICIELLE MCAPNIT`;
+    } else {
+      content = 'DDL-PN-2026-OFFICIEL';
+    }
+
+    QRCode.toDataURL(content, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      width: size * 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    })
+      .then(url => setQrDataUrl(url))
+      .catch(err => console.error('Erreur génération QR code:', err));
+  }, [targetData, size]);
+
+  return (
+    <div className={`inline-flex flex-col items-center text-center ${className}`}>
+      <div
+        className="p-1 bg-white border border-slate-300 shadow-xs rounded flex items-center justify-center"
+        style={{ width: size + 6, height: size + 6 }}
+      >
+        {qrDataUrl ? (
+          <img
+            src={qrDataUrl}
+            alt="QR Code Officiel Républicain"
+            className="w-full h-full object-contain select-none"
+          />
+        ) : (
+          <div className="w-full h-full bg-slate-100 flex items-center justify-center text-[8px] text-slate-400">
+            QR
+          </div>
+        )}
+      </div>
+      {showDetails && (
+        <div className="mt-1 font-mono-ref leading-tight">
+          <p className="text-[7.5px] font-black uppercase text-slate-900 tracking-wider">
+            QR CODE VÉRIFIABLE
+          </p>
+          <p className="text-[6px] text-emerald-800 font-bold uppercase">
+            ✓ Certifié MCAPNIT / DDL-PN
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+

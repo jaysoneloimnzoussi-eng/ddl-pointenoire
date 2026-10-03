@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Printer, ExternalLink, Download, CheckCircle2, ShieldCheck, QrCode, FileText } from 'lucide-react';
-import { OfficialRepublicLogo, RepublicTricolorBar } from '../common/OfficialSeal';
+import { OfficialRepublicLogo, RepublicTricolorBar, RepublicQrCode } from '../common/OfficialSeal';
 import { OfficialVerifiableQrCode } from '../common/OfficialVerifiableQrCode';
 import { REPUBLIQUE_CONGO } from '../../constants/referential';
 import { OfficialReportDocumentView } from '../modules/OfficialReportDocumentView';
