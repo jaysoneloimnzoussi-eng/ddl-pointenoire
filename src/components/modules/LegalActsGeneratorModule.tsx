@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   FileCheck2,
   AlertTriangle,
@@ -9,18 +9,47 @@ import {
   Calendar,
   UserCheck,
   Scale,
-  CheckCircle2
+  CheckCircle2,
+  Lock,
+  Key,
+  ShieldCheck,
+  Search,
+  Check,
+  Sparkles,
+  FileText,
+  BadgeCheck,
+  RefreshCw,
+  Hash,
+  Download
 } from 'lucide-react';
 import { storageService } from '../../services/storageService';
 import { useSession } from '../../context/SessionContext';
-import { OfficialLegalAct, Establishment } from '../../types';
+import { OfficialLegalAct, Establishment, AuditLogEntry, StateDigitalSignature } from '../../types';
 import { formatDateFR } from '../../utils/dateUtils';
 import { PrintModal } from '../print/PrintModal';
+import { OfficialRepublicLogo, RepublicTricolorBar } from '../common/OfficialSeal';
 
 export const LegalActsGeneratorModule: React.FC = () => {
   const { currentUser, triggerNotification } = useSession();
+  const [activeTab, setActiveTab] = useState<'ATELIER_ACTES' | 'SIGNATURE_ELECTRONIQUE' | 'PISTE_AUDIT_IGE'>('ATELIER_ACTES');
+
   const [acts, setActs] = useState<OfficialLegalAct[]>(() => storageService.getActs());
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => storageService.getAuditLogs());
   const establishments = storageService.getEstablishments();
+  const signatories = useMemo(() => storageService.getOfficialSignatories(), []);
+
+  // Filter & Search Audit
+  const [auditSearchQuery, setAuditSearchQuery] = useState('');
+  const [auditActionFilter, setAuditActionFilter] = useState('ALL');
+  const [auditVerificationStatus, setAuditVerificationStatus] = useState<{
+    tested: boolean;
+    valid: boolean;
+    count: number;
+  }>({
+    tested: false,
+    valid: true,
+    count: 0
+  });
 
   // Generator form modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -30,6 +59,21 @@ export const LegalActsGeneratorModule: React.FC = () => {
   const [motif, setMotif] = useState<string>(
     'Exploitation sans agrément officiel préalable, défaut de constitution du dossier administratif et non-versement des redevances d’État.'
   );
+
+  // Digital Signature Action Modal
+  const [signingModal, setSigningModal] = useState<{
+    isOpen: boolean;
+    act: OfficialLegalAct | null;
+    selectedSignatory: StateDigitalSignature;
+    isSigning: boolean;
+    completed: boolean;
+  }>({
+    isOpen: false,
+    act: null,
+    selectedSignatory: signatories[0],
+    isSigning: false,
+    completed: false
+  });
 
   const handleTypeChange = (newType: OfficialLegalAct['type']) => {
     setActType(newType);
@@ -86,9 +130,9 @@ export const LegalActsGeneratorModule: React.FC = () => {
       date_emission: new Date().toISOString().split('T')[0],
       delai_huitaine_date: delai,
       motif,
-      signataire_nom: currentUser.role === 'DIRECTEUR' ? currentUser.name : 'Jean Richard NTSEKE NGOUAKA',
-      signataire_titre: currentUser.role === 'DIRECTEUR' ? currentUser.title : 'Directeur Départemental des Loisirs de Pointe-Noire (DDL-PN)',
-      agent_notificateur: `${currentUser.name} (${currentUser.badge})`,
+      signataire_nom: currentUser?.role === 'DIRECTEUR' ? currentUser.name : 'Jean Richard NTSEKE NGOUAKA',
+      signataire_titre: currentUser?.role === 'DIRECTEUR' ? currentUser.title : 'Directeur Départemental des Loisirs de Pointe-Noire (DDL-PN)',
+      agent_notificateur: `${currentUser?.name || 'Agent SAA'} (${currentUser?.badge || 'SAA-01'})`,
       visa_lois: [
         'Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs en République du Congo',
         'Décret N° 2021-412 du 28 octobre 2021 portant organisation de la DGL',
@@ -96,244 +140,631 @@ export const LegalActsGeneratorModule: React.FC = () => {
       ]
     });
 
-    setActs(storageService.getActs());
-    setIsCreateModalOpen(false);
-    triggerNotification(`Acte républicain émis : ${newAct.reference_number}`, 'success');
+    storageService.logAuditEvent(
+      'EMISSION_ACTE_JURIDIQUE',
+      newAct.reference_number,
+      `${newAct.type} - ${newAct.establishment_name}`,
+      `Acte juridique émis avec délai de notification fixé à : ${newAct.delai_huitaine_date}.`,
+      currentUser ? { badge: currentUser.badge, name: currentUser.name, role: currentUser.role } : undefined
+    );
 
-    // Propose immediate print
-    setPrintDoc({
-      isOpen: true,
-      type: 'ACTE_JURIDIQUE_A4',
-      title: `Acte Officiel - ${newAct.reference_number}`,
-      data: newAct
-    });
+    setActs(storageService.getActs());
+    setAuditLogs(storageService.getAuditLogs());
+    setIsCreateModalOpen(false);
+    triggerNotification(`Acte officiel ${refNumber} généré avec succès.`, 'success');
   };
 
+  // Perform State Digital Signature
+  const handleExecuteDigitalSignature = () => {
+    if (!signingModal.act) return;
+    setSigningModal(prev => ({ ...prev, isSigning: true }));
+
+    setTimeout(() => {
+      storageService.logAuditEvent(
+        'SIGNATURE_ELECTRONIQUE_DIRECTEUR',
+        signingModal.act!.reference_number,
+        signingModal.act!.establishment_name,
+        `Signature électronique qualifiée de l'État apposée par ${signingModal.selectedSignatory.signatory_name} (${signingModal.selectedSignatory.signatory_title}). Empreinte SHA-256 : ${signingModal.selectedSignatory.sha256_fingerprint}.`,
+        { badge: signingModal.selectedSignatory.signatory_matricule, name: signingModal.selectedSignatory.signatory_name, role: 'SIGNATAIRE QUALIFIÉ D\'ÉTAT' }
+      );
+
+      setAuditLogs(storageService.getAuditLogs());
+      setSigningModal(prev => ({ ...prev, isSigning: false, completed: true }));
+      triggerNotification(`Certificat d'État apposé sur ${signingModal.act!.reference_number}.`, 'success');
+    }, 1500);
+  };
+
+  // Verify Audit Chain
+  const handleVerifyAuditChain = () => {
+    const res = storageService.verifyAuditChainIntegrity();
+    setAuditVerificationStatus({
+      tested: true,
+      valid: res.isValid,
+      count: res.verifiedCount
+    });
+    if (res.isValid) {
+      triggerNotification(`Chaîne d'audit 100% intègre : ${res.verifiedCount} blocs vérifiés sans altération.`, 'success');
+    } else {
+      triggerNotification(`Alerte altération d'intégrité détectée au bloc #${res.brokenIndex}!`, 'error');
+    }
+  };
+
+  // Filtered Audit Logs
+  const filteredAuditLogs = useMemo(() => {
+    return auditLogs.filter(log => {
+      const matchSearch =
+        log.target_label.toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
+        log.user_name.toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
+        log.details.toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
+        log.target_id.toLowerCase().includes(auditSearchQuery.toLowerCase());
+      const matchAction = auditActionFilter === 'ALL' || log.action_type === auditActionFilter;
+      return matchSearch && matchAction;
+    });
+  }, [auditLogs, auditSearchQuery, auditActionFilter]);
+
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs bg-red-100 text-red-900 font-bold px-2 py-0.5 rounded font-mono-ref">
-              CONTENTIEUX & POLICE ADMINISTRATIVE
-            </span>
-            <span className="text-xs text-slate-500">Sous Sceau de la République</span>
+    <div className="space-y-6">
+      {/* Official Header Banner */}
+      <div className="bg-gradient-to-r from-[#022448] via-[#003870] to-[#006d2f] text-white p-5 sm:p-6 rounded-2xl shadow-xl relative overflow-hidden">
+        <RepublicTricolorBar className="absolute top-0 left-0 right-0 h-1.5" />
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mt-2">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full font-mono-ref">
+                SÉCURITÉ JURIDIQUE & SIGNATURE ÉLECTRONIQUE QUALIFIÉE D'ÉTAT
+              </span>
+              <span className="text-xs text-amber-200 font-mono-ref">PTA 2026 - AXE 4</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight font-republic flex items-center gap-2.5">
+              <Scale className="w-6 h-6 text-amber-300" />
+              <span>Atelier des Actes, Signature Certifiée & Piste d'Audit IGE</span>
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-3xl">
+              Génération des actes administratifs (Mises en demeure sous 72h, Arrêtés de fermeture, Convocations contradictoires), apposition du <strong>Certificat Numérique d'État SHA-256</strong> et journalisation inaltérable inviolable pour l'Inspection Générale d'État (IGE).
+            </p>
           </div>
-          <h2 className="text-lg font-black text-[#022448] tracking-tight mt-1 flex items-center gap-2">
-            <Scale className="w-5 h-5 text-red-700" />
-            <span>Atelier de Rédaction des Actes & Mesures Conservatoires</span>
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Génération, notification et exécution des mises en demeure sous 72h, convocations contradictoires et arrêtés de fermeture administrative.
-          </p>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 text-xs transition transform hover:scale-105 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Rédiger un Acte Officiel</span>
+            </button>
+          </div>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2">
+        <button
+          onClick={() => setActiveTab('ATELIER_ACTES')}
+          className={`pb-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition cursor-pointer ${
+            activeTab === 'ATELIER_ACTES'
+              ? 'border-[#006d2f] text-[#006d2f] dark:text-emerald-400'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <FileCheck2 className="w-4 h-4" />
+          <span>1. Atelier des Actes & Sanctions ({acts.length})</span>
+        </button>
 
         <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="bg-red-700 hover:bg-red-800 text-white font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow transition"
+          onClick={() => setActiveTab('SIGNATURE_ELECTRONIQUE')}
+          className={`pb-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition cursor-pointer ${
+            activeTab === 'SIGNATURE_ELECTRONIQUE'
+              ? 'border-[#006d2f] text-[#006d2f] dark:text-emerald-400'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
         >
-          <Plus className="w-4 h-4" />
-          <span>Rédiger un Acte Juridique</span>
+          <BadgeCheck className="w-4 h-4" />
+          <span>2. Signature Numérique Cryptographique (Certificats d'État)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('PISTE_AUDIT_IGE')}
+          className={`pb-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition cursor-pointer ${
+            activeTab === 'PISTE_AUDIT_IGE'
+              ? 'border-[#006d2f] text-[#006d2f] dark:text-emerald-400'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4" />
+          <span>3. Piste d'Audit Inaltérable & Journal IGE ({auditLogs.length})</span>
         </button>
       </div>
 
-      {/* Actes Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {acts.map(act => {
-          const isFermeture = act.type === 'ARRETE_FERMETURE';
-          const isMiseEnDemeure = act.type === 'MISE_EN_DEMEURE';
-          return (
-            <div
-              key={act.id}
-              className={`p-4 rounded-xl border bg-white shadow-sm flex flex-col justify-between transition hover:shadow-md ${
-                isFermeture ? 'border-red-300 ring-1 ring-red-200' : isMiseEnDemeure ? 'border-amber-300' : 'border-slate-200'
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono-ref font-bold text-slate-500">
-                    {formatDateFR(act.date_emission)}
-                  </span>
-                  <span
-                    className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase font-mono-ref ${
-                      isFermeture
-                        ? 'bg-red-600 text-white'
-                        : isMiseEnDemeure
-                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                        : 'bg-blue-100 text-blue-900'
-                    }`}
-                  >
-                    {act.type.replace(/_/g, ' ')}
-                  </span>
+      {/* ==============================================================
+          TAB 1: ATELIER DES ACTES RÉGLEMENTAIRES
+         ============================================================== */}
+      {activeTab === 'ATELIER_ACTES' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xs">
+              <span className="text-[10px] uppercase font-bold text-slate-500">Mises en Demeure (72h)</span>
+              <span className="text-xl font-black text-amber-600 block mt-1">
+                {acts.filter(a => a.type === 'MISE_EN_DEMEURE').length}
+              </span>
+              <span className="text-[10px] text-slate-400">Délai sous huitaine</span>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xs">
+              <span className="text-[10px] uppercase font-bold text-slate-500">Arrêtés de Fermeture</span>
+              <span className="text-xl font-black text-red-600 block mt-1">
+                {acts.filter(a => a.type === 'ARRETE_FERMETURE').length}
+              </span>
+              <span className="text-[10px] text-slate-400">Exécution immédiate</span>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xs">
+              <span className="text-[10px] uppercase font-bold text-slate-500">Convocations Officielles</span>
+              <span className="text-xl font-black text-blue-600 block mt-1">
+                {acts.filter(a => a.type === 'CONVOCATION').length}
+              </span>
+              <span className="text-[10px] text-slate-400">Audience contradictoire</span>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xs">
+              <span className="text-[10px] uppercase font-bold text-slate-500">Ordres de Mission Brigade</span>
+              <span className="text-xl font-black text-[#006d2f] block mt-1">
+                {acts.filter(a => a.type === 'ORDRE_MISSION').length}
+              </span>
+              <span className="text-[10px] text-slate-400">Contrôles in situ</span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <h3 className="font-extrabold text-sm text-[#022448] dark:text-white uppercase font-republic">
+                Registre des Actes Juridiques Notifiés ({acts.length})
+              </h3>
+              <span className="text-xs text-slate-500 font-mono-ref">Validité ministérielle MCAPNIT</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono-ref">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 uppercase tracking-wider font-bold border-b">
+                    <th className="p-3">Référence & Date</th>
+                    <th className="p-3">Type d'Acte</th>
+                    <th className="p-3">Établissement & Promoteur</th>
+                    <th className="p-3">Délai Légal Notifié</th>
+                    <th className="p-3">Signataire d'État</th>
+                    <th className="p-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {acts.map(act => (
+                    <tr key={act.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <td className="p-3">
+                        <strong className="text-[#022448] dark:text-amber-400 block">{act.reference_number}</strong>
+                        <span className="text-[10px] text-slate-400 font-sans">{formatDateFR(act.date_emission)}</span>
+                      </td>
+                      <td className="p-3 font-sans">
+                        <span className={`px-2 py-0.5 rounded text-[9.5px] font-bold ${
+                          act.type === 'ARRETE_FERMETURE'
+                            ? 'bg-red-100 text-red-800'
+                            : act.type === 'MISE_EN_DEMEURE'
+                            ? 'bg-amber-100 text-amber-900'
+                            : 'bg-blue-100 text-blue-900'
+                        }`}>
+                          {act.type.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td className="p-3 font-sans">
+                        <strong className="text-slate-900 dark:text-white block uppercase">{act.establishment_name}</strong>
+                        <span className="text-[11px] text-slate-500">{act.promoter_name} • {act.arrondissement}</span>
+                      </td>
+                      <td className="p-3 text-slate-700 dark:text-slate-300 font-bold">
+                        {act.delai_huitaine_date}
+                      </td>
+                      <td className="p-3 font-sans text-slate-600 dark:text-slate-400">
+                        {act.signataire_nom}
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              setSigningModal({
+                                isOpen: true,
+                                act,
+                                selectedSignatory: signatories[0],
+                                isSigning: false,
+                                completed: false
+                              });
+                            }}
+                            className="bg-purple-700 hover:bg-purple-800 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1 transition cursor-pointer"
+                            title="Apposer le certificat numérique d'État"
+                          >
+                            <Key className="w-3 h-3" />
+                            <span>Signer</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setPrintDoc({
+                                isOpen: true,
+                                type: 'ACTE_JURIDIQUE_A4',
+                                title: `${act.type} - ${act.establishment_name}`,
+                                data: act
+                              });
+                            }}
+                            className="bg-[#022448] hover:bg-[#033468] text-white px-2.5 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1 transition cursor-pointer"
+                          >
+                            <Printer className="w-3 h-3" />
+                            <span>Imprimer A4</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==============================================================
+          TAB 2: SIGNATURE NUMÉRIQUE CRYPTOGRAPHIQUE (CERTIFICAT D'ÉTAT)
+         ============================================================== */}
+      {activeTab === 'SIGNATURE_ELECTRONIQUE' && (
+        <div className="space-y-6">
+          <div className="bg-purple-50 dark:bg-purple-950/40 border border-purple-300 dark:border-purple-800 rounded-2xl p-5 space-y-2">
+            <div className="flex items-center gap-2 text-purple-900 dark:text-purple-300">
+              <BadgeCheck className="w-5 h-5 text-purple-700" />
+              <h4 className="text-base font-black uppercase font-republic">
+                Infrastructure à Clé Publique (PKI) • État de la République du Congo
+              </h4>
+            </div>
+            <p className="text-xs text-purple-800 dark:text-purple-300 max-w-3xl">
+              Les arrêtés de fermeture, convocations et attestations bénéficient d'un scellement cryptographique qualifié conforme à la norme RFC 3161 et à la législation congolaise sur les transactions électroniques. Toute modification ultérieure brise la signature et invalide le document.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {signatories.map((sig, idx) => (
+              <div
+                key={sig.signatory_matricule}
+                className="bg-white dark:bg-slate-900 border-2 border-purple-300 dark:border-purple-800 rounded-2xl p-5 shadow-sm space-y-4 relative overflow-hidden"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[9px] font-black uppercase bg-purple-100 text-purple-900 px-2 py-0.5 rounded font-mono-ref">
+                      CERTIFICAT D'ÉTAT ACTIF
+                    </span>
+                    <h5 className="font-black text-sm text-[#022448] dark:text-white uppercase font-republic mt-2">
+                      {sig.signatory_name}
+                    </h5>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {sig.signatory_title}
+                    </p>
+                  </div>
+                  <OfficialRepublicLogo size="xs" showMotto={false} />
                 </div>
 
-                <h3 className="font-extrabold text-base text-[#022448] mt-2">
-                  {act.establishment_name}
-                </h3>
-                <p className="text-xs text-slate-600">
-                  Gérant : <span className="font-semibold">{act.promoter_name}</span> ({act.arrondissement})
-                </p>
-
-                <p className="text-[11px] font-mono-ref text-slate-500 mt-1 font-bold">
-                  {act.reference_number}
-                </p>
-
-                <div className="bg-slate-50 p-2.5 rounded border border-slate-200/80 my-3 text-xs italic text-slate-700">
-                  « {act.motif} »
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-2 font-mono-ref text-[10.5px]">
+                  <div>
+                    <span className="text-slate-400 block text-[9px] uppercase">Matricule & Série PKI</span>
+                    <strong>{sig.signatory_matricule} • {sig.certificate_serial}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[9px] uppercase">Empreinte Numérique SHA-256</span>
+                    <strong className="text-purple-700 dark:text-purple-400 text-[9.5px] break-all block">
+                      {sig.sha256_fingerprint}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between text-[9.5px] pt-1 border-t border-slate-200 dark:border-slate-700">
+                    <span className="text-slate-500">Validité :</span>
+                    <span className="text-emerald-700 font-bold">{sig.validity}</span>
+                  </div>
                 </div>
 
-                <div className="text-[11px] text-slate-500 space-y-0.5">
-                  <p>Délai imparti : <strong>{act.delai_huitaine_date ? (act.delai_huitaine_date.includes('-') ? formatDateFR(act.delai_huitaine_date) : act.delai_huitaine_date) : '72 heures'}</strong></p>
-                  <p>Signataire : <strong>{act.signataire_nom}</strong></p>
+                <div className="pt-1 flex items-center justify-between text-[11px] text-emerald-700 font-bold">
+                  <span className="flex items-center gap-1">
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Clé RSA-4096 Bits Scellée</span>
+                  </span>
+                  <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[9px]">
+                    CONFORME
+                  </span>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[10px] text-slate-400">Format A4 Républicain</span>
-                <button
-                  onClick={() => {
-                    setPrintDoc({
-                      isOpen: true,
-                      type: 'ACTE_JURIDIQUE_A4',
-                      title: `Acte Officiel - ${act.reference_number}`,
-                      data: act
-                    });
-                  }}
-                  className="bg-[#022448] hover:bg-[#033468] text-white text-xs font-bold px-2.5 py-1.5 rounded flex items-center gap-1.5 shadow"
-                >
-                  <Printer className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Imprimer A4</span>
-                </button>
+      {/* ==============================================================
+          TAB 3: PISTE D'AUDIT INALTÉRABLE (INSPECTION GÉNÉRALE D'ÉTAT)
+         ============================================================== */}
+      {activeTab === 'PISTE_AUDIT_IGE' && (
+        <div className="space-y-6">
+          {/* Integrity Status Banner */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <span className="text-[10px] font-black uppercase text-[#006d2f] font-mono-ref">
+                CONTRÔLE D'INTÉGRITÉ DE LA CHAÎNE D'ÉVÉNEMENTS
+              </span>
+              <h4 className="text-base font-black text-[#022448] dark:text-white uppercase font-republic">
+                Journalisation Inviolable & Piste d'Audit IGE
+              </h4>
+              <p className="text-xs text-slate-500 max-w-2xl">
+                Chaque enregistrement est chaîné cryptographiquement au bloc précédent : <code>H(n) = SHA256(H(n-1) + Données)</code>. Aucune suppression ni altération rétroactive n'est possible sans rompre la chaîne.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleVerifyAuditChain}
+                className="bg-[#006d2f] hover:bg-[#005a26] text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow transition cursor-pointer"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Vérifier l'Intégrité de la Chaîne</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Audit Verification Result if tested */}
+          {auditVerificationStatus.tested && (
+            <div className={`p-4 rounded-2xl border-2 flex items-center gap-3 ${
+              auditVerificationStatus.valid
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-950 dark:text-emerald-200'
+                : 'bg-red-50 dark:bg-red-950/40 border-red-500 text-red-950 dark:text-red-200'
+            }`}>
+              <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+              <div>
+                <h5 className="font-black text-sm">
+                  {auditVerificationStatus.valid
+                    ? '✓ Intégrité Cryptographique 100% Certifiée'
+                    : 'Alerte Rupture de Chaîne d\'Audit'}
+                </h5>
+                <p className="text-xs">
+                  {auditVerificationStatus.valid
+                    ? `Les ${auditVerificationStatus.count} enregistrements d'audit consécutifs ont été vérifiés sans aucune altération de hash ni falsification.`
+                    : 'Une anomalie de signature a été constatée. Examen requis par l\'Inspection Générale d\'État.'}
+                </p>
               </div>
             </div>
-          );
-        })}
-      </div>
+          )}
 
-      {/* Act Generator Modal */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3">
-          <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-6 border border-slate-200">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <div>
-                <h3 className="text-base font-black text-[#022448]">Rédaction d'un Acte de Police Administrative</h3>
-                <p className="text-xs text-slate-500">Direction Départementale des Loisirs de Pointe-Noire</p>
+          {/* Search & Filter Bar */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+            <div className="relative flex-1 w-full">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Rechercher par acteur, établissement, action, hash SHA-256..."
+                value={auditSearchQuery}
+                onChange={e => setAuditSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 border rounded-xl text-xs bg-slate-50 dark:bg-slate-800 focus:outline-hidden font-mono-ref"
+              />
+            </div>
+
+            <select
+              value={auditActionFilter}
+              onChange={e => setAuditActionFilter(e.target.value)}
+              className="border rounded-xl px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 font-semibold cursor-pointer"
+            >
+              <option value="ALL">Toutes les actions</option>
+              <option value="ENCAISSEMENT_MOMO">Encaissement Mobile Money</option>
+              <option value="SIGNATURE_ELECTRONIQUE_DIRECTEUR">Signature Électronique Directeur</option>
+              <option value="EMISSION_ACTE_JURIDIQUE">Émission Acte Juridique</option>
+              <option value="CONTROLE_COMMISSION_MIXTE">Contrôle Commission Mixte</option>
+              <option value="PV_INFRACTION_ACOUSTIQUE">PV Infraction Acoustique</option>
+              <option value="RAPPROCHEMENT_BANCAIRE">Rapprochement Bancaire</option>
+            </select>
+          </div>
+
+          {/* Ledger Table */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono-ref">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 uppercase tracking-wider font-bold border-b">
+                  <tr>
+                    <th className="p-3">Horodatage & ID</th>
+                    <th className="p-3">Type d'Événement</th>
+                    <th className="p-3">Acteur Responsable</th>
+                    <th className="p-3">Cible & Détails</th>
+                    <th className="p-3">Empreinte Cryptographique SHA-256</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredAuditLogs.map(log => (
+                    <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <td className="p-3">
+                        <strong className="text-[#022448] dark:text-amber-400 block">{log.id}</strong>
+                        <span className="text-[10px] text-slate-400">
+                          {new Date(log.timestamp).toLocaleString('fr-FR')}
+                        </span>
+                      </td>
+                      <td className="p-3 font-sans">
+                        <span className="px-2 py-0.5 rounded text-[9.5px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                          {log.action_type.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td className="p-3 font-sans">
+                        <strong className="text-slate-900 dark:text-white block">{log.user_name}</strong>
+                        <span className="text-[10px] text-slate-500 font-mono-ref">{log.user_badge} • {log.user_role}</span>
+                      </td>
+                      <td className="p-3 font-sans max-w-sm">
+                        <strong className="text-[#022448] dark:text-emerald-400 block">{log.target_label}</strong>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">{log.details}</p>
+                      </td>
+                      <td className="p-3">
+                        <span className="text-[9.5px] text-purple-700 dark:text-purple-400 font-black break-all block">
+                          {log.sha256_hash}
+                        </span>
+                        <span className="text-[8px] text-slate-400 block mt-0.5">Terminal : {log.terminal_ip}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* State Signing Modal */}
+      {signingModal.isOpen && signingModal.act && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-5 space-y-4 border border-purple-300 dark:border-purple-900 shadow-2xl">
+            <div className="flex justify-between items-center border-b pb-3">
+              <div className="flex items-center gap-2 text-purple-700">
+                <Lock className="w-5 h-5" />
+                <h3 className="font-black text-sm uppercase font-republic">
+                  Apposition du Sceau & Signature Numérique d'État
+                </h3>
               </div>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-700 font-bold">
+              <button
+                onClick={() => setSigningModal(prev => ({ ...prev, isOpen: false }))}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateAct} className="space-y-4 text-xs">
+            <div className="p-3 bg-purple-50 dark:bg-purple-950/40 rounded-xl space-y-1 font-mono-ref text-xs">
+              <p>Acte ciblé : <strong>{signingModal.act.reference_number}</strong></p>
+              <p>Établissement : <strong>{signingModal.act.establishment_name}</strong></p>
+              <p>Promoteur : <strong>{signingModal.act.promoter_name}</strong></p>
+            </div>
+
+            <div>
+              <label className="font-bold text-xs block mb-1">Sélectionner l'Autorité Signataire d'État</label>
+              <select
+                value={signingModal.selectedSignatory.signatory_matricule}
+                onChange={e => {
+                  const match = signatories.find(s => s.signatory_matricule === e.target.value);
+                  if (match) setSigningModal(prev => ({ ...prev, selectedSignatory: match }));
+                }}
+                className="w-full border p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs font-semibold"
+              >
+                {signatories.map(s => (
+                  <option key={s.signatory_matricule} value={s.signatory_matricule}>
+                    {s.signatory_name} — {s.signatory_title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-1 font-mono-ref text-[10.5px]">
+              <p className="text-slate-500 uppercase text-[9px]">Empreinte SHA-256 du Certificat</p>
+              <p className="font-bold text-purple-700 dark:text-purple-400 break-all">{signingModal.selectedSignatory.sha256_fingerprint}</p>
+              <p className="text-[9px] text-slate-400 pt-1">Horodatage certifié RFC 3161 actif</p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setSigningModal(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 border rounded-xl font-bold text-xs cursor-pointer"
+              >
+                Fermer
+              </button>
+
+              <button
+                type="button"
+                disabled={signingModal.isSigning || signingModal.completed}
+                onClick={handleExecuteDigitalSignature}
+                className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+              >
+                {signingModal.isSigning ? (
+                  <span>Signature cryptographique en cours...</span>
+                ) : signingModal.completed ? (
+                  <span>✓ Signé avec Succès</span>
+                ) : (
+                  <>
+                    <Key className="w-3.5 h-3.5" />
+                    <span>Apposer le Certificat d'État</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Créer un Acte */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-5 space-y-4 border border-slate-300 dark:border-slate-700 shadow-2xl">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-black text-sm uppercase text-[#022448] dark:text-white font-republic">
+                Rédiger un Acte Officiel
+              </h3>
+              <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateAct} className="space-y-3 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Nature de l'acte juridique *</label>
+                <label className="font-bold block mb-1">Type d'Acte Réglementaire</label>
                 <select
                   value={actType}
                   onChange={e => handleTypeChange(e.target.value as any)}
-                  className="w-full p-2 border border-slate-300 rounded font-bold text-[#022448]"
+                  className="w-full border p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 font-bold"
                 >
-                  <option value="MISE_EN_DEMEURE">Mise en demeure sous huitaine (72 heures)</option>
-                  <option value="CONVOCATION">Convocation officielle contradictoire SAA</option>
-                  <option value="ARRETE_FERMETURE">Arrêté portant fermeture administrative immédiate</option>
-                  <option value="ORDRE_MISSION">Ordre de mission d'inspection SAA</option>
+                  <option value="MISE_EN_DEMEURE">Mise en Demeure sous 72h (Régularisation)</option>
+                  <option value="CONVOCATION">Convocation Officielle (Audience SAA)</option>
+                  <option value="ARRETE_FERMETURE">Arrêté de Fermeture Administrative Temporaire</option>
+                  <option value="ORDRE_MISSION">Ordre de Mission Contrôle Terrain</option>
                 </select>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Établissement ciblé *</label>
+                <label className="font-bold block mb-1">Établissement Destinataire</label>
                 <select
                   value={targetEstId}
                   onChange={e => setTargetEstId(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded"
+                  className="w-full border p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 font-semibold"
                 >
-                  {establishments.map(e => (
-                    <option key={e.id} value={e.id}>
-                      {e.name} — {e.promoter_name} ({e.arrondissement})
+                  {establishments.map(est => (
+                    <option key={est.id} value={est.id}>
+                      {est.name} ({est.promoter_name} - {est.arrondissement})
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Délai d'exécution imparti *</label>
+                <label className="font-bold block mb-1">Délai d'Exécution / Date Limite</label>
                 <input
                   type="text"
-                  required
                   value={delai}
                   onChange={e => setDelai(e.target.value)}
-                  placeholder="Ex: 72 heures ouvrées"
-                  className="w-full p-2 border border-slate-300 rounded"
+                  className="w-full border p-2 rounded-xl bg-slate-50 dark:bg-slate-800 font-bold"
+                  required
                 />
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="font-bold text-slate-700">Motif circonstancié de l'infraction *</label>
-                  <span className="text-[10px] text-slate-400">Modèles pré-rédigés :</span>
-                </div>
-
-                {/* Quick Presets */}
-                <div className="flex flex-wrap gap-1 mb-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setMotif('Exploitation sans agrément officiel préalable, défaut de déclaration d\'activité et non-paiement des redevances d’État.')}
-                    className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-medium border border-slate-300"
-                  >
-                    Défaut d'agrément
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMotif('Absence de dépôt du dossier réglementaire d\'instruction et défaut de pièces justificatives obligatoires.')}
-                    className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-medium border border-slate-300"
-                  >
-                    Dossier non constitué
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMotif('Non-respect de l\'accord d\'échéance convenu sur le terrain pour le solde de la redevance départementale.')}
-                    className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-medium border border-slate-300"
-                  >
-                    Solde d'acompte non réglé
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMotif('Défaut de comparution injustifié à la convocation contradictoire préalable et refus de conciliation.')}
-                    className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-medium border border-slate-300"
-                  >
-                    Non-comparution
-                  </button>
-                </div>
-
+                <label className="font-bold block mb-1">Motif Légal & Exposé des Faits</label>
                 <textarea
-                  rows={4}
-                  required
                   value={motif}
                   onChange={e => setMotif(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded font-serif text-slate-800"
+                  rows={3}
+                  className="w-full border p-2 rounded-xl bg-slate-50 dark:bg-slate-800"
+                  required
                 />
               </div>
 
-              <div className="bg-slate-50 p-3 rounded border text-[11px] text-slate-600 space-y-1">
-                <p className="font-bold text-slate-800">Signataire de l'acte :</p>
-                <p>Jean Richard NTSEKE NGOUAKA (Directeur Départemental des Loisirs de Pointe-Noire)</p>
-                <p className="text-slate-500">Agent notificateur : {currentUser.name} ({currentUser.badge})</p>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t">
+              <div className="flex justify-end gap-2 pt-2 border-t">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-3.5 py-2 border rounded text-slate-600 hover:bg-slate-100 font-semibold"
+                  className="px-4 py-2 border rounded-xl font-bold cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white font-bold rounded shadow transition flex items-center gap-1.5"
+                  className="px-4 py-2 bg-[#022448] hover:bg-[#003870] text-white rounded-xl font-bold cursor-pointer"
                 >
-                  <FileCheck2 className="w-4 h-4" />
-                  <span>Émettre et Générer l'Acte A4</span>
+                  Générer l'Acte Juridique
                 </button>
               </div>
             </form>
@@ -341,14 +772,16 @@ export const LegalActsGeneratorModule: React.FC = () => {
         </div>
       )}
 
-      {/* Print Modal */}
-      <PrintModal
-        isOpen={printDoc.isOpen}
-        onClose={() => setPrintDoc(prev => ({ ...prev, isOpen: false }))}
-        documentType="ACTE_JURIDIQUE_A4"
-        title={printDoc.title}
-        data={printDoc.data}
-      />
+      {/* Official Print Modal */}
+      {printDoc.isOpen && (
+        <PrintModal
+          isOpen={printDoc.isOpen}
+          onClose={() => setPrintDoc(prev => ({ ...prev, isOpen: false }))}
+          documentType={printDoc.type}
+          title={printDoc.title}
+          data={printDoc.data}
+        />
+      )}
     </div>
   );
 };

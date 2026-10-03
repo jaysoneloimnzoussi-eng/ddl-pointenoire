@@ -298,5 +298,99 @@ export interface PromoterOnlineSubmission {
   status: 'EN_ATTENTE_INSTRUCTION' | 'CONVOQUE_VISITE' | 'APPROUVE' | 'REJETE';
   submission_date: string;
   notes?: string;
+  uploaded_documents?: {
+    identity_card?: string;
+    bail_commercial?: string;
+    rccm?: string;
+    plan_masse?: string;
+  };
 }
+
+export interface BankReconciliationRecord {
+  id: string;
+  reference_bordereau: string;
+  date_reconciliation: string;
+  bank_name: 'Trésor Public' | 'Banque des États de l’Afrique Centrale (BEAC)' | 'Banque Commerciale Internationale (BCA)' | 'La Congolaise de Banque (LCB)';
+  bank_account_number: string;
+  treasury_deposit_amount_fcfa: number;
+  regie_deposit_amount_fcfa: number;
+  total_reconciled_fcfa: number;
+  matching_receipts_count: number;
+  reconciliation_status: 'RAPPROCHE' | 'EN_COURS' | 'ECART_DETECTE';
+  variance_fcfa: number;
+  agent_approbateur: string;
+  notes?: string;
+}
+
+export interface AcousticInfractionPv {
+  id: string;
+  pv_number: string;
+  establishment_id: string;
+  establishment_name: string;
+  promoter_name: string;
+  arrondissement: ArrondissementCode;
+  address: string;
+  inspection_datetime: string;
+  measured_db: number;
+  threshold_legal_db: number;
+  excess_db: number;
+  measurement_location: 'TERRASSE' | 'SALLE_INTERIEURE' | 'VOIE_PUBLIQUE_RIVERAINS';
+  time_period: 'DIURNE_06H_22H' | 'NOCTURNE_22H_06H';
+  sanction_immediate: 'MISE_EN_DEMEURE_48H' | 'SAISIE_AMPLIFICATEURS' | 'FERMETURE_ADMINISTRATIVE_IMMEDIATE';
+  officers: {
+    ddl_officer: string;
+    police_officer: string;
+    hygiene_officer: string;
+  };
+  notes: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  user_badge: string;
+  user_name: string;
+  user_role: string;
+  action_type:
+    | 'ENCAISSEMENT_MOMO'
+    | 'ENCAISSEMENT_ESPECES'
+    | 'EMISSION_ACTE_JURIDIQUE'
+    | 'SIGNATURE_ELECTRONIQUE_DIRECTEUR'
+    | 'CONTROLE_COMMISSION_MIXTE'
+    | 'PV_INFRACTION_ACOUSTIQUE'
+    | 'REPORT_DELAI'
+    | 'VALIDATION_TELEDECLARATION'
+    | 'RAPPROCHEMENT_BANCAIRE'
+    | 'MODIFICATION_DOSSIER';
+  target_id: string;
+  target_label: string;
+  details: string;
+  terminal_ip: string;
+  sha256_hash: string;
+}
+
+export interface StateDigitalSignature {
+  signatory_name: string;
+  signatory_title: string;
+  signatory_matricule: string;
+  certificate_serial: string;
+  sha256_fingerprint: string;
+  timestamp_rfc3161: string;
+  validity: string;
+  status: 'VALIDE_ETAT_CONGO';
+}
+
+export interface SmsNotificationGatewayItem {
+  id: string;
+  recipient_phone: string;
+  recipient_name: string;
+  establishment_name: string;
+  notification_type: 'RAPPEL_J_MOINS_5' | 'ALERTE_J_MOINS_1' | 'CONVOCATION_72H' | 'SOLDE_RESTANT';
+  message_content: string;
+  channel: 'SMS_OFFICIEL' | 'WHATSAPP_GOUV';
+  status: 'ENVOYE' | 'EN_ATTENTE' | 'ECHEC';
+  dispatched_at: string;
+  operator_gateway: string;
+}
+
 

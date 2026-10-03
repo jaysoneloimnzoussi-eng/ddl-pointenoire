@@ -17,7 +17,9 @@ export type PrintDocumentType =
   | 'RAPPORT_TRIMESTRIEL_A4'
   | 'PV_COMMISSION_MIXTE_A4'
   | 'MACARON_OFFICIEL_VITRINE_A4'
-  | 'RECU_TELEPAIEMENT_MOMO_A4';
+  | 'RECU_TELEPAIEMENT_MOMO_A4'
+  | 'BORDEREAU_RAPPROCHEMENT_A4'
+  | 'PV_INFRACTION_ACOUSTIQUE_A4';
 
 export interface PrintModalProps {
   isOpen: boolean;
@@ -1153,6 +1155,288 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                       <p className="text-[10px] font-bold text-slate-900 uppercase">Le Directeur Départemental,</p>
                       <div className="h-10 flex items-center justify-center text-[9px] text-slate-400 italic">[Sceau Officiel de l'État]</div>
                       <p className="font-bold text-xs text-[#022448]">Jean Richard NTSEKE NGOUAKA</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ===================================================================
+               PROTOTYPE 11: BORDEREAU QUOTIDIEN DE RAPPROCHEMENT BANCAIRE (A4)
+               =================================================================== */}
+            {documentType === 'BORDEREAU_RAPPROCHEMENT_A4' && (
+              <div className="print-page-a4 w-full max-w-[210mm] bg-white p-8 text-black border border-slate-300 shadow-md font-sans text-xs flex flex-col justify-between">
+                <div>
+                  {/* Header Republic */}
+                  <div className="flex justify-between items-start border-b-2 border-[#006d2f] pb-4 mb-4">
+                    <div className="text-left font-serif text-[10px] leading-tight space-y-0.5">
+                      <p className="font-bold uppercase tracking-wider text-[#022448]">RÉPUBLIQUE DU CONGO</p>
+                      <p className="text-[8.5px] italic text-[#006d2f] font-semibold">Unité • Travail • Progrès</p>
+                      <p className="font-semibold text-slate-700 mt-1">MINISTÈRE DE L'INDUSTRIE CULTURELLE, TOURISTIQUE,</p>
+                      <p className="font-semibold text-slate-700">ARTISTIQUE ET DES LOISIRS</p>
+                      <p className="font-extrabold text-[9.5px] text-[#022448] mt-1">DIRECTION GÉNÉRALE DES LOISIRS</p>
+                      <p className="font-bold text-[9px] text-[#006d2f]">DIRECTION DÉPARTEMENTALE DE POINTE-NOIRE</p>
+                      <p className="text-[8.5px] font-bold text-slate-600">SERVICE ADMINISTRATIF ET FINANCIER (SAF)</p>
+                    </div>
+
+                    <div className="flex flex-col items-center">
+                      <OfficialRepublicLogo size="md" showMotto={false} />
+                      <span className="text-[8.5px] font-black uppercase text-[#006d2f] mt-1 font-mono-ref">FINTECH D'ÉTAT</span>
+                    </div>
+
+                    <div className="text-right font-mono-ref text-[9.5px] text-slate-700 space-y-0.5">
+                      <p className="font-bold text-[#022448] text-[11px]">RÉF : {data.reference_bordereau || 'BORD-TR-2026-0928'}</p>
+                      <p>Date : {formatDateFR(data.date_reconciliation || new Date())}</p>
+                      <p className="text-[8.5px] text-slate-500">Ville de Pointe-Noire</p>
+                      <div className="mt-1 flex justify-end">
+                        <RepublicQrCode
+                          payload={{
+                            type: 'RAPPROCHEMENT_BANCAIRE',
+                            ref: data.reference_bordereau,
+                            banque: data.bank_name,
+                            total: data.total_reconciled_fcfa,
+                            statut: data.reconciliation_status
+                          }}
+                          size={48}
+                          showDetails={false}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <div className="text-center my-4">
+                    <h3 className="text-base font-black uppercase text-[#022448] tracking-wide font-republic">
+                      BORDEREAU QUOTIDIEN DE RAPPROCHEMENT BANCAIRE & FISCAL
+                    </h3>
+                    <p className="text-[10px] text-slate-600 font-mono-ref mt-0.5">
+                      Compte Trésor Public (70%) & Régie des Recettes DDL-PN (30%)
+                    </p>
+                  </div>
+
+                  {/* Bank & Account Info */}
+                  <div className="bg-slate-50 border border-slate-300 rounded-lg p-3 my-4 space-y-1.5 font-mono-ref text-[11px]">
+                    <div className="flex justify-between border-b border-slate-200 pb-1">
+                      <span className="text-slate-600">Établissement Bancaire Partenaire :</span>
+                      <strong className="text-[#022448]">{data.bank_name || 'Banque des États de l’Afrique Centrale (BEAC)'}</strong>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-200 pb-1">
+                      <span className="text-slate-600">N° de Compte Trésor / Régie :</span>
+                      <strong>{data.bank_account_number || 'CG02-BEAC-10001-094821'}</strong>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-200 pb-1">
+                      <span className="text-slate-600">Nombre de Quittances Pointées :</span>
+                      <strong className="text-emerald-700">{data.matching_receipts_count || 48} quittances contradictoires</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Statut du Rapprochement Journalier :</span>
+                      <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">
+                        ✓ RAPPROCHÉ SANS AUCUN ÉCART (100% CONFORME)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Financial Breakdown Table */}
+                  <table className="w-full text-left border-collapse border border-slate-300 my-4 text-[11px]">
+                    <thead>
+                      <tr className="bg-[#022448] text-white">
+                        <th className="p-2 border border-slate-400">Poste Comptable & Répartition Légale</th>
+                        <th className="p-2 border border-slate-400 text-center">Clé de Répartition</th>
+                        <th className="p-2 border border-slate-400 text-right">Montant Justifié (FCFA)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="font-mono-ref">
+                      <tr className="border-b border-slate-300">
+                        <td className="p-2.5 font-bold text-slate-800">Compte Central du Trésor Public (Brazzaville)</td>
+                        <td className="p-2.5 text-center font-bold text-blue-700">70 %</td>
+                        <td className="p-2.5 text-right font-black text-slate-900">
+                          {Number(data.treasury_deposit_amount_fcfa || 0).toLocaleString('fr-FR')} FCFA
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-300 bg-slate-50">
+                        <td className="p-2.5 font-bold text-slate-800">Compte Régie des Recettes DDL-PN (Pointe-Noire)</td>
+                        <td className="p-2.5 text-center font-bold text-emerald-700">30 %</td>
+                        <td className="p-2.5 text-right font-black text-slate-900">
+                          {Number(data.regie_deposit_amount_fcfa || 0).toLocaleString('fr-FR')} FCFA
+                        </td>
+                      </tr>
+                      <tr className="bg-emerald-50 border-t-2 border-[#006d2f] text-emerald-950 font-bold">
+                        <td className="p-2.5 uppercase font-republic">Total Général Rapproché Quotidien</td>
+                        <td className="p-2.5 text-center">100 %</td>
+                        <td className="p-2.5 text-right font-black text-sm text-[#006d2f]">
+                          {Number(data.total_reconciled_fcfa || 0).toLocaleString('fr-FR')} FCFA
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div className="bg-amber-50/70 border border-amber-300 p-2.5 rounded text-[10.5px] space-y-1 text-amber-950 my-3">
+                    <p className="font-bold">Attestation de Clôture Comptable :</p>
+                    <p>
+                      Le Régisseur des Recettes atteste que l'ensemble des encaissements dématérialisés (MoMo, Airtel Money, virements) et versements bancaires effectués à cette date correspondent rigoureusement aux écritures enregistrées dans le grand livre du Système Intégré DDL-PN. Écart d'inventaire : <strong>{data.variance_fcfa || 0} FCFA</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Signatures */}
+                <div className="border-t-2 border-slate-300 pt-4 mt-6">
+                  <div className="flex justify-between items-end px-6 font-serif text-[10px]">
+                    <div className="text-center w-52">
+                      <p className="font-bold text-slate-800 uppercase">Le Régisseur des Recettes SAF</p>
+                      <div className="h-12 flex items-center justify-center text-[9px] text-slate-400 italic">[Signature & Cachet Nominatif]</div>
+                      <p className="font-bold text-xs text-[#022448]">{data.agent_approbateur || 'Patrick MBOUSSI'}</p>
+                    </div>
+
+                    <div className="text-center w-52">
+                      <p className="font-bold text-slate-800 uppercase">L'Agent Comptable du Trésor</p>
+                      <div className="h-12 flex items-center justify-center text-[9px] text-slate-400 italic">[Visa Trésor Public]</div>
+                      <p className="font-bold text-xs text-slate-700">Inspection du Trésor</p>
+                    </div>
+
+                    <div className="text-center w-52">
+                      <p className="text-slate-600 font-semibold">Pointe-Noire, le {formatDateFR(new Date())}</p>
+                      <p className="font-bold text-slate-900 uppercase">Le Directeur Départemental</p>
+                      <div className="h-12 flex items-center justify-center text-[9px] text-slate-400 italic">[Sceau Officiel de l'État]</div>
+                      <p className="font-bold text-xs text-[#022448]">Jean Richard NTSEKE NGOUAKA</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ===================================================================
+               PROTOTYPE 12: PROCÈS-VERBAL D'INFRACTION ACOUSTIQUE (A4)
+               =================================================================== */}
+            {documentType === 'PV_INFRACTION_ACOUSTIQUE_A4' && (
+              <div className="print-page-a4 w-full max-w-[210mm] bg-white p-8 text-black border border-slate-300 shadow-md font-sans text-xs flex flex-col justify-between">
+                <div>
+                  {/* Header Republic */}
+                  <div className="flex justify-between items-start border-b-2 border-red-600 pb-4 mb-4">
+                    <div className="text-left font-serif text-[10px] leading-tight space-y-0.5">
+                      <p className="font-bold uppercase tracking-wider text-[#022448]">RÉPUBLIQUE DU CONGO</p>
+                      <p className="text-[8.5px] italic text-[#006d2f] font-semibold">Unité • Travail • Progrès</p>
+                      <p className="font-semibold text-slate-700 mt-1">MINISTÈRE DE LA CULTURE ET DES LOISIRS</p>
+                      <p className="font-extrabold text-[9.5px] text-[#022448] mt-1">DIRECTION DÉPARTEMENTALE DES LOISIRS DE POINTE-NOIRE</p>
+                      <p className="font-bold text-[9px] text-red-700">BRIGADE MIXTE DE CONTRÔLE ACOUSTIQUE & D'ORDRE PUBLIC</p>
+                    </div>
+
+                    <div className="flex flex-col items-center">
+                      <OfficialRepublicLogo size="md" showMotto={false} />
+                      <span className="text-[8px] font-black uppercase text-red-700 mt-1 font-mono-ref">RÉGULATION SONORE</span>
+                    </div>
+
+                    <div className="text-right font-mono-ref text-[9.5px] text-slate-700 space-y-0.5">
+                      <p className="font-bold text-red-700 text-xs">PV N° : {data.pv_number || 'PV-SONO-2026-0012'}</p>
+                      <p>Date : {formatDateFR(data.inspection_datetime || new Date())}</p>
+                      <p>Heure du relevé : {new Date(data.inspection_datetime || Date.now()).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+                      <div className="mt-1 flex justify-end">
+                        <RepublicQrCode
+                          payload={{
+                            type: 'PV_INFRACTION_ACOUSTIQUE',
+                            pv: data.pv_number,
+                            etab: data.establishment_name,
+                            db: data.measured_db,
+                            sanction: data.sanction_immediate
+                          }}
+                          size={48}
+                          showDetails={false}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <div className="text-center my-3 bg-red-50 border border-red-300 py-2 rounded-lg">
+                    <h3 className="text-sm font-black uppercase text-red-900 tracking-wide font-republic">
+                      PROCÈS-VERBAL CONTRADICTOIRE D'INFRACTION ACOUSTIQUE & DE NUISANCE SONORE
+                    </h3>
+                    <p className="text-[9.5px] text-red-700 font-mono-ref mt-0.5">
+                      En application de la Loi N° 21-2019 du 12 juillet 2019 et de la réglementation communale de Pointe-Noire
+                    </p>
+                  </div>
+
+                  {/* Establishment Info */}
+                  <div className="grid grid-cols-2 gap-3 my-3 bg-slate-50 border border-slate-300 rounded-lg p-3 font-mono-ref text-[10.5px]">
+                    <div>
+                      <span className="text-slate-500 block text-[9px] uppercase">Établissement Mis en Cause</span>
+                      <strong className="text-slate-900 font-sans text-xs uppercase">{data.establishment_name}</strong>
+                      <p className="text-slate-600 mt-1">Promoteur : <strong>{data.promoter_name}</strong></p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[9px] uppercase">Arrondissement & Localisation</span>
+                      <strong className="text-slate-800">{data.arrondissement}</strong>
+                      <p className="text-slate-600 mt-1">{data.address || 'Pointe-Noire'}</p>
+                    </div>
+                  </div>
+
+                  {/* Sonometer Measurement Box */}
+                  <div className="border-2 border-red-500 bg-red-50/40 rounded-xl p-3 my-3 space-y-2">
+                    <div className="flex justify-between items-center border-b border-red-200 pb-2">
+                      <span className="font-extrabold uppercase text-xs text-red-950 font-republic">
+                        Relevé Sonométrique In Situ par Équipage Mixte
+                      </span>
+                      <span className="bg-red-600 text-white font-black px-2 py-0.5 rounded text-[10px] font-mono-ref">
+                        INFRACTION GRAVE CONSTATÉE
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center py-2">
+                      <div className="bg-white border border-red-300 rounded-lg p-2">
+                        <span className="text-[9px] text-slate-500 uppercase block">Niveau Mesuré</span>
+                        <strong className="text-xl font-black text-red-600 font-mono-ref">{data.measured_db || 91} dB(A)</strong>
+                      </div>
+                      <div className="bg-white border border-slate-300 rounded-lg p-2">
+                        <span className="text-[9px] text-slate-500 uppercase block">Seuil Légal Autorisé</span>
+                        <strong className="text-xl font-black text-slate-800 font-mono-ref">{data.threshold_legal_db || 45} dB(A)</strong>
+                      </div>
+                      <div className="bg-white border border-red-400 bg-red-100/50 rounded-lg p-2">
+                        <span className="text-[9px] text-red-800 uppercase block">Dépassement Illégal</span>
+                        <strong className="text-xl font-black text-red-800 font-mono-ref">+{data.excess_db || 46} dB</strong>
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] space-y-0.5 font-mono-ref text-slate-700">
+                      <p>• Point de prélèvement : <strong>{data.measurement_location || 'VOIE_PUBLIQUE_RIVERAINS'}</strong></p>
+                      <p>• Période horaire : <strong>{data.time_period === 'NOCTURNE_22H_06H' ? 'Période Nocturne (22h00 - 06h00)' : 'Période Diurne (06h00 - 22h00)'}</strong></p>
+                      <p>• Observations : {data.notes}</p>
+                    </div>
+                  </div>
+
+                  {/* Sanction Imposed */}
+                  <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 my-3 text-[10.5px] space-y-1">
+                    <p className="font-bold uppercase text-amber-950">Mesure Réglementaire Immédiate Notifiée :</p>
+                    <p className="font-mono-ref font-bold text-red-700 text-xs">
+                      {data.sanction_immediate === 'SAISIE_AMPLIFICATEURS'
+                        ? '🚨 SAISIE IMMÉDIATE DU MATÉRIEL D\'AMPLIFICATION & MISE SOUS SCELLÉS'
+                        : data.sanction_immediate === 'FERMETURE_ADMINISTRATIVE_IMMEDIATE'
+                        ? '⛔ FERMETURE ADMINISTRATIVE IMMÉDIATE DE L\'ÉTABLISSEMENT'
+                        : '⚠️ MISE EN DEMEURE FORMELLE SOUS 48 HEURES OUVRÉES (Calibrage & Limiteur Scellé Obligatoire)'}
+                    </p>
+                    <p className="text-slate-600 text-[9.5px]">
+                      Le contrevenant dispose d'un délai strict pour déférer à la présente sommation. À défaut, la fermeture temporaire de l'établissement sera ordonnée sans autre avis.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Signatures */}
+                <div className="border-t-2 border-slate-300 pt-3 mt-4">
+                  <div className="flex justify-between items-end px-4 font-serif text-[9.5px]">
+                    <div className="text-center w-48">
+                      <p className="font-bold text-slate-800 uppercase">L'Inspecteur Sonométrie DDL-PN</p>
+                      <div className="h-10 flex items-center justify-center text-[8.5px] text-slate-400 italic">[Signature Officier SAA]</div>
+                      <p className="font-bold text-xs text-[#022448]">{data.officers?.ddl_officer || 'Bienvenu LOUBAKI'}</p>
+                    </div>
+
+                    <div className="text-center w-48">
+                      <p className="font-bold text-slate-800 uppercase">La Force Publique (Police / Gendarmerie)</p>
+                      <div className="h-10 flex items-center justify-center text-[8.5px] text-slate-400 italic">[Visa & Émargement]</div>
+                      <p className="font-bold text-xs text-slate-700">{data.officers?.police_officer || 'Police Nationale'}</p>
+                    </div>
+
+                    <div className="text-center w-48">
+                      <p className="font-bold text-slate-800 uppercase">Le Promoteur Contrevenant</p>
+                      <div className="h-10 flex items-center justify-center text-[8.5px] text-slate-400 italic">[Pour Notification Prise en Charge]</div>
+                      <p className="font-bold text-xs text-slate-800">{data.promoter_name || 'Exploitant'}</p>
                     </div>
                   </div>
                 </div>

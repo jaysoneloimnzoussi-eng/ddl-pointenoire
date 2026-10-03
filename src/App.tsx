@@ -18,6 +18,8 @@ import { LegalTextsAndSimulatorModule } from './components/modules/LegalTextsAnd
 import { PtaTrackerModule } from './components/modules/PtaTrackerModule';
 import { AdminPersonnelModule } from './components/modules/AdminPersonnelModule';
 import { DocumentArchivingModule } from './components/modules/DocumentArchivingModule';
+import { JointInspectionModule } from './components/modules/JointInspectionModule';
+import { PromoterFintechPortalModule } from './components/modules/PromoterFintechPortalModule';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AiAssistantModal } from './components/common/AiAssistantModal';
 import { PublicVerificationView } from './components/common/PublicVerificationView';
@@ -107,6 +109,10 @@ const AppContent: React.FC = () => {
         return <AdminPersonnelModule />;
       case 'MOD-15':
         return <DocumentArchivingModule />;
+      case 'MOD-16':
+        return <JointInspectionModule />;
+      case 'MOD-17':
+        return <PromoterFintechPortalModule />;
       default:
         return <DashboardModule />;
     }

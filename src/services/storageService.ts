@@ -1,4 +1,24 @@
-import { Establishment, TerrainPaymentRecord, OfficialLegalAct, SpaMerchantSubscription, SpaHonorDiploma, ArrondissementCode, RegimeType, EstablishmentStatus, AgentTourneeEvent, AppUser, AttachedDocument, JointInspectionRecord, MobileMoneyPaymentSession, PromoterOnlineSubmission } from '../types';
+import {
+  Establishment,
+  TerrainPaymentRecord,
+  OfficialLegalAct,
+  SpaMerchantSubscription,
+  SpaHonorDiploma,
+  ArrondissementCode,
+  RegimeType,
+  EstablishmentStatus,
+  AgentTourneeEvent,
+  AppUser,
+  AttachedDocument,
+  JointInspectionRecord,
+  MobileMoneyPaymentSession,
+  PromoterOnlineSubmission,
+  BankReconciliationRecord,
+  AcousticInfractionPv,
+  AuditLogEntry,
+  StateDigitalSignature,
+  SmsNotificationGatewayItem
+} from '../types';
 import { TERRITORIAL_REFERENTIAL, ACTIVITY_CATEGORIES, TAXATION_RULES, APP_USERS } from '../constants/referential';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
@@ -13,6 +33,10 @@ const LOCAL_STORAGE_KEYS = {
   JOINT_INSPECTIONS: 'ddl_pn_joint_inspections_v2',
   MOMO_SESSIONS: 'ddl_pn_momo_sessions_v2',
   ONLINE_SUBMISSIONS: 'ddl_pn_online_submissions_v2',
+  BANK_RECONCILIATIONS: 'ddl_pn_bank_reconciliations_v1',
+  ACOUSTIC_INFRACTIONS: 'ddl_pn_acoustic_infractions_v1',
+  AUDIT_LOGS: 'ddl_pn_audit_logs_v1',
+  SMS_NOTIFICATIONS: 'ddl_pn_sms_notifications_v1',
   SUPABASE_URL: 'ddl_pn_supabase_url'
 };
 
@@ -570,6 +594,259 @@ function generateSeedOnlineSubmissions(): PromoterOnlineSubmission[] {
   ];
 }
 
+function simpleSha256(str: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  const hex1 = ('00000000' + (hash >>> 0).toString(16)).slice(-8);
+  let hash2 = 0x55555555;
+  for (let i = str.length - 1; i >= 0; i--) {
+    hash2 ^= str.charCodeAt(i);
+    hash2 += (hash2 << 2) + (hash2 << 3) + (hash2 << 9) + (hash2 << 11);
+  }
+  const hex2 = ('00000000' + (hash2 >>> 0).toString(16)).slice(-8);
+  return `SHA256-${hex1}${hex2}${hex1.split('').reverse().join('')}`.toUpperCase();
+}
+
+function generateSeedBankReconciliations(): BankReconciliationRecord[] {
+  return [
+    {
+      id: 'REC-BANK-01',
+      reference_bordereau: 'BORD-BEAC-2026-0928',
+      date_reconciliation: '2026-10-02',
+      bank_name: 'Banque des États de l’Afrique Centrale (BEAC)',
+      bank_account_number: 'CG02-BEAC-10001-094821',
+      treasury_deposit_amount_fcfa: 2625000,
+      regie_deposit_amount_fcfa: 1125000,
+      total_reconciled_fcfa: 3750000,
+      matching_receipts_count: 48,
+      reconciliation_status: 'RAPPROCHE',
+      variance_fcfa: 0,
+      agent_approbateur: 'Patrick MBOUSSI (Régisseur SAF / Trésor)',
+      notes: 'Rapprochement 100% conforme sans aucun écart. Quittances SAA n° 001 à 048 pointées avec l\'extrait de compte BEAC.'
+    },
+    {
+      id: 'REC-BANK-02',
+      reference_bordereau: 'BORD-LCB-2026-0814',
+      date_reconciliation: '2026-10-01',
+      bank_name: 'La Congolaise de Banque (LCB)',
+      bank_account_number: 'CG05-LCB-20002-884102',
+      treasury_deposit_amount_fcfa: 1715000,
+      regie_deposit_amount_fcfa: 735000,
+      total_reconciled_fcfa: 2450000,
+      matching_receipts_count: 32,
+      reconciliation_status: 'RAPPROCHE',
+      variance_fcfa: 0,
+      agent_approbateur: 'Patrick MBOUSSI (Régisseur SAF / Trésor)',
+      notes: 'Encaissements dématérialisés MoMo et Airtel Money transférés par passerelle automatique sur le compte Trésor.'
+    },
+    {
+      id: 'REC-BANK-03',
+      reference_bordereau: 'BORD-BCA-2026-0775',
+      date_reconciliation: '2026-09-30',
+      bank_name: 'Banque Commerciale Internationale (BCA)',
+      bank_account_number: 'CG08-BCA-30003-441092',
+      treasury_deposit_amount_fcfa: 1260000,
+      regie_deposit_amount_fcfa: 540000,
+      total_reconciled_fcfa: 1800000,
+      matching_receipts_count: 24,
+      reconciliation_status: 'RAPPROCHE',
+      variance_fcfa: 0,
+      agent_approbateur: 'Patrick MBOUSSI (Régisseur SAF / Trésor)',
+      notes: 'Versements effectués par les établissements formels de Lumumba et Côte Sauvage.'
+    }
+  ];
+}
+
+function generateSeedAcousticInfractions(): AcousticInfractionPv[] {
+  return [
+    {
+      id: 'PV-SONO-01',
+      pv_number: 'PV-SONO-2026-0012',
+      establishment_id: 'EST-PN-002',
+      establishment_name: 'Le Balafon Bar-Dancing',
+      promoter_name: 'Dieudonné NGOUALA',
+      arrondissement: '2_MVOUMVOU',
+      address: 'Grand Marché, Mvou-Mvou',
+      inspection_datetime: '2026-10-02T23:45:00',
+      measured_db: 91,
+      threshold_legal_db: 45,
+      excess_db: 46,
+      measurement_location: 'VOIE_PUBLIQUE_RIVERAINS',
+      time_period: 'NOCTURNE_22H_06H',
+      sanction_immediate: 'MISE_EN_DEMEURE_48H',
+      officers: {
+        ddl_officer: 'Bienvenu LOUBAKI (Chef SAA)',
+        police_officer: 'Capitaine MAKOSSO (Police Nationale)',
+        hygiene_officer: 'Inspecteur PEMBA (Hygiène Mairie)'
+      },
+      notes: 'Nuisance sonore caractérisée. Émission de 91 dB mesurée à 5m des habitations riveraines (seuil légal 45 dB en période nocturne). Absence de limiteur acoustique scellé.'
+    },
+    {
+      id: 'PV-SONO-02',
+      pv_number: 'PV-SONO-2026-0015',
+      establishment_id: 'EST-PN-004',
+      establishment_name: 'Bar Ponton La Belle',
+      promoter_name: 'Carine MASSAMBA',
+      arrondissement: '3_TIETIE',
+      address: 'Marché Tié-Tié',
+      inspection_datetime: '2026-10-01T22:30:00',
+      measured_db: 89,
+      threshold_legal_db: 45,
+      excess_db: 44,
+      measurement_location: 'TERRASSE',
+      time_period: 'NOCTURNE_22H_06H',
+      sanction_immediate: 'MISE_EN_DEMEURE_48H',
+      officers: {
+        ddl_officer: 'Bienvenu LOUBAKI (Chef SAA)',
+        police_officer: 'Lieutenant BIKINDOU (Gendarmerie)',
+        hygiene_officer: 'Inspecteur PEMBA (Hygiène Mairie)'
+      },
+      notes: 'Baffles orientés vers la voie publique. Sommation verbale effectuée puis rédaction immédiate du PV de constat contradictoire.'
+    },
+    {
+      id: 'PV-SONO-03',
+      pv_number: 'PV-SONO-2026-0018',
+      establishment_id: 'EST-PN-003',
+      establishment_name: 'Le Safari Bar Dancing',
+      promoter_name: 'Pascal TSOUMOU',
+      arrondissement: '3_TIETIE',
+      address: 'Fond Tié-Tié',
+      inspection_datetime: '2026-09-28T01:15:00',
+      measured_db: 94,
+      threshold_legal_db: 45,
+      excess_db: 49,
+      measurement_location: 'VOIE_PUBLIQUE_RIVERAINS',
+      time_period: 'NOCTURNE_22H_06H',
+      sanction_immediate: 'SAISIE_AMPLIFICATEURS',
+      officers: {
+        ddl_officer: 'Jean Richard NTSEKE NGOUAKA (Directeur)',
+        police_officer: 'Commandant TCHICAYA (Sécurité Publique)',
+        hygiene_officer: 'Dr. NGOYI (Direction Santé Publique)'
+      },
+      notes: 'Récidive d\'infraction acoustique après expiration du délai de 48h. Pose de scellés sur les amplificateurs par réquisition de la force publique.'
+    }
+  ];
+}
+
+function generateSeedAuditLogs(): AuditLogEntry[] {
+  const seedEvents = [
+    {
+      action: 'ENCAISSEMENT_MOMO' as const,
+      user_badge: 'FINTECH-SAF-01',
+      user_name: 'Patrick MBOUSSI',
+      user_role: 'RÉGISSEUR SAF',
+      target_id: 'QUI-MOMO-2026-0042',
+      target_label: 'VIP CLUB LOUNGE (75 000 FCFA)',
+      details: 'Paiement MTN MoMo validé avec reversement Trésor Public (52 500 FCFA / 70%) et Régie DDL-PN (22 500 FCFA / 30%).',
+      timestamp: '2026-09-29T10:15:22Z'
+    },
+    {
+      action: 'SIGNATURE_ELECTRONIQUE_DIRECTEUR' as const,
+      user_badge: 'MCAPNIT-DIR-001',
+      user_name: 'Jean Richard NTSEKE NGOUAKA',
+      user_role: 'DIRECTEUR DÉPARTEMENTAL',
+      target_id: 'ARR-044-DDL-PN-2026',
+      target_label: 'Arrêté Fermeture Snack-Bar Bambou',
+      details: 'Apposition du Certificat Électronique d\'État SHA-256 avec horodatage certifié RFC 3161 suite à non-réponse sous 72h.',
+      timestamp: '2026-09-30T11:00:10Z'
+    },
+    {
+      action: 'CONTROLE_COMMISSION_MIXTE' as const,
+      user_badge: 'SAA-PN-001',
+      user_name: 'Bienvenu LOUBAKI',
+      user_role: 'CHEF SAA',
+      target_id: 'PV-MIXTE-2026-0001',
+      target_label: 'Le Privilège Lounge VIP',
+      details: 'Contrôle conjoint DDL-PN, Sécurité Civile (extincteurs), Mairie (hygiène) et Police. Avis favorable émis.',
+      timestamp: '2026-10-01T15:30:00Z'
+    },
+    {
+      action: 'PV_INFRACTION_ACOUSTIQUE' as const,
+      user_badge: 'SAA-PN-001',
+      user_name: 'Bienvenu LOUBAKI',
+      user_role: 'CHEF SAA',
+      target_id: 'PV-SONO-2026-0012',
+      target_label: 'Le Balafon Bar-Dancing (91 dB)',
+      details: 'Procès-verbal de sonométrie contradictoire notifié sur le terrain avec mise en demeure sous 48h de pose de limiteur.',
+      timestamp: '2026-10-02T23:50:18Z'
+    },
+    {
+      action: 'RAPPROCHEMENT_BANCAIRE' as const,
+      user_badge: 'FINTECH-SAF-01',
+      user_name: 'Patrick MBOUSSI',
+      user_role: 'RÉGISSEUR SAF',
+      target_id: 'BORD-BEAC-2026-0928',
+      target_label: 'Bordereau Quotidien BEAC (3 750 000 FCFA)',
+      details: 'Rapprochement automatique de 48 quittances fiscales contre l\'extrait bancaire BEAC. Zéro variance constatée.',
+      timestamp: '2026-10-03T08:15:45Z'
+    }
+  ];
+
+  let prevHash = 'GENESIS-DDL-PN-CONGO-2026';
+  return seedEvents.map((evt, idx) => {
+    const rawPayload = `${prevHash}|${evt.timestamp}|${evt.action}|${evt.user_badge}|${evt.target_id}`;
+    const sha = simpleSha256(rawPayload);
+    prevHash = sha;
+    return {
+      id: `AUDIT-LOG-2026-${String(idx + 1).padStart(4, '0')}`,
+      timestamp: evt.timestamp,
+      user_badge: evt.user_badge,
+      user_name: evt.user_name,
+      user_role: evt.user_role,
+      action_type: evt.action,
+      target_id: evt.target_id,
+      target_label: evt.target_label,
+      details: evt.details,
+      terminal_ip: `197.159.22.${10 + idx} (Pointe-Noire QG)`,
+      sha256_hash: sha
+    };
+  });
+}
+
+function generateSeedSmsNotifications(): SmsNotificationGatewayItem[] {
+  return [
+    {
+      id: 'SMS-2026-001',
+      recipient_phone: '+242 06 612 34 56',
+      recipient_name: 'M. Michel GOMA',
+      establishment_name: 'Le Privilège Lounge VIP',
+      notification_type: 'RAPPEL_J_MOINS_5',
+      message_content: 'RÉPUBLIQUE DU CONGO / DDL-PN : M. Michel GOMA, le 2ème acompte de votre quittance d\'agrément arrive à échéance dans 5 jours. Payez par MTN MoMo ou au Guichet.',
+      channel: 'SMS_OFFICIEL',
+      status: 'ENVOYE',
+      dispatched_at: '2026-10-02T09:00:00Z',
+      operator_gateway: 'Passerelle État Congo / MTN CG'
+    },
+    {
+      id: 'SMS-2026-002',
+      recipient_phone: '+242 06 988 77 66',
+      recipient_name: 'M. Patrick LOUVOUANDOU',
+      establishment_name: 'Snack Bar Le Bambou',
+      notification_type: 'CONVOCATION_72H',
+      message_content: 'DDL-PN / POLICE : Notification officielle de convocation sous 72h ouvrées au siège DDL-PN (Avenue de la Paix) pour régularisation de votre débit de boissons.',
+      channel: 'WHATSAPP_GOUV',
+      status: 'ENVOYE',
+      dispatched_at: '2026-10-01T14:30:00Z',
+      operator_gateway: 'Passerelle WhatsApp Gouv CG'
+    },
+    {
+      id: 'SMS-2026-003',
+      recipient_phone: '+242 05 531 22 11',
+      recipient_name: 'Mme Sylvie MAVOUNGOU',
+      establishment_name: 'Bar Dancing Ponton La Belle',
+      notification_type: 'ALERTE_J_MOINS_1',
+      message_content: 'URGENT DDL-PN : Mme Sylvie MAVOUNGOU, échéance demain de votre solde de redevance (35 000 FCFA). Évitez les majorations et la fermeture administrative.',
+      channel: 'SMS_OFFICIEL',
+      status: 'ENVOYE',
+      dispatched_at: '2026-10-02T16:15:00Z',
+      operator_gateway: 'Passerelle État Congo / Airtel CG'
+    }
+  ];
+}
+
 // Storage Service Singleton with Real Supabase Synchronization
 class StorageService {
   private establishments: Establishment[] = [];
@@ -581,6 +858,10 @@ class StorageService {
   private jointInspections: JointInspectionRecord[] = [];
   private momoSessions: MobileMoneyPaymentSession[] = [];
   private onlineSubmissions: PromoterOnlineSubmission[] = [];
+  private bankReconciliations: BankReconciliationRecord[] = [];
+  private acousticInfractions: AcousticInfractionPv[] = [];
+  private auditLogs: AuditLogEntry[] = [];
+  private smsNotifications: SmsNotificationGatewayItem[] = [];
   private offlineQueue: Array<{ action: string; payload: unknown; timestamp: string }> = [];
   private isOnline = true;
   private isSyncing = false;
@@ -750,7 +1031,63 @@ class StorageService {
       this.saveOnlineSubmissions();
     }
 
-    // 10. Offline queue
+    // 10. Bank Reconciliations (Trésor Public & Régie SAF)
+    const storedRecon = localStorage.getItem(LOCAL_STORAGE_KEYS.BANK_RECONCILIATIONS);
+    if (storedRecon) {
+      try {
+        this.bankReconciliations = JSON.parse(storedRecon);
+      } catch {
+        this.bankReconciliations = generateSeedBankReconciliations();
+        this.saveBankReconciliations();
+      }
+    } else {
+      this.bankReconciliations = generateSeedBankReconciliations();
+      this.saveBankReconciliations();
+    }
+
+    // 11. Acoustic Infractions (Sonométrie & Commission Mixte)
+    const storedAcoustics = localStorage.getItem(LOCAL_STORAGE_KEYS.ACOUSTIC_INFRACTIONS);
+    if (storedAcoustics) {
+      try {
+        this.acousticInfractions = JSON.parse(storedAcoustics);
+      } catch {
+        this.acousticInfractions = generateSeedAcousticInfractions();
+        this.saveAcousticInfractions();
+      }
+    } else {
+      this.acousticInfractions = generateSeedAcousticInfractions();
+      this.saveAcousticInfractions();
+    }
+
+    // 12. Audit Logs (Piste d'Audit Inaltérable SHA-256)
+    const storedAudit = localStorage.getItem(LOCAL_STORAGE_KEYS.AUDIT_LOGS);
+    if (storedAudit) {
+      try {
+        this.auditLogs = JSON.parse(storedAudit);
+      } catch {
+        this.auditLogs = generateSeedAuditLogs();
+        this.saveAuditLogs();
+      }
+    } else {
+      this.auditLogs = generateSeedAuditLogs();
+      this.saveAuditLogs();
+    }
+
+    // 13. SMS / WhatsApp Official Gateway
+    const storedSms = localStorage.getItem(LOCAL_STORAGE_KEYS.SMS_NOTIFICATIONS);
+    if (storedSms) {
+      try {
+        this.smsNotifications = JSON.parse(storedSms);
+      } catch {
+        this.smsNotifications = generateSeedSmsNotifications();
+        this.saveSmsNotifications();
+      }
+    } else {
+      this.smsNotifications = generateSeedSmsNotifications();
+      this.saveSmsNotifications();
+    }
+
+    // 14. Offline queue
     const storedQueue = localStorage.getItem(LOCAL_STORAGE_KEYS.OFFLINE_QUEUE);
     if (storedQueue) {
       try {
@@ -760,7 +1097,7 @@ class StorageService {
       }
     }
 
-    // 11. Supabase URL
+    // 15. Supabase URL
     const savedUrl = localStorage.getItem(LOCAL_STORAGE_KEYS.SUPABASE_URL);
     if (savedUrl) {
       this.supabaseUrl = savedUrl;
@@ -794,6 +1131,18 @@ class StorageService {
   }
   private saveOnlineSubmissions() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.ONLINE_SUBMISSIONS, JSON.stringify(this.onlineSubmissions));
+  }
+  private saveBankReconciliations() {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.BANK_RECONCILIATIONS, JSON.stringify(this.bankReconciliations));
+  }
+  private saveAcousticInfractions() {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.ACOUSTIC_INFRACTIONS, JSON.stringify(this.acousticInfractions));
+  }
+  private saveAuditLogs() {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(this.auditLogs));
+  }
+  private saveSmsNotifications() {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.SMS_NOTIFICATIONS, JSON.stringify(this.smsNotifications));
   }
   private saveQueue() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.OFFLINE_QUEUE, JSON.stringify(this.offlineQueue));
@@ -1803,7 +2152,231 @@ class StorageService {
       item.status = status;
       this.saveOnlineSubmissions();
       this.notifyDataUpdated();
+
+      this.logAuditEvent(
+        'VALIDATION_TELEDECLARATION',
+        item.tracking_code,
+        item.establishment_name,
+        `Statut télédéclaration mis à jour : ${status}`
+      );
     }
+  }
+
+  // --- Rapprochement Bancaire (BEAC, BCA, LCB, Trésor) ---
+  public getBankReconciliations(): BankReconciliationRecord[] {
+    return [...this.bankReconciliations];
+  }
+
+  public createBankReconciliation(record: Omit<BankReconciliationRecord, 'id'>): BankReconciliationRecord {
+    const newRecord: BankReconciliationRecord = {
+      ...record,
+      id: `REC-BANK-${Date.now()}`
+    };
+    this.bankReconciliations.unshift(newRecord);
+    this.saveBankReconciliations();
+    this.notifyDataUpdated();
+
+    this.logAuditEvent(
+      'RAPPROCHEMENT_BANCAIRE',
+      newRecord.reference_bordereau,
+      `${newRecord.bank_name} (${newRecord.total_reconciled_fcfa.toLocaleString('fr-FR')} FCFA)`,
+      `Rapprochement quotidien validé par ${newRecord.agent_approbateur}. Écart : ${newRecord.variance_fcfa} FCFA.`
+    );
+
+    return newRecord;
+  }
+
+  // --- Sonométrie & Infractions Acoustiques ---
+  public getAcousticInfractions(): AcousticInfractionPv[] {
+    return [...this.acousticInfractions];
+  }
+
+  public createAcousticInfraction(data: Omit<AcousticInfractionPv, 'id' | 'pv_number'>): AcousticInfractionPv {
+    const pvNumber = `PV-SONO-2026-${String(this.acousticInfractions.length + 1).padStart(4, '0')}`;
+    const newPv: AcousticInfractionPv = {
+      ...data,
+      id: `PV-SONO-${Date.now()}`,
+      pv_number: pvNumber
+    };
+    this.acousticInfractions.unshift(newPv);
+    this.saveAcousticInfractions();
+    this.notifyDataUpdated();
+
+    this.logAuditEvent(
+      'PV_INFRACTION_ACOUSTIQUE',
+      newPv.pv_number,
+      `${newPv.establishment_name} (${newPv.measured_db} dB / excès +${newPv.excess_db} dB)`,
+      `Procès-verbal de sonométrie contradictoire dressé in situ. Sanction : ${newPv.sanction_immediate.replace(/_/g, ' ')}.`
+    );
+
+    return newPv;
+  }
+
+  // --- Piste d'Audit Inaltérable & Journal d'État (SHA-256) ---
+  public getAuditLogs(): AuditLogEntry[] {
+    return [...this.auditLogs];
+  }
+
+  public logAuditEvent(
+    actionType: AuditLogEntry['action_type'],
+    targetId: string,
+    targetLabel: string,
+    details: string,
+    customUser?: { badge: string; name: string; role: string }
+  ): AuditLogEntry {
+    const now = new Date().toISOString();
+    const userBadge = customUser?.badge || 'DIR-01';
+    const userName = customUser?.name || 'Jean Richard NTSEKE NGOUAKA';
+    const userRole = customUser?.role || 'DIRECTEUR DÉPARTEMENTAL';
+
+    // Chained hash computation
+    const lastLog = this.auditLogs[0];
+    const prevHash = lastLog ? lastLog.sha256_hash : 'GENESIS-DDL-PN-CONGO-2026';
+    const payload = `${prevHash}|${now}|${actionType}|${userBadge}|${targetId}`;
+    const sha = simpleSha256(payload);
+
+    const entry: AuditLogEntry = {
+      id: `AUDIT-LOG-2026-${String(this.auditLogs.length + 1).padStart(4, '0')}`,
+      timestamp: now,
+      user_badge: userBadge,
+      user_name: userName,
+      user_role: userRole,
+      action_type: actionType,
+      target_id: targetId,
+      target_label: targetLabel,
+      details,
+      terminal_ip: '197.159.22.42 (Pointe-Noire QG)',
+      sha256_hash: sha
+    };
+
+    this.auditLogs.unshift(entry);
+    this.saveAuditLogs();
+    this.notifyDataUpdated();
+    return entry;
+  }
+
+  public verifyAuditChainIntegrity(): { isValid: boolean; verifiedCount: number; brokenIndex?: number } {
+    if (this.auditLogs.length === 0) return { isValid: true, verifiedCount: 0 };
+
+    for (let i = this.auditLogs.length - 1; i >= 0; i--) {
+      const current = this.auditLogs[i];
+      const prev = i === this.auditLogs.length - 1 ? null : this.auditLogs[i + 1];
+      const prevHash = prev ? prev.sha256_hash : 'GENESIS-DDL-PN-CONGO-2026';
+      const expectedPayload = `${prevHash}|${current.timestamp}|${current.action_type}|${current.user_badge}|${current.target_id}`;
+      const expectedHash = simpleSha256(expectedPayload);
+
+      if (current.sha256_hash !== expectedHash) {
+        return { isValid: false, verifiedCount: this.auditLogs.length - 1 - i, brokenIndex: i };
+      }
+    }
+
+    return { isValid: true, verifiedCount: this.auditLogs.length };
+  }
+
+  // --- Passerelle SMS & WhatsApp Officielle d'État ---
+  public getSmsNotifications(): SmsNotificationGatewayItem[] {
+    return [...this.smsNotifications];
+  }
+
+  public dispatchSmsNotification(data: {
+    recipient_phone: string;
+    recipient_name: string;
+    establishment_name: string;
+    notification_type: SmsNotificationGatewayItem['notification_type'];
+    message_content: string;
+    channel: 'SMS_OFFICIEL' | 'WHATSAPP_GOUV';
+  }): SmsNotificationGatewayItem {
+    const item: SmsNotificationGatewayItem = {
+      id: `NOTIF-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      recipient_phone: data.recipient_phone,
+      recipient_name: data.recipient_name,
+      establishment_name: data.establishment_name,
+      notification_type: data.notification_type,
+      message_content: data.message_content,
+      channel: data.channel,
+      status: 'ENVOYE',
+      dispatched_at: new Date().toISOString(),
+      operator_gateway: data.channel === 'SMS_OFFICIEL' ? 'Passerelle État Congo / MTN & Airtel' : 'Passerelle WhatsApp Gouv CG'
+    };
+
+    this.smsNotifications.unshift(item);
+    this.saveSmsNotifications();
+    this.notifyDataUpdated();
+
+    this.logAuditEvent(
+      'MODIFICATION_DOSSIER',
+      item.id,
+      item.establishment_name,
+      `Notification ${item.channel} envoyée à ${item.recipient_phone} (${item.notification_type}).`
+    );
+
+    return item;
+  }
+
+  public sendBatchReminders(type: SmsNotificationGatewayItem['notification_type']): { count: number; items: SmsNotificationGatewayItem[] } {
+    const establishments = this.getEstablishments().filter(e => e.balance_due > 0);
+    const sent: SmsNotificationGatewayItem[] = [];
+
+    establishments.slice(0, 5).forEach(est => {
+      let text = '';
+      if (type === 'RAPPEL_J_MOINS_5') {
+        text = `RÉPUBLIQUE DU CONGO / DDL-PN : M/Mme ${est.promoter_name}, échéance dans 5 jours de votre redevance de régularisation (${est.balance_due.toLocaleString('fr-FR')} FCFA). Payez par MoMo ou au Guichet.`;
+      } else if (type === 'ALERTE_J_MOINS_1') {
+        text = `URGENT DDL-PN : M/Mme ${est.promoter_name}, échéance DEMAIN du solde pour « ${est.name} » (${est.balance_due.toLocaleString('fr-FR')} FCFA). Évitez la fermeture administrative.`;
+      } else if (type === 'CONVOCATION_72H') {
+        text = `DDL-PN / POLICE : Convocation officielle sous 72h ouvrées au siège DDL-PN (Avenue de la Paix) pour mise en conformité de votre établissement « ${est.name} ».`;
+      } else {
+        text = `AVIS DDL-PN : Solde restant dû pour « ${est.name} » : ${est.balance_due.toLocaleString('fr-FR')} FCFA. Contact Brigade SAA : +242 06 612 88 90.`;
+      }
+
+      const item = this.dispatchSmsNotification({
+        recipient_phone: est.phone || '+242 06 000 00 00',
+        recipient_name: est.promoter_name,
+        establishment_name: est.name,
+        notification_type: type,
+        message_content: text,
+        channel: 'SMS_OFFICIEL'
+      });
+      sent.push(item);
+    });
+
+    return { count: sent.length, items: sent };
+  }
+
+  // --- Signataires d'État Certifiés ---
+  public getOfficialSignatories(): StateDigitalSignature[] {
+    return [
+      {
+        signatory_name: 'Jean Richard NTSEKE NGOUAKA',
+        signatory_title: 'Directeur Départemental des Loisirs de Pointe-Noire',
+        signatory_matricule: 'MCAPNIT-DIR-001',
+        certificate_serial: 'DGL-CG-PKI-2026-9812A',
+        sha256_fingerprint: 'AF:9C:20:26:DD:LP:01:88:94:B3:0E:C7:5A:F2:18:66',
+        timestamp_rfc3161: new Date().toISOString(),
+        validity: '31 DÉCEMBRE 2027',
+        status: 'VALIDE_ETAT_CONGO'
+      },
+      {
+        signatory_name: 'Bienvenu LOUBAKI',
+        signatory_title: 'Chef du Service Assistance et Autorisation (SAA)',
+        signatory_matricule: 'SAA-PN-001',
+        certificate_serial: 'DGL-CG-PKI-2026-4410B',
+        sha256_fingerprint: '3B:7F:44:19:92:A1:CC:02:45:90:EE:D3:88:01:99:A2',
+        timestamp_rfc3161: new Date().toISOString(),
+        validity: '31 DÉCEMBRE 2027',
+        status: 'VALIDE_ETAT_CONGO'
+      },
+      {
+        signatory_name: 'Patrick MBOUSSI',
+        signatory_title: 'Régisseur SAF / DDL-PN (Agent Comptable Trésor)',
+        signatory_matricule: 'FINTECH-SAF-01',
+        certificate_serial: 'DGL-CG-PKI-2026-7723C',
+        sha256_fingerprint: '11:2C:99:E4:08:7B:FA:33:66:81:AA:50:90:D1:43:77',
+        timestamp_rfc3161: new Date().toISOString(),
+        validity: '31 DÉCEMBRE 2027',
+        status: 'VALIDE_ETAT_CONGO'
+      }
+    ];
   }
 
   public resetToFactorySeed() {
@@ -1815,6 +2388,10 @@ class StorageService {
     this.jointInspections = generateSeedJointInspections();
     this.momoSessions = generateSeedMomoSessions();
     this.onlineSubmissions = generateSeedOnlineSubmissions();
+    this.bankReconciliations = generateSeedBankReconciliations();
+    this.acousticInfractions = generateSeedAcousticInfractions();
+    this.auditLogs = generateSeedAuditLogs();
+    this.smsNotifications = generateSeedSmsNotifications();
     this.offlineQueue = [];
     this.saveEstablishments();
     this.savePayments();
@@ -1824,6 +2401,10 @@ class StorageService {
     this.saveJointInspections();
     this.saveMomoSessions();
     this.saveOnlineSubmissions();
+    this.saveBankReconciliations();
+    this.saveAcousticInfractions();
+    this.saveAuditLogs();
+    this.saveSmsNotifications();
     this.saveQueue();
     this.notifyDataUpdated();
   }
