@@ -1,4 +1,4 @@
-import { Establishment, TerrainPaymentRecord, OfficialLegalAct, SpaMerchantSubscription, SpaHonorDiploma, ArrondissementCode, RegimeType, EstablishmentStatus, AgentTourneeEvent, AppUser, AttachedDocument } from '../types';
+import { Establishment, TerrainPaymentRecord, OfficialLegalAct, SpaMerchantSubscription, SpaHonorDiploma, ArrondissementCode, RegimeType, EstablishmentStatus, AgentTourneeEvent, AppUser, AttachedDocument, JointInspectionRecord, MobileMoneyPaymentSession, PromoterOnlineSubmission } from '../types';
 import { TERRITORIAL_REFERENTIAL, ACTIVITY_CATEGORIES, TAXATION_RULES, APP_USERS } from '../constants/referential';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
@@ -10,6 +10,9 @@ const LOCAL_STORAGE_KEYS = {
   DIPLOMAS: 'ddl_pn_diplomas_v5',
   TOURNEES_EVENTS: 'ddl_pn_agent_tournees_v6',
   OFFLINE_QUEUE: 'ddl_pn_offline_queue_v5',
+  JOINT_INSPECTIONS: 'ddl_pn_joint_inspections_v2',
+  MOMO_SESSIONS: 'ddl_pn_momo_sessions_v2',
+  ONLINE_SUBMISSIONS: 'ddl_pn_online_submissions_v2',
   SUPABASE_URL: 'ddl_pn_supabase_url'
 };
 
@@ -412,6 +415,161 @@ function generateSeedTourneeEvents(establishments: Establishment[]): AgentTourne
   return events;
 }
 
+function generateSeedJointInspections(): JointInspectionRecord[] {
+  return [
+    {
+      id: 'INSP-SEED-01',
+      pv_number: 'PV-MIXTE-2026-0001',
+      establishment_id: 'EST-SEED-01',
+      establishment_name: 'VIP CLUB LOUNGE',
+      promoter_name: 'M. Rodrigue MAKOSSO',
+      arrondissement: '1_LUMUMBA',
+      quartier: 'Centre-Ville',
+      address: 'Avenue Moe Pratt, face Gare CFCO',
+      inspection_date: '2026-09-28',
+      noise_level_db: 78,
+      noise_compliant: true,
+      noise_notes: 'Limiteur acoustique scellé actif. Niveau inférieur à 85 dB à l\'intérieur et 52 dB sur voie publique.',
+      extinguishers_count: 4,
+      extinguishers_valid: true,
+      emergency_exits_clear: true,
+      evacuation_plan_displayed: true,
+      fire_safety_compliant: true,
+      sanitary_facilities_ok: true,
+      ventilation_ok: true,
+      waste_management_ok: true,
+      hygiene_compliant: true,
+      administrative_compliant: true,
+      police_order_compliant: true,
+      global_verdict: 'FAVORABLE',
+      prescriptions: [
+        'Maintenir le calibrage du limiteur de pression acoustique tous les 6 mois.',
+        'Vérifier les blocs autonomes d\'éclairage de sécurité (BAES) chaque trimestre.'
+      ],
+      inspectors: {
+        ddl_officer: 'Jacques MATOKO (Chef SAA DDL-PN)',
+        fire_safety_officer: 'Capitaine BOUANGA (Sécurité Civile)',
+        hygiene_officer: 'Inspecteur MOUNTOU (Hygiène Mairie)',
+        police_officer: 'Officier NGOMA (Police Nationale)'
+      },
+      created_at: '2026-09-28T14:30:00Z'
+    },
+    {
+      id: 'INSP-SEED-02',
+      pv_number: 'PV-MIXTE-2026-0002',
+      establishment_id: 'EST-SEED-03',
+      establishment_name: 'LE GRAND COMPLEXE PLANÈTE',
+      promoter_name: 'Mme Chimène BASSOUAMINA',
+      arrondissement: '3_TIETIE',
+      quartier: 'Fond Tié-Tié',
+      address: 'Rond-Point Tié-Tié, Rue de la Paix',
+      inspection_date: '2026-09-25',
+      noise_level_db: 92,
+      noise_compliant: false,
+      noise_notes: 'Dépassement nocturne constaté : 92 dB mesuré en bordure riveraine. Isolation phonique insuffisante.',
+      extinguishers_count: 2,
+      extinguishers_valid: true,
+      emergency_exits_clear: false,
+      evacuation_plan_displayed: true,
+      fire_safety_compliant: false,
+      sanitary_facilities_ok: true,
+      ventilation_ok: true,
+      waste_management_ok: true,
+      hygiene_compliant: true,
+      administrative_compliant: true,
+      police_order_compliant: false,
+      global_verdict: 'FAVORABLE_AVEC_RESERVES',
+      prescriptions: [
+        'Installation immédiate d\'un limiteur enregistreur de décibels plafonné à 85 dB.',
+        'Dégagement complet de l\'issue de secours numéro 2 encombrée par des casiers sous 48h.',
+        'Respect strict de l\'horaire de fermeture fixé à 02h00 les vendredis et samedis.'
+      ],
+      inspectors: {
+        ddl_officer: 'Alain MACKITA (Agent Assermenté SAA)',
+        fire_safety_officer: 'Lieutenant MABIALA (Sécurité Civile)',
+        hygiene_officer: 'Inspecteur BIKINDOU (Hygiène Mairie)',
+        police_officer: 'Sous-Lieutenant POATY (Police Nationale)'
+      },
+      created_at: '2026-09-25T11:00:00Z'
+    }
+  ];
+}
+
+function generateSeedMomoSessions(): MobileMoneyPaymentSession[] {
+  return [
+    {
+      id: 'MOMO-SEED-01',
+      transaction_ref: 'TXN-MOMO-CG-2026-9481',
+      operator: 'MTN Mobile Money',
+      establishment_id: 'EST-SEED-01',
+      establishment_name: 'VIP CLUB LOUNGE',
+      promoter_name: 'M. Rodrigue MAKOSSO',
+      phone_number: '+242 06 654 32 10',
+      amount_fcfa: 75000,
+      treasury_share_70: 52500,
+      regie_share_30: 22500,
+      status: 'SUCCESS',
+      receipt_number: 'QUI-MOMO-2026-0042',
+      created_at: '2026-09-29T10:15:00Z'
+    },
+    {
+      id: 'MOMO-SEED-02',
+      transaction_ref: 'TXN-MOMO-CG-2026-8812',
+      operator: 'Airtel Money',
+      establishment_id: 'EST-SEED-02',
+      establishment_name: 'ESPACE DETENTE LE PARADIS',
+      promoter_name: 'M. Jean-Paul NGOUABI',
+      phone_number: '+242 05 512 88 44',
+      amount_fcfa: 50000,
+      treasury_share_70: 35000,
+      regie_share_30: 15000,
+      status: 'SUCCESS',
+      receipt_number: 'QUI-MOMO-2026-0043',
+      created_at: '2026-09-30T14:40:00Z'
+    }
+  ];
+}
+
+function generateSeedOnlineSubmissions(): PromoterOnlineSubmission[] {
+  return [
+    {
+      id: 'SUB-SEED-01',
+      tracking_code: 'TELE-PN-2026-4891',
+      establishment_name: 'LOUNGE BAR LE MIRADOR',
+      promoter_name: 'M. Christian MOUKOKO',
+      phone: '+242 06 912 34 56',
+      email: 'moukoko.mirador@gmail.com',
+      arrondissement: '1_LUMUMBA',
+      quartier: 'Côte Sauvage',
+      address: 'Boulevard du Général de Gaulle',
+      activity_code: 'BAR_DANCING',
+      regime_type: 'FORMEL',
+      surface_m2: 140,
+      estimated_fee: 150000,
+      status: 'CONVOQUE_VISITE',
+      submission_date: '2026-09-27',
+      notes: 'Dossier complet téléversé : RCCM, bail et plan de masse. Visite de la Commission Mixte programmée.'
+    },
+    {
+      id: 'SUB-SEED-02',
+      tracking_code: 'TELE-PN-2026-7732',
+      establishment_name: 'ESPACE GASTRONOMIQUE LA TERRAZZINA',
+      promoter_name: 'Mme Patricia PEMBE',
+      phone: '+242 05 601 22 88',
+      arrondissement: '2_MVOUMVOU',
+      quartier: 'Grand Marché',
+      address: 'Avenue de la Révolution',
+      activity_code: 'RESTAURANT',
+      regime_type: 'INFORMEL',
+      surface_m2: 65,
+      estimated_fee: 50000,
+      status: 'EN_ATTENTE_INSTRUCTION',
+      submission_date: '2026-10-01',
+      notes: 'Demande d\'autorisation d\'ouverture pour terrasse récréative. Dossier en cours de revue par le Chef SAA.'
+    }
+  ];
+}
+
 // Storage Service Singleton with Real Supabase Synchronization
 class StorageService {
   private establishments: Establishment[] = [];
@@ -420,6 +578,9 @@ class StorageService {
   private subscriptions: SpaMerchantSubscription[] = [];
   private diplomas: SpaHonorDiploma[] = [];
   private tourneeEvents: AgentTourneeEvent[] = [];
+  private jointInspections: JointInspectionRecord[] = [];
+  private momoSessions: MobileMoneyPaymentSession[] = [];
+  private onlineSubmissions: PromoterOnlineSubmission[] = [];
   private offlineQueue: Array<{ action: string; payload: unknown; timestamp: string }> = [];
   private isOnline = true;
   private isSyncing = false;
@@ -547,7 +708,49 @@ class StorageService {
       this.saveTournees();
     }
 
-    // 7. Offline queue
+    // 7. Joint Inspections (Commission Mixte)
+    const storedInspections = localStorage.getItem(LOCAL_STORAGE_KEYS.JOINT_INSPECTIONS);
+    if (storedInspections) {
+      try {
+        this.jointInspections = JSON.parse(storedInspections);
+      } catch {
+        this.jointInspections = generateSeedJointInspections();
+        this.saveJointInspections();
+      }
+    } else {
+      this.jointInspections = generateSeedJointInspections();
+      this.saveJointInspections();
+    }
+
+    // 8. Mobile Money Sessions
+    const storedMomo = localStorage.getItem(LOCAL_STORAGE_KEYS.MOMO_SESSIONS);
+    if (storedMomo) {
+      try {
+        this.momoSessions = JSON.parse(storedMomo);
+      } catch {
+        this.momoSessions = generateSeedMomoSessions();
+        this.saveMomoSessions();
+      }
+    } else {
+      this.momoSessions = generateSeedMomoSessions();
+      this.saveMomoSessions();
+    }
+
+    // 9. Promoter Online Submissions
+    const storedSubmissions = localStorage.getItem(LOCAL_STORAGE_KEYS.ONLINE_SUBMISSIONS);
+    if (storedSubmissions) {
+      try {
+        this.onlineSubmissions = JSON.parse(storedSubmissions);
+      } catch {
+        this.onlineSubmissions = generateSeedOnlineSubmissions();
+        this.saveOnlineSubmissions();
+      }
+    } else {
+      this.onlineSubmissions = generateSeedOnlineSubmissions();
+      this.saveOnlineSubmissions();
+    }
+
+    // 10. Offline queue
     const storedQueue = localStorage.getItem(LOCAL_STORAGE_KEYS.OFFLINE_QUEUE);
     if (storedQueue) {
       try {
@@ -557,7 +760,7 @@ class StorageService {
       }
     }
 
-    // 8. Supabase URL
+    // 11. Supabase URL
     const savedUrl = localStorage.getItem(LOCAL_STORAGE_KEYS.SUPABASE_URL);
     if (savedUrl) {
       this.supabaseUrl = savedUrl;
@@ -582,6 +785,15 @@ class StorageService {
   }
   private saveTournees() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.TOURNEES_EVENTS, JSON.stringify(this.tourneeEvents));
+  }
+  private saveJointInspections() {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.JOINT_INSPECTIONS, JSON.stringify(this.jointInspections));
+  }
+  private saveMomoSessions() {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.MOMO_SESSIONS, JSON.stringify(this.momoSessions));
+  }
+  private saveOnlineSubmissions() {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.ONLINE_SUBMISSIONS, JSON.stringify(this.onlineSubmissions));
   }
   private saveQueue() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.OFFLINE_QUEUE, JSON.stringify(this.offlineQueue));
@@ -1492,18 +1704,126 @@ class StorageService {
     };
   }
 
+  // --- Commission Mixte & Sonométrie ---
+  public getJointInspections(): JointInspectionRecord[] {
+    return [...this.jointInspections];
+  }
+
+  public saveJointInspection(data: Omit<JointInspectionRecord, 'id' | 'pv_number' | 'created_at'>): JointInspectionRecord {
+    const pvNumber = `PV-MIXTE-2026-${String(this.jointInspections.length + 1).padStart(4, '0')}`;
+    const newRecord: JointInspectionRecord = {
+      ...data,
+      id: `INSP-${Date.now()}`,
+      pv_number: pvNumber,
+      created_at: new Date().toISOString()
+    };
+    this.jointInspections.unshift(newRecord);
+    this.saveJointInspections();
+
+    // Update establishment last inspection & decibel level
+    this.updateEstablishment(data.establishment_id, {
+      last_inspection_date: data.inspection_date,
+      decibel_level: data.noise_level_db,
+      has_acoustic_limiter: data.noise_compliant
+    });
+
+    this.notifyDataUpdated();
+    return newRecord;
+  }
+
+  // --- Mobile Money Fintech ---
+  public getMomoSessions(): MobileMoneyPaymentSession[] {
+    return [...this.momoSessions];
+  }
+
+  public recordMomoPayment(data: {
+    establishment_id: string;
+    operator: 'MTN Mobile Money' | 'Airtel Money';
+    phone_number: string;
+    amount_fcfa: number;
+  }): { session: MobileMoneyPaymentSession; payment: TerrainPaymentRecord } {
+    const est = this.getEstablishmentById(data.establishment_id);
+    if (!est) throw new Error('Établissement introuvable');
+
+    const paymentResult = this.recordPayment({
+      establishment_id: est.id,
+      amount: data.amount_fcfa,
+      payment_method: data.operator,
+      collected_by: `Télépaiement ${data.operator} d'État`,
+      agent_badge: 'FINTECH-MOMO-2026',
+      notes: `Télépaiement sécurisé Mobile Money (${data.operator}) via passerelle de l'État - N° Tél : ${data.phone_number}`
+    });
+
+    const session: MobileMoneyPaymentSession = {
+      id: `MOMO-SESS-${Date.now()}`,
+      transaction_ref: paymentResult.payment.transaction_ref,
+      operator: data.operator,
+      establishment_id: est.id,
+      establishment_name: est.name,
+      promoter_name: est.promoter_name,
+      phone_number: data.phone_number,
+      amount_fcfa: data.amount_fcfa,
+      treasury_share_70: Math.round(data.amount_fcfa * 0.7),
+      regie_share_30: Math.round(data.amount_fcfa * 0.3),
+      status: 'SUCCESS',
+      receipt_number: paymentResult.payment.receipt_reference,
+      created_at: new Date().toISOString()
+    };
+
+    this.momoSessions.unshift(session);
+    this.saveMomoSessions();
+    this.notifyDataUpdated();
+
+    return { session, payment: paymentResult.payment };
+  }
+
+  // --- Espace Télédéclaration & Nouveaux Promoteurs ---
+  public getOnlineSubmissions(): PromoterOnlineSubmission[] {
+    return [...this.onlineSubmissions];
+  }
+
+  public createOnlineSubmission(data: Omit<PromoterOnlineSubmission, 'id' | 'tracking_code' | 'submission_date' | 'status'>): PromoterOnlineSubmission {
+    const trackingCode = `TELE-PN-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newSubmission: PromoterOnlineSubmission = {
+      ...data,
+      id: `SUB-${Date.now()}`,
+      tracking_code: trackingCode,
+      submission_date: new Date().toISOString().split('T')[0],
+      status: 'EN_ATTENTE_INSTRUCTION'
+    };
+    this.onlineSubmissions.unshift(newSubmission);
+    this.saveOnlineSubmissions();
+    this.notifyDataUpdated();
+    return newSubmission;
+  }
+
+  public updateOnlineSubmissionStatus(id: string, status: PromoterOnlineSubmission['status']): void {
+    const item = this.onlineSubmissions.find(s => s.id === id);
+    if (item) {
+      item.status = status;
+      this.saveOnlineSubmissions();
+      this.notifyDataUpdated();
+    }
+  }
+
   public resetToFactorySeed() {
     this.establishments = generateSeedEstablishments();
     this.payments = generateSeedPayments(this.establishments);
     this.acts = generateSeedActs();
     this.subscriptions = generateSeedSubscriptions();
     this.diplomas = generateSeedDiplomas();
+    this.jointInspections = generateSeedJointInspections();
+    this.momoSessions = generateSeedMomoSessions();
+    this.onlineSubmissions = generateSeedOnlineSubmissions();
     this.offlineQueue = [];
     this.saveEstablishments();
     this.savePayments();
     this.saveActs();
     this.saveSubscriptions();
     this.saveDiplomas();
+    this.saveJointInspections();
+    this.saveMomoSessions();
+    this.saveOnlineSubmissions();
     this.saveQueue();
     this.notifyDataUpdated();
   }

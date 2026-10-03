@@ -14,7 +14,10 @@ export type PrintDocumentType =
   | 'ACTE_JURIDIQUE_A4'
   | 'DIPLOME_HONNEUR_A4'
   | 'BORDEREAU_DGL_A4'
-  | 'RAPPORT_TRIMESTRIEL_A4';
+  | 'RAPPORT_TRIMESTRIEL_A4'
+  | 'PV_COMMISSION_MIXTE_A4'
+  | 'MACARON_OFFICIEL_VITRINE_A4'
+  | 'RECU_TELEPAIEMENT_MOMO_A4';
 
 export interface PrintModalProps {
   isOpen: boolean;
@@ -741,6 +744,415 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                       <p className="font-black text-[#022448] text-[11px] tracking-wide uppercase font-republic">
                         Jean Richard NTSEKE NGOUAKA
                       </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ==============================================================
+                DOCUMENT: PROCÈS-VERBAL DE CONTRÔLE CONJOINT - COMMISSION MIXTE (A4)
+               ============================================================== */}
+            {documentType === 'PV_COMMISSION_MIXTE_A4' && (
+              <div className="print-page-a4 relative flex flex-col justify-between p-6 bg-white border border-slate-300 shadow-md min-h-[297mm]">
+                {/* 1. Official Republic Header */}
+                <div>
+                  <div className="flex justify-between items-start border-b-2 border-[#022448] pb-3">
+                    <div className="text-left font-serif text-[9px] text-slate-800 leading-tight space-y-0.5 max-w-[260px]">
+                      <p className="font-extrabold uppercase text-[#022448] text-[10px]">RÉPUBLIQUE DU CONGO</p>
+                      <p className="italic text-[8px] text-slate-600">Unité - Travail - Progrès</p>
+                      <p className="pt-0.5 font-bold uppercase text-[8.5px]">MCAPNIT / DDL-PN</p>
+                      <p className="text-[8px] font-semibold text-slate-700">COMMISSION MIXTE DE CONTRÔLE ET DE CONFORMITÉ DES ÉTABLISSEMENTS DE LOISIRS</p>
+                    </div>
+
+                    <div className="flex flex-col items-center">
+                      <OfficialRepublicLogo size="md" showMotto={false} />
+                      <span className="text-[8px] font-black uppercase text-[#006d2f] mt-1 font-mono-ref">COMMISSION MIXTE</span>
+                    </div>
+
+                    <div className="text-right font-mono-ref text-[9px] text-slate-700 space-y-0.5">
+                      <p className="font-bold text-[#022448] text-[10px]">RÉF : {data.pv_number || 'PV-MIXTE-2026-0001'}</p>
+                      <p>Date : {formatDateFR(data.inspection_date || new Date())}</p>
+                      <p className="text-[8px] text-slate-500">Ville de Pointe-Noire</p>
+                      <div className="mt-1 flex justify-end">
+                        <RepublicQrCode
+                          payload={{
+                            type: 'PV_COMMISSION_MIXTE',
+                            pv_number: data.pv_number,
+                            establishment_name: data.establishment_name,
+                            date: data.inspection_date
+                          }}
+                          size={46}
+                          showDetails={false}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Document Title */}
+                  <div className="text-center my-3">
+                    <h2 className="text-base font-black uppercase tracking-wide text-[#022448] font-republic underline decoration-amber-500 underline-offset-4">
+                      PROCÈS-VERBAL DE CONTRÔLE CONJOINT
+                    </h2>
+                    <p className="text-[9.5px] uppercase font-bold text-slate-600 mt-0.5 tracking-wider">
+                      DDL-PN • POLICE NATIONALE • SÉCURITÉ CIVILE (SAPEURS-POMPIERS) • HYGIÈNE PUBLIQUE VILLE DE POINTE-NOIRE
+                    </p>
+                  </div>
+
+                  {/* Identification Box */}
+                  <div className="bg-slate-50 border border-slate-300 p-2.5 rounded-lg text-[10px] space-y-1 mb-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p><strong>Établissement :</strong> <span className="font-black uppercase text-[#022448]">« {data.establishment_name} »</span></p>
+                        <p><strong>Promoteur / Gérant :</strong> {data.promoter_name}</p>
+                      </div>
+                      <div>
+                        <p><strong>Arrondissement :</strong> {data.arrondissement}</p>
+                        <p><strong>Quartier / Adresse :</strong> {data.quartier} • {data.address || 'Pointe-Noire'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4 Inspection Axes Grid */}
+                  <div className="space-y-2 text-[9.5px]">
+                    {/* Axis 1: Acoustic & Sonometer */}
+                    <div className="border border-slate-300 rounded p-2 bg-white">
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1 mb-1">
+                        <span className="font-bold text-[#022448] uppercase">1. Contrôle Acoustique & Nuisances Sonores (DDL-PN / SAA)</span>
+                        <span className={`px-2 py-0.5 rounded text-[8.5px] font-bold ${data.noise_compliant ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                          {data.noise_compliant ? 'CONFORME' : 'NON CONFORME'}
+                        </span>
+                      </div>
+                      <p>• Niveau sonore mesuré in situ : <strong>{data.noise_level_db || 75} dB</strong> (Plafond réglementaire : 85 dB intérieur, 55 dB jour / 45 dB nuit en limite riveraine).</p>
+                      <p className="italic text-slate-600">• Observation : {data.noise_notes || 'Limiteur acoustique vérifié et opérationnel.'}</p>
+                    </div>
+
+                    {/* Axis 2: Fire Safety & Evacuation */}
+                    <div className="border border-slate-300 rounded p-2 bg-white">
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1 mb-1">
+                        <span className="font-bold text-[#022448] uppercase">2. Sécurité Incendie & Évacuation (Direction Sécurité Civile)</span>
+                        <span className={`px-2 py-0.5 rounded text-[8.5px] font-bold ${data.fire_safety_compliant ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                          {data.fire_safety_compliant ? 'CONFORME' : 'RÉSERVES'}
+                        </span>
+                      </div>
+                      <p>• Nombre d'extincteurs vérifiés : <strong>{data.extinguishers_count || 2}</strong> ({data.extinguishers_valid ? 'En cours de validité' : 'Charge expirée'}).</p>
+                      <p>• Dégagement des issues de secours : <strong>{data.emergency_exits_clear ? 'Dégagées et praticables' : 'Encombrées / Inaccessibles'}</strong>.</p>
+                      <p>• Affichage du plan d'évacuation : <strong>{data.evacuation_plan_displayed ? 'Affiché aux normes' : 'Absent'}</strong>.</p>
+                    </div>
+
+                    {/* Axis 3: Hygiene & Public Health */}
+                    <div className="border border-slate-300 rounded p-2 bg-white">
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1 mb-1">
+                        <span className="font-bold text-[#022448] uppercase">3. Hygiène & Salubrité Publique (Service d'Hygiène Mairie de Pointe-Noire)</span>
+                        <span className={`px-2 py-0.5 rounded text-[8.5px] font-bold ${data.hygiene_compliant ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                          {data.hygiene_compliant ? 'CONFORME' : 'NON CONFORME'}
+                        </span>
+                      </div>
+                      <p>• Commodités sanitaires & eau courante : <strong>{data.sanitary_facilities_ok ? 'Conformes et entretenues' : 'Défectueuses'}</strong>.</p>
+                      <p>• Ventilation mécanique / aération naturelle : <strong>{data.ventilation_ok ? 'Adéquate' : 'Insuffisante'}</strong>.</p>
+                    </div>
+
+                    {/* Axis 4: Public Order & Regulation */}
+                    <div className="border border-slate-300 rounded p-2 bg-white">
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-1 mb-1">
+                        <span className="font-bold text-[#022448] uppercase">4. Ordre Public & Réglementation Administrative (Police / SAA)</span>
+                        <span className={`px-2 py-0.5 rounded text-[8.5px] font-bold ${data.administrative_compliant ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                          {data.administrative_compliant ? 'EN RÈGLE' : 'EN COURS'}
+                        </span>
+                      </div>
+                      <p>• Régularisation de la redevance d'ouverture DDL-PN : <strong>{data.administrative_compliant ? 'Quittance Trésor acquittée' : 'Solde restant dû'}</strong>.</p>
+                      <p>• Respect des horaires de fermeture et filtrage des mineurs : <strong>{data.police_order_compliant ? 'Respecté' : 'Infractions signalées'}</strong>.</p>
+                    </div>
+                  </div>
+
+                  {/* Commission Verdict */}
+                  <div className="mt-3 p-2.5 rounded-lg border-2 border-[#022448] bg-slate-50 text-[10px]">
+                    <div className="flex justify-between items-center">
+                      <span className="font-black text-[#022448] uppercase text-xs">VERDICT GLOBAL DE LA COMMISSION MIXTE :</span>
+                      <span className={`px-3 py-1 rounded font-black text-xs ${
+                        data.global_verdict === 'FAVORABLE' ? 'bg-emerald-600 text-white' : (data.global_verdict === 'FAVORABLE_AVEC_RESERVES' ? 'bg-amber-500 text-slate-950' : 'bg-red-600 text-white')
+                      }`}>
+                        AVIS {data.global_verdict?.replace(/_/g, ' ') || 'FAVORABLE'}
+                      </span>
+                    </div>
+                    {data.prescriptions && data.prescriptions.length > 0 && (
+                      <div className="mt-1.5 pt-1.5 border-t border-slate-200">
+                        <p className="font-bold text-slate-800">Prescriptions et délais de mise en conformité :</p>
+                        <ul className="list-disc pl-4 space-y-0.5 mt-0.5 text-slate-700 italic text-[9px]">
+                          {data.prescriptions.map((p: string, idx: number) => (
+                            <li key={idx}>{p}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Signatures of the 4 Inspectors + Promoter */}
+                <div className="border-t-2 border-[#022448] pt-2 mt-3">
+                  <p className="text-[9px] text-center font-bold uppercase text-slate-600 mb-2">
+                    Émargements contradictoires des membres de la Commission Mixte
+                  </p>
+                  <div className="grid grid-cols-4 gap-2 text-[8px] text-center font-serif">
+                    <div className="border border-slate-200 p-1.5 rounded">
+                      <p className="font-bold text-[#022448]">Pour la DDL-PN</p>
+                      <p className="text-slate-500">{data.inspectors?.ddl_officer || 'Jacques MATOKO'}</p>
+                      <div className="h-8 flex items-center justify-center text-[7px] text-slate-400 italic">[Signature]</div>
+                    </div>
+                    <div className="border border-slate-200 p-1.5 rounded">
+                      <p className="font-bold text-[#022448]">Sécurité Civile</p>
+                      <p className="text-slate-500">{data.inspectors?.fire_safety_officer || 'Capitaine BOUANGA'}</p>
+                      <div className="h-8 flex items-center justify-center text-[7px] text-slate-400 italic">[Signature]</div>
+                    </div>
+                    <div className="border border-slate-200 p-1.5 rounded">
+                      <p className="font-bold text-[#022448]">Hygiène Mairie</p>
+                      <p className="text-slate-500">{data.inspectors?.hygiene_officer || 'Inspecteur MOUNTOU'}</p>
+                      <div className="h-8 flex items-center justify-center text-[7px] text-slate-400 italic">[Signature]</div>
+                    </div>
+                    <div className="border border-slate-200 p-1.5 rounded">
+                      <p className="font-bold text-[#022448]">Police Nationale</p>
+                      <p className="text-slate-500">{data.inspectors?.police_officer || 'Officier NGOMA'}</p>
+                      <div className="h-8 flex items-center justify-center text-[7px] text-slate-400 italic">[Signature]</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-right text-[8.5px] text-slate-600 font-mono-ref">
+                    Fait à Pointe-Noire, en cinq (5) exemplaires originaux, le {formatDateFR(data.inspection_date || new Date())}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ==============================================================
+                DOCUMENT: MACARON OFFICIEL DE CONFORMITÉ & HOMOLOGATION (VITRINE A4)
+               ============================================================== */}
+            {documentType === 'MACARON_OFFICIEL_VITRINE_A4' && (
+              <div className="print-page-a4 relative flex flex-col justify-between p-6 bg-white border-8 border-double border-[#006d2f] shadow-2xl min-h-[297mm] text-center">
+                {/* Top Tricolor Republic Bar */}
+                <RepublicTricolorBar className="h-3 rounded-full mb-3" />
+
+                <div>
+                  {/* Official State Seal Header */}
+                  <div className="flex flex-col items-center space-y-1">
+                    <OfficialRepublicLogo size="lg" showMotto={true} />
+                    <p className="font-bold text-xs uppercase tracking-widest text-[#006d2f] font-republic mt-1">
+                      {REPUBLIQUE_CONGO.ministere}
+                    </p>
+                    <h3 className="font-black text-sm uppercase text-[#022448] font-republic tracking-tight">
+                      DIRECTION DÉPARTEMENTALE DES LOISIRS DE POINTE-NOIRE
+                    </h3>
+                    <div className="inline-block bg-amber-400 text-slate-950 font-black px-4 py-1 rounded-full text-xs font-mono-ref tracking-widest shadow-xs">
+                      EXERCICE BUDGÉTAIRE {REPUBLIQUE_CONGO.annee_pta}
+                    </div>
+                  </div>
+
+                  {/* Main Homologation Certificate Banner */}
+                  <div className="my-5 py-3 px-4 bg-gradient-to-r from-emerald-50 via-white to-emerald-50 border-y-2 border-[#006d2f]">
+                    <h1 className="text-2xl font-black text-[#006d2f] uppercase tracking-wide font-republic">
+                      MACARON OFFICIEL DE CONFORMITÉ
+                    </h1>
+                    <p className="text-xs uppercase font-extrabold text-slate-700 tracking-wider mt-1">
+                      Établissement Récréatif & de Loisirs Homologué par l'État
+                    </p>
+                  </div>
+
+                  {/* Establishment Big Highlight Box */}
+                  <div className="my-4 p-5 bg-slate-50 border-2 border-slate-300 rounded-2xl max-w-xl mx-auto space-y-2">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block font-mono-ref">
+                      Dénomination Commerciale Homologuée
+                    </span>
+                    <h2 className="text-2xl font-black text-[#022448] uppercase tracking-tight font-republic">
+                      « {data.name || data.establishment_name} »
+                    </h2>
+                    <p className="text-sm font-semibold text-slate-700">
+                      Exploitant : <strong className="text-slate-900">{data.promoter_name}</strong>
+                    </p>
+                    <div className="flex justify-center gap-3 text-xs text-slate-600 font-medium pt-2 border-t border-slate-200">
+                      <span>Activité : <strong>{data.activity_type || 'Complexe Récréatif'}</strong></span>
+                      <span>•</span>
+                      <span>Arrondissement : <strong>{data.arrondissement}</strong> ({data.quartier})</span>
+                    </div>
+                  </div>
+
+                  {/* Centered Big Verification QR Code */}
+                  <div className="my-4 flex flex-col items-center">
+                    <div className="p-3 bg-white border-2 border-[#006d2f] rounded-2xl shadow-lg inline-block">
+                      <RepublicQrCode
+                        payload={{
+                          type: 'MACARON_OFFICIEL',
+                          id: data.id,
+                          name: data.name || data.establishment_name,
+                          promoter: data.promoter_name,
+                          arrondissement: data.arrondissement,
+                          annee: '2026',
+                          validity: 'VALIDE'
+                        }}
+                        size={110}
+                        showDetails={false}
+                      />
+                    </div>
+                    <span className="text-[10px] font-mono-ref font-bold text-[#006d2f] mt-1.5 block">
+                      SCANNER POUR VÉRIFIER L'AUTHENTICITÉ SUR LE REGISTRE DDL-PN
+                    </span>
+                  </div>
+
+                  {/* Official Homologation Number */}
+                  <div className="font-mono-ref text-xs text-slate-700 space-y-1">
+                    <p>N° d'Homologation Réglementaire : <strong className="text-[#022448] text-sm">MACARON-DDL-PN-2026-{(data.id || '2026').slice(-6).toUpperCase()}</strong></p>
+                    <p className="text-[10.5px] text-slate-500">Quittance d'ouverture acquittée au Trésor Public • Dossier technique conforme SAA</p>
+                  </div>
+                </div>
+
+                {/* Director Signature & Legal Mention */}
+                <div className="mt-4 pt-3 border-t-2 border-slate-300">
+                  <div className="flex justify-between items-end px-6">
+                    <div className="text-left text-[9px] text-slate-500 max-w-[260px] italic">
+                      <p className="font-bold not-italic text-slate-800 uppercase">Obligation Légale d'Affichage :</p>
+                      <p>Le présent macaron officiel doit être impérativement apposé de manière visible à l'entrée principale de l'établissement sous peine des sanctions prévues par la Loi.</p>
+                    </div>
+
+                    <div className="text-center font-serif w-64">
+                      <p className="text-[10px] text-slate-700 mb-0.5">
+                        Fait à Pointe-Noire, le {formatDateFR(new Date())}
+                      </p>
+                      <p className="font-extrabold text-slate-900 text-[10px] uppercase">
+                        Le Directeur Départemental des Loisirs,
+                      </p>
+                      <div className="h-9 flex items-center justify-center text-slate-400 text-[9px] italic font-serif my-0.5">
+                        [Cachet Officiel & Signature Certifiée]
+                      </div>
+                      <p className="font-black text-[#022448] text-[11px] tracking-wide uppercase font-republic">
+                        Jean Richard NTSEKE NGOUAKA
+                      </p>
+                    </div>
+                  </div>
+
+                  <RepublicTricolorBar className="h-2 rounded-full mt-3" />
+                </div>
+              </div>
+            )}
+
+            {/* ==============================================================
+                DOCUMENT: REÇU DE TÉLÉPAIEMENT MOBILE MONEY D'ÉTAT (A4)
+               ============================================================== */}
+            {documentType === 'RECU_TELEPAIEMENT_MOMO_A4' && (
+              <div className="print-page-a4 relative flex flex-col justify-between p-6 bg-white border border-slate-300 shadow-md min-h-[297mm]">
+                <div>
+                  {/* Header */}
+                  <div className="flex justify-between items-start border-b-2 border-[#022448] pb-3">
+                    <div className="text-left font-serif text-[9.5px] text-slate-800 leading-tight space-y-0.5 max-w-[280px]">
+                      <p className="font-extrabold uppercase text-[#022448] text-[10.5px]">RÉPUBLIQUE DU CONGO</p>
+                      <p className="italic text-[8px] text-slate-600">Unité - Travail - Progrès</p>
+                      <p className="pt-0.5 font-bold uppercase text-[9px]">MINISTÈRE DES FINANCES / TRÉSOR PUBLIC</p>
+                      <p className="font-semibold text-slate-700 text-[8.5px]">DIRECTION DÉPARTEMENTALE DES LOISIRS DE POINTE-NOIRE (SAF / RÉGIE)</p>
+                      <p className="text-[8px] text-[#006d2f] font-bold">PASSERELLE DE TÉLÉCOLLECTE MOBILE MONEY SÉCURISÉE</p>
+                    </div>
+
+                    <div className="flex flex-col items-center">
+                      <OfficialRepublicLogo size="md" showMotto={false} />
+                    </div>
+
+                    <div className="text-right font-mono-ref text-[9.5px] text-slate-700 space-y-0.5">
+                      <p className="font-bold text-[#022448] text-xs">{data.receipt_number || 'QUI-MOMO-2026-0001'}</p>
+                      <p>Date : {formatDateFR(data.created_at || new Date())}</p>
+                      <p className="text-[8.5px] text-slate-500">Heure : {new Date(data.created_at || Date.now()).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+                      <div className="mt-1 flex justify-end">
+                        <RepublicQrCode
+                          payload={{
+                            type: 'RECU_MOMO',
+                            receipt: data.receipt_number,
+                            amount: data.amount_fcfa,
+                            operator: data.operator,
+                            etab: data.establishment_name
+                          }}
+                          size={46}
+                          showDetails={false}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <div className="text-center my-4">
+                    <h2 className="text-base font-black uppercase tracking-wide text-[#006d2f] font-republic underline decoration-[#022448] underline-offset-4">
+                      ATTESTATION OFFICIELLE DE TÉLÉPAIEMENT MOBILE MONEY
+                    </h2>
+                    <p className="text-[9.5px] uppercase font-bold text-slate-600 mt-0.5 tracking-wider font-mono-ref">
+                      TRANSACTION VALIDÉE VIA {data.operator?.toUpperCase() || 'MOBILE MONEY'}
+                    </p>
+                  </div>
+
+                  {/* Transaction Details Box */}
+                  <div className="bg-slate-50 border border-slate-300 rounded-xl p-4 text-xs space-y-2 mb-4 font-mono-ref">
+                    <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                      <span className="text-slate-600">RÉFÉRENCE TRANSACTION TÉLÉCOM :</span>
+                      <strong className="text-[#022448] text-sm">{data.transaction_ref || 'TXN-MOMO-CG-2026-0001'}</strong>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                      <span className="text-slate-600">OPÉRATEUR MOBILE MONEY :</span>
+                      <strong className="text-slate-900">{data.operator}</strong>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                      <span className="text-slate-600">NUMÉRO TÉLÉPHONE DÉBITÉ :</span>
+                      <strong className="text-slate-900">{data.phone_number}</strong>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                      <span className="text-slate-600">ÉTABLISSEMENT BÉNÉFICIAIRE :</span>
+                      <strong className="text-[#022448] uppercase">{data.establishment_name}</strong>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                      <span className="text-slate-600">PROMOTEUR / EXPLOITANT :</span>
+                      <strong className="text-slate-900">{data.promoter_name}</strong>
+                    </div>
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="font-bold text-slate-800 text-sm">MONTANT TOTAL PAYÉ :</span>
+                      <span className="text-lg font-black text-[#006d2f] bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">
+                        {Number(data.amount_fcfa || 0).toLocaleString('fr-FR')} FCFA
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 70/30 Legal Breakdown */}
+                  <div className="border border-slate-300 rounded-xl p-3 bg-white text-xs mb-4">
+                    <p className="font-bold text-[#022448] uppercase text-[10.5px] border-b border-slate-200 pb-1 mb-2 font-mono-ref">
+                      Ventilation Budgétaire Légale des Droits Perçus
+                    </p>
+                    <div className="grid grid-cols-2 gap-4 text-center font-mono-ref">
+                      <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                        <span className="text-[10px] text-blue-900 font-bold block uppercase">Part Trésor Public (70%)</span>
+                        <span className="text-base font-black text-[#022448]">
+                          {Number(data.treasury_share_70 || Math.round(Number(data.amount_fcfa || 0) * 0.7)).toLocaleString('fr-FR')} FCFA
+                        </span>
+                        <span className="text-[9px] text-slate-500 block mt-0.5">Compte Général Trésor</span>
+                      </div>
+                      <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                        <span className="text-[10px] text-emerald-900 font-bold block uppercase">Part Régie DDL-PN (30%)</span>
+                        <span className="text-base font-black text-[#006d2f]">
+                          {Number(data.regie_share_30 || Math.round(Number(data.amount_fcfa || 0) * 0.3)).toLocaleString('fr-FR')} FCFA
+                        </span>
+                        <span className="text-[9px] text-slate-500 block mt-0.5">Frais d'instruction & terrain</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-slate-500 italic text-center">
+                    Cette attestation électronique fait foi de paiement libératoire officiel des droits d'agrément conformément aux textes de la République du Congo.
+                  </p>
+                </div>
+
+                {/* Signatures */}
+                <div className="border-t-2 border-slate-300 pt-3">
+                  <div className="flex justify-between items-end px-6 font-serif">
+                    <div className="text-center w-56">
+                      <p className="text-[10px] text-slate-700 font-bold uppercase">Le Régisseur des Recettes SAF</p>
+                      <div className="h-10 flex items-center justify-center text-[9px] text-slate-400 italic">[Visa & Émargement]</div>
+                      <p className="font-bold text-xs text-[#022448]">Régie DDL-PN</p>
+                    </div>
+
+                    <div className="text-center w-56">
+                      <p className="text-[10px] text-slate-700 font-semibold">Fait à Pointe-Noire, le {formatDateFR(new Date())}</p>
+                      <p className="text-[10px] font-bold text-slate-900 uppercase">Le Directeur Départemental,</p>
+                      <div className="h-10 flex items-center justify-center text-[9px] text-slate-400 italic">[Sceau Officiel de l'État]</div>
+                      <p className="font-bold text-xs text-[#022448]">Jean Richard NTSEKE NGOUAKA</p>
                     </div>
                   </div>
                 </div>

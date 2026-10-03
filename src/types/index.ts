@@ -224,3 +224,79 @@ export interface PtaObjective {
   deadline: string;
   lead_service: string;
 }
+
+export interface JointInspectionRecord {
+  id: string;
+  pv_number: string;
+  establishment_id: string;
+  establishment_name: string;
+  promoter_name: string;
+  arrondissement: ArrondissementCode;
+  quartier: string;
+  address: string;
+  inspection_date: string;
+  // Acoustic / Sonometer
+  noise_level_db: number;
+  noise_compliant: boolean; // <= 85dB indoor or <= 55dB outdoor day / 45dB night
+  noise_notes?: string;
+  // Fire safety (Sécurité Civile / Pompiers)
+  extinguishers_count: number;
+  extinguishers_valid: boolean;
+  emergency_exits_clear: boolean;
+  evacuation_plan_displayed: boolean;
+  fire_safety_compliant: boolean;
+  // Hygiene & Sanitation (Mairie)
+  sanitary_facilities_ok: boolean;
+  ventilation_ok: boolean;
+  waste_management_ok: boolean;
+  hygiene_compliant: boolean;
+  // Administrative (DDL-PN & Police)
+  administrative_compliant: boolean;
+  police_order_compliant: boolean;
+  // Global Verdict
+  global_verdict: 'FAVORABLE' | 'FAVORABLE_AVEC_RESERVES' | 'DEFAVORABLE';
+  prescriptions: string[];
+  inspectors: {
+    ddl_officer: string;
+    fire_safety_officer: string;
+    hygiene_officer: string;
+    police_officer: string;
+  };
+  created_at: string;
+}
+
+export interface MobileMoneyPaymentSession {
+  id: string;
+  transaction_ref: string;
+  operator: 'MTN Mobile Money' | 'Airtel Money';
+  establishment_id: string;
+  establishment_name: string;
+  promoter_name: string;
+  phone_number: string;
+  amount_fcfa: number;
+  treasury_share_70: number;
+  regie_share_30: number;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED';
+  receipt_number: string;
+  created_at: string;
+}
+
+export interface PromoterOnlineSubmission {
+  id: string;
+  tracking_code: string;
+  establishment_name: string;
+  promoter_name: string;
+  phone: string;
+  email?: string;
+  arrondissement: ArrondissementCode;
+  quartier: string;
+  address: string;
+  activity_code: string;
+  regime_type: RegimeType;
+  surface_m2: number;
+  estimated_fee: number;
+  status: 'EN_ATTENTE_INSTRUCTION' | 'CONVOQUE_VISITE' | 'APPROUVE' | 'REJETE';
+  submission_date: string;
+  notes?: string;
+}
+

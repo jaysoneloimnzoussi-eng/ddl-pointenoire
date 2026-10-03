@@ -21,6 +21,8 @@ import {
   Archive,
   Moon,
   Sun,
+  Volume2,
+  CreditCard,
   X
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
@@ -54,6 +56,7 @@ const SIDEBAR_SECTIONS: NavSection[] = [
     items: [
       { id: 'MOD-02', num: '02', label: 'Recensement & Recouvrement SAA', shortLabel: 'Recensement SAA', icon: ClipboardList, badge: 'SAA' },
       { id: 'MOD-03', num: '03', label: 'Portail Terrain & Google Agenda SAA', shortLabel: 'Portail Terrain SAA', icon: Smartphone, badge: 'Agent' },
+      { id: 'MOD-16', num: '16', label: 'Commission Mixte & Sonométrie', shortLabel: 'Commission Mixte', icon: Volume2, badge: 'Mixte' },
       { id: 'MOD-07', num: '07', label: 'SIG Cartographique Pointe-Noire', shortLabel: 'Carte SIG', icon: MapPin },
       { id: 'MOD-04', num: '04', label: 'Passerelle Google Workspace', shortLabel: 'Google Workspace', icon: CloudDownload },
       { id: 'MOD-05', num: '05', label: 'Atelier des Actes & Sanctions', shortLabel: 'Actes & Saisines', icon: FileCheck2, badge: '72h' }
@@ -64,6 +67,7 @@ const SIDEBAR_SECTIONS: NavSection[] = [
     items: [
       { id: 'MOD-10', num: '10', label: 'Régie SAF & Trésor Public', shortLabel: 'Régie & Trésor', icon: Landmark, badge: '70/30' },
       { id: 'MOD-11', num: '11', label: 'Guichet Bureau, Titres & Recettes', shortLabel: 'Guichet & Titres', icon: Receipt, badge: 'Guichet' },
+      { id: 'MOD-17', num: '17', label: 'Guichet MoMo & Espace Promoteur', shortLabel: 'Fintech MoMo', icon: CreditCard, badge: 'MoMo' },
       { id: 'MOD-12', num: '12', label: 'Textes & Simulateur Tarifaire', shortLabel: 'Barèmes & Textes', icon: Calculator }
     ]
   },
