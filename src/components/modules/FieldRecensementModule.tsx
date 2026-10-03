@@ -20,6 +20,7 @@ import {
   CloudDownload
 } from 'lucide-react';
 import { storageService, calculateEstablishmentFee } from '../../services/storageService';
+import { formatDateFR } from '../../utils/dateUtils';
 import { useSession } from '../../context/SessionContext';
 import { Establishment, ArrondissementCode, RegimeType, EstablishmentStatus, TerrainPaymentRecord } from '../../types';
 import { TERRITORIAL_REFERENTIAL, ACTIVITY_CATEGORIES } from '../../constants/referential';
@@ -643,7 +644,7 @@ export const FieldRecensementModule: React.FC = () => {
             <div className="mt-4 p-3 bg-slate-50 rounded-lg text-xs">
               <span className="text-slate-400 uppercase font-bold text-[10px]">Agent Enquêteur Assigné</span>
               <p className="font-bold text-slate-800">{selectedEst.identified_by}</p>
-              <p className="text-slate-500 text-[10px]">Date du constat : {selectedEst.identified_date}</p>
+              <p className="text-slate-500 text-[10px]">Date du constat : {formatDateFR(selectedEst.identified_date)}</p>
             </div>
 
             <div className="mt-6 flex items-center justify-end gap-2 border-t pt-4">

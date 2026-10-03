@@ -37,6 +37,7 @@ import { authService } from '../../services/authService';
 import { UserAccount, UserRole } from '../../types';
 import { OfficialRepublicLogo, RepublicTricolorBar } from '../common/OfficialSeal';
 import { REPUBLIQUE_CONGO, TERRITORIAL_REFERENTIAL } from '../../constants/referential';
+import { formatDateFR } from '../../utils/dateUtils';
 import QRCode from 'qrcode';
 
 export const AdminPersonnelModule: React.FC = () => {
@@ -986,7 +987,7 @@ export const AdminPersonnelModule: React.FC = () => {
                     RÉF : FIA-DDL-PN-2026/{selectedAgent.badge}
                   </span>
                   <span className="text-[9px] text-slate-500 mt-0.5">
-                    Pointe-Noire, le {new Date().toLocaleDateString('fr-FR')}
+                    Pointe-Noire, le {formatDateFR(new Date())}
                   </span>
                 </div>
               </div>

@@ -14,6 +14,7 @@ import {
 import { storageService } from '../../services/storageService';
 import { useSession } from '../../context/SessionContext';
 import { OfficialLegalAct, Establishment } from '../../types';
+import { formatDateFR } from '../../utils/dateUtils';
 import { PrintModal } from '../print/PrintModal';
 
 export const LegalActsGeneratorModule: React.FC = () => {
@@ -152,7 +153,7 @@ export const LegalActsGeneratorModule: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-mono-ref font-bold text-slate-500">
-                    {act.date_emission}
+                    {formatDateFR(act.date_emission)}
                   </span>
                   <span
                     className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase font-mono-ref ${
@@ -183,7 +184,7 @@ export const LegalActsGeneratorModule: React.FC = () => {
                 </div>
 
                 <div className="text-[11px] text-slate-500 space-y-0.5">
-                  <p>Délai imparti : <strong>{act.delai_huitaine_date || '72 heures'}</strong></p>
+                  <p>Délai imparti : <strong>{act.delai_huitaine_date ? (act.delai_huitaine_date.includes('-') ? formatDateFR(act.delai_huitaine_date) : act.delai_huitaine_date) : '72 heures'}</strong></p>
                   <p>Signataire : <strong>{act.signataire_nom}</strong></p>
                 </div>
               </div>

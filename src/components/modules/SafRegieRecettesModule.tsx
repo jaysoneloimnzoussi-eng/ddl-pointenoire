@@ -13,6 +13,7 @@ import {
   Filter
 } from 'lucide-react';
 import { storageService } from '../../services/storageService';
+import { formatDateFR } from '../../utils/dateUtils';
 import { useSession } from '../../context/SessionContext';
 import { TerrainPaymentRecord } from '../../types';
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
@@ -219,7 +220,7 @@ export const SafRegieRecettesModule: React.FC = () => {
                 return (
                   <tr key={p.id} className="hover:bg-slate-50 transition">
                     <td className="py-2.5 px-3 font-bold text-[#022448]">{p.receipt_reference}</td>
-                    <td className="py-2.5 px-3 text-slate-500">{p.record_date}</td>
+                    <td className="py-2.5 px-3 text-slate-500">{formatDateFR(p.record_date)}</td>
                     <td className="py-2.5 px-3 font-sans">
                       <span className="font-bold text-slate-800 block">{p.establishment_name}</span>
                       <span className="text-[10px] text-slate-500">{p.promoter_name}</span>

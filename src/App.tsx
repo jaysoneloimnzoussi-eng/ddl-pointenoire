@@ -21,6 +21,7 @@ import { DocumentArchivingModule } from './components/modules/DocumentArchivingM
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AiAssistantModal } from './components/common/AiAssistantModal';
 import { PublicVerificationView } from './components/common/PublicVerificationView';
+import { formatDateFR } from './utils/dateUtils';
 import { RepublicTricolorBar, OfficialRepublicLogo } from './components/common/OfficialSeal';
 import { REPUBLIQUE_CONGO } from './constants/referential';
 import { AlertCircle, CheckCircle, Info, X, Sparkles } from 'lucide-react';
@@ -112,22 +113,22 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8fafd] text-slate-800">
+    <div className="min-h-screen flex flex-col bg-[#f8fafd] dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
       {/* Top Header */}
       <RepublicHeader />
 
       {/* Instant Notification Toast */}
       {activeNotification && (
-        <div className="fixed bottom-5 right-5 z-50 max-w-md bg-white border border-slate-300 shadow-2xl rounded-xl p-3.5 flex items-start gap-3 animate-in slide-in-from-bottom-5">
+        <div className="fixed bottom-5 right-5 z-50 max-w-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xl rounded-xl p-3.5 flex items-start gap-3 animate-in slide-in-from-bottom-5">
           <div
             className={`p-1.5 rounded-lg shrink-0 ${
               activeNotification.type === 'success'
-                ? 'bg-emerald-100 text-emerald-800'
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                 : activeNotification.type === 'warning'
-                ? 'bg-amber-100 text-amber-900'
+                ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300'
                 : activeNotification.type === 'error'
-                ? 'bg-red-100 text-red-900'
-                : 'bg-blue-100 text-blue-900'
+                ? 'bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-300'
+                : 'bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300'
             }`}
           >
             {activeNotification.type === 'success' ? (
@@ -139,10 +140,10 @@ const AppContent: React.FC = () => {
             )}
           </div>
           <div className="flex-1 text-xs">
-            <span className="font-extrabold text-[#022448] block mb-0.5">Notification Système DDL-PN</span>
-            <p className="text-slate-700 leading-snug">{activeNotification.message}</p>
+            <span className="font-extrabold text-[#022448] dark:text-amber-400 block mb-0.5">Notification Système DDL-PN</span>
+            <p className="text-slate-700 dark:text-slate-300 leading-snug">{activeNotification.message}</p>
           </div>
-          <button onClick={clearNotification} className="text-slate-400 hover:text-slate-600">
+          <button onClick={clearNotification} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -154,7 +155,7 @@ const AppContent: React.FC = () => {
         <VerticalSidebar />
 
         {/* Main Content Area */}
-        <main className={`flex-1 overflow-y-auto ${isTabletTerrainMode ? 'p-2 sm:p-3' : 'p-3 sm:p-6'} bg-[#f8fafd]`}>
+        <main className={`flex-1 overflow-y-auto ${isTabletTerrainMode ? 'p-2 sm:p-3' : 'p-3 sm:p-6'} bg-[#f8fafd] dark:bg-slate-900/90 transition-colors duration-200`}>
           <div className="max-w-[1720px] mx-auto">
             <ErrorBoundary key={activeModule} fallbackTitle={`Erreur dans le module ${activeModule}`}>
               {renderActiveModule()}
@@ -188,7 +189,7 @@ const AppContent: React.FC = () => {
         <PublicVerificationView
           refCode={verificationData.ref}
           establishmentName={verificationData.etab}
-          date={verificationData.date}
+          date={formatDateFR(verificationData.date)}
           onClose={() => {
             setVerificationData(prev => ({ ...prev, isOpen: false }));
             window.location.hash = '';

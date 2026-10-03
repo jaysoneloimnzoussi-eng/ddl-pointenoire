@@ -35,6 +35,7 @@ import {
 import { storageService } from '../../services/storageService';
 import { useSession } from '../../context/SessionContext';
 import { SpaMerchantSubscription, SpaHonorDiploma, Establishment } from '../../types';
+import { formatDateFR } from '../../utils/dateUtils';
 import { PrintModal } from '../print/PrintModal';
 import { OfficialRepublicLogo } from '../common/OfficialSeal';
 
@@ -712,7 +713,7 @@ export const SpaPromotionModule: React.FC = () => {
                   {scheduledPosts.map(p => (
                     <tr key={p.id} className="hover:bg-slate-50">
                       <td className="py-2.5 px-3 font-mono-ref font-bold text-slate-800">
-                        {p.scheduledDate} ({p.scheduledTime})
+                        {formatDateFR(p.scheduledDate)} ({p.scheduledTime})
                       </td>
                       <td className="py-2.5 px-3">
                         <span className="font-bold text-purple-900 bg-purple-50 px-2 py-0.5 rounded text-[10.5px]">
@@ -1165,7 +1166,7 @@ export const SpaPromotionModule: React.FC = () => {
                 </p>
 
                 <div className="flex items-center justify-between pt-2 border-t text-xs">
-                  <span className="text-[11px] text-slate-400 font-mono-ref">Décerné le {dip.award_date}</span>
+                  <span className="text-[11px] text-slate-400 font-mono-ref">Décerné le {formatDateFR(dip.award_date)}</span>
                   <button
                     onClick={() => {
                       setPrintDoc({

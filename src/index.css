@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --vert-congo: #006d2f;
@@ -23,6 +25,80 @@
   .font-mono-ref {
     font-family: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
+}
+
+/* ==========================================================================
+   ERGONOMIC ANTI-EYE FATIGUE DARK THEME (NOCTURNE & FAIBLE LUMINOSITÉ)
+   ========================================================================== */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0b132b;
+  color: #e2e8f0;
+}
+
+/* Smooth background/color transition when switching themes */
+body, main, header, aside, .card, button, input, select, textarea {
+  transition-property: background-color, border-color, color;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+/* Global Dark Mode ergonomics: soften cards, surfaces & texts */
+html.dark .bg-white:not(.print-page-a4):not(.print-page-a4 *):not(.print-modal-container):not(.print-modal-container *) {
+  background-color: #1e293b;
+  color: #f1f5f9;
+}
+
+html.dark .bg-slate-50:not(.print-page-a4):not(.print-page-a4 *) {
+  background-color: #0f172a;
+}
+
+html.dark .bg-slate-100:not(.print-page-a4):not(.print-page-a4 *) {
+  background-color: #1e293b;
+}
+
+html.dark .border-slate-200:not(.print-page-a4):not(.print-page-a4 *),
+html.dark .border-slate-300:not(.print-page-a4):not(.print-page-a4 *) {
+  border-color: #334155;
+}
+
+html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #334155;
+}
+
+html.dark .text-slate-800:not(.print-page-a4):not(.print-page-a4 *),
+html.dark .text-slate-900:not(.print-page-a4):not(.print-page-a4 *) {
+  color: #f1f5f9;
+}
+
+html.dark .text-slate-700:not(.print-page-a4):not(.print-page-a4 *) {
+  color: #cbd5e1;
+}
+
+html.dark .text-slate-600:not(.print-page-a4):not(.print-page-a4 *) {
+  color: #94a3b8;
+}
+
+html.dark .text-slate-500:not(.print-page-a4):not(.print-page-a4 *) {
+  color: #94a3b8;
+}
+
+/* Form controls in dark mode */
+html.dark input:not([type="checkbox"]):not([type="radio"]),
+html.dark select,
+html.dark textarea {
+  background-color: #1e293b;
+  border-color: #475569;
+  color: #f8fafc;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b;
 }
 
 /* ==========================================================================

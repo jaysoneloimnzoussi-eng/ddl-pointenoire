@@ -44,6 +44,7 @@ import {
   CloudDownload
 } from 'lucide-react';
 import { storageService } from '../../services/storageService';
+import { formatDateFR } from '../../utils/dateUtils';
 import { useSession } from '../../context/SessionContext';
 import { Establishment, OfficialLegalAct, TerrainPaymentRecord } from '../../types';
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
@@ -1329,7 +1330,7 @@ export const DashboardModule: React.FC = () => {
                     </span>
                   </td>
                   <td className="py-2.5 text-slate-500 font-mono-ref">
-                    {act.date_emission}
+                    {formatDateFR(act.date_emission)}
                   </td>
                   <td className="py-2.5 text-right">
                     <button

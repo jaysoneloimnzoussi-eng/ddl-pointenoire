@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Establishment, AttachedDocument } from '../../../types';
 import { storageService } from '../../../services/storageService';
+import { formatDateFR } from '../../../utils/dateUtils';
 
 interface DocumentVaultModalProps {
   isOpen: boolean;
@@ -196,7 +197,7 @@ export const DocumentVaultModal: React.FC<DocumentVaultModalProps> = ({
                             </span>
                           </div>
                           <p className="text-[10px] text-slate-500 mt-0.5">
-                            Archivé par {doc.uploaded_by} • {new Date(doc.uploaded_at).toLocaleDateString('fr-FR')} • {doc.size_kb || 240} Ko
+                            Archivé par {doc.uploaded_by} • {formatDateFR(doc.uploaded_at)} • {doc.size_kb || 240} Ko
                           </p>
                         </div>
                       </div>
@@ -259,7 +260,7 @@ export const DocumentVaultModal: React.FC<DocumentVaultModalProps> = ({
                 <div>
                   <h4 className="font-bold text-sm text-white">{previewDoc.name}</h4>
                   <p className="text-[10px] text-slate-300">
-                    {previewDoc.category} • {previewDoc.size_kb || 240} Ko • Numérisé le {new Date(previewDoc.uploaded_at).toLocaleDateString('fr-FR')}
+                    {previewDoc.category} • {previewDoc.size_kb || 240} Ko • Numérisé le {formatDateFR(previewDoc.uploaded_at)}
                   </p>
                 </div>
               </div>

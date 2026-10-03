@@ -28,6 +28,7 @@ import { useSession } from '../../context/SessionContext';
 import { APP_USERS, REPUBLIQUE_CONGO } from '../../constants/referential';
 import { OfficialRepublicLogo, RepublicTricolorBar } from './OfficialSeal';
 import { storageService } from '../../services/storageService';
+import { formatDateFR } from '../../utils/dateUtils';
 import { isSupabaseConfigured } from '../../services/supabaseClient';
 
 export const MODULE_ITEMS = [
@@ -69,13 +70,9 @@ export const RepublicHeader: React.FC = () => {
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
+      const dayName = now.toLocaleDateString('fr-FR', { weekday: 'short' });
       setCurrentTime(
-        now.toLocaleDateString('fr-FR', {
-          weekday: 'short',
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' • ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        `${dayName} ${formatDateFR(now)} • ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
       );
       setNetworkStatus(storageService.getNetworkStatus());
     };
@@ -110,7 +107,7 @@ export const RepublicHeader: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm select-none">
+    <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm select-none transition-colors duration-200">
       {/* Tricolor Republic line */}
       <RepublicTricolorBar />
 
@@ -127,7 +124,7 @@ export const RepublicHeader: React.FC = () => {
                 setIsMobileSidebarOpen(prev => !prev);
               }
             }}
-            className="p-2 rounded-lg bg-slate-100 hover:bg-[#022448] text-slate-700 hover:text-white transition flex items-center justify-center border border-slate-200 shrink-0"
+            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-[#022448] text-slate-700 dark:text-slate-200 hover:text-white transition flex items-center justify-center border border-slate-200 dark:border-slate-700 shrink-0 cursor-pointer"
             title="Ouvrir / Réduire le menu vertical"
             aria-label="Menu"
           >
@@ -143,14 +140,14 @@ export const RepublicHeader: React.FC = () => {
                 {REPUBLIQUE_CONGO.nom}
               </span>
               <span className="text-[9px] text-slate-400 font-medium hidden md:inline">• {REPUBLIQUE_CONGO.devise}</span>
-              <span className="text-[8px] sm:text-[9px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 rounded font-mono-ref font-bold shrink-0">
+              <span className="text-[8px] sm:text-[9px] bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.2 rounded font-mono-ref font-bold shrink-0">
                 PTA 2026
               </span>
             </div>
-            <h1 className="text-xs sm:text-base font-extrabold text-[#022448] tracking-tight leading-tight truncate">
+            <h1 className="text-xs sm:text-base font-extrabold text-[#022448] dark:text-white tracking-tight leading-tight truncate">
               DIRECTION DÉPARTEMENTALE DES LOISIRS DE POINTE-NOIRE
             </h1>
-            <p className="text-[9px] sm:text-[10px] text-slate-500 font-medium hidden lg:block truncate">
+            <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-medium hidden lg:block truncate">
               {REPUBLIQUE_CONGO.ministere} ({REPUBLIQUE_CONGO.ministere_abreviation})
             </p>
           </div>
@@ -159,28 +156,28 @@ export const RepublicHeader: React.FC = () => {
         {/* Right: Clock, Network, Role Switcher, Tablet Mode */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5 min-w-0 shrink-0">
           {/* Time display */}
-          <div className="hidden xl:flex flex-col items-end text-right pr-2 border-r border-slate-200">
-            <span className="text-[11px] font-mono-ref font-semibold text-slate-700">{currentTime}</span>
-            <span className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Pointe-Noire (UTC+1)</span>
+          <div className="hidden xl:flex flex-col items-end text-right pr-2 border-r border-slate-200 dark:border-slate-800">
+            <span className="text-[11px] font-mono-ref font-semibold text-slate-700 dark:text-slate-300">{currentTime}</span>
+            <span className="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Pointe-Noire (UTC+1)</span>
           </div>
 
           {/* Offline/Supabase Status Indicator */}
-          <div className="hidden sm:flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded text-[11px]">
+          <div className="hidden sm:flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded text-[11px]">
             {isSupabaseConfigured ? (
               networkStatus.isOnline ? (
-                <span className="flex items-center gap-1 text-emerald-700 font-medium" title="Connecté au Cloud Supabase">
-                  <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-medium" title="Connecté au Cloud Supabase">
+                  <Wifi className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span className="hidden md:inline">Supabase Cloud</span>
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-amber-700 font-medium" title="Hors ligne - modifications conservées en attente">
-                  <WifiOff className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400 font-medium" title="Hors ligne - modifications conservées en attente">
+                  <WifiOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
                   <span>Hors-Ligne ({networkStatus.queueLength})</span>
                 </span>
               )
             ) : (
-              <span className="flex items-center gap-1 text-blue-800 font-medium" title="Mode local autonome opérationnel sans dépendance cloud">
-                <Shield className="w-3.5 h-3.5 text-blue-700" />
+              <span className="flex items-center gap-1 text-blue-800 dark:text-blue-300 font-medium" title="Mode local autonome opérationnel sans dépendance cloud">
+                <Shield className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" />
                 <span className="hidden md:inline">Mode Local Autonome</span>
               </span>
             )}
@@ -189,9 +186,9 @@ export const RepublicHeader: React.FC = () => {
               onClick={handleSyncNow}
               disabled={isSyncing}
               title={isSupabaseConfigured ? "Synchroniser avec Supabase" : "Vérifier la sauvegarde des données locales"}
-              className="ml-1 p-1 hover:bg-emerald-100 rounded text-emerald-700 transition flex items-center gap-1 cursor-pointer"
+              className="ml-1 p-1 hover:bg-emerald-100 dark:hover:bg-emerald-950 rounded text-emerald-700 dark:text-emerald-400 transition flex items-center gap-1 cursor-pointer"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-600 dark:text-blue-400' : ''}`} />
             </button>
           </div>
 
@@ -205,10 +202,10 @@ export const RepublicHeader: React.FC = () => {
                 triggerNotification('Mode Tablette Terrain SAA activé plein écran.', 'info');
               }
             }}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded transition ${
+            className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded transition cursor-pointer ${
               isTabletTerrainMode
                 ? 'bg-[#006d2f] text-white shadow-sm ring-2 ring-[#006d2f]/30'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
             }`}
             title="Basculer vers le mode tactile terrain"
           >
@@ -222,7 +219,7 @@ export const RepublicHeader: React.FC = () => {
               setActiveModule('MOD-05');
               triggerNotification('3 Mises en demeure requièrent une exécution ou notification.', 'warning');
             }}
-            className="relative p-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
+            className="relative p-1.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
             title="Alertes & Relances urgentes"
           >
             <Bell className="w-4 h-4" />
@@ -234,29 +231,29 @@ export const RepublicHeader: React.FC = () => {
           </button>
 
           {/* Official User Profile Badge & Direct Logout */}
-          <div className="flex items-center gap-1.5 sm:gap-2 bg-[#022448]/5 border border-[#022448]/20 pl-2 pr-1.5 py-1 rounded-xl">
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-[#022448]/5 dark:bg-slate-800 border border-[#022448]/20 dark:border-slate-700 pl-2 pr-1.5 py-1 rounded-xl">
             <div className="w-7 h-7 rounded-full bg-[#022448] text-amber-300 font-bold text-xs flex items-center justify-center border border-amber-400/40 shrink-0">
               {currentUser.name.charAt(0)}
             </div>
             <div className="hidden sm:block text-left leading-tight pr-1">
-              <div className="text-xs font-bold text-[#022448] flex items-center gap-1">
+              <div className="text-xs font-bold text-[#022448] dark:text-slate-100 flex items-center gap-1">
                 <span className="truncate max-w-[110px]">{currentUser.name.split(' ')[0]} {currentUser.name.split(' ')[1] || ''}</span>
-                <span className="text-[9px] bg-amber-100 text-amber-900 font-mono-ref px-1 rounded font-bold shrink-0">
+                <span className="text-[9px] bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 font-mono-ref px-1 rounded font-bold shrink-0">
                   {currentUser.badge}
                 </span>
               </div>
-              <div className="text-[10px] text-slate-500 font-medium truncate max-w-[120px]">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate max-w-[120px]">
                 {currentUser.role}
               </div>
             </div>
 
             <button
               onClick={() => logout()}
-              className="p-1.5 hover:bg-red-100 rounded-lg text-slate-500 hover:text-red-700 transition flex items-center gap-1 text-xs font-bold cursor-pointer"
+              className="p-1.5 hover:bg-red-100 dark:hover:bg-red-950/50 rounded-lg text-slate-500 hover:text-red-700 dark:hover:text-red-400 transition flex items-center gap-1 text-xs font-bold cursor-pointer"
               title="Déconnexion sécurisée"
             >
-              <LogOut className="w-4 h-4 text-red-600" />
-              <span className="hidden md:inline text-red-700 text-[11px]">Déconnexion</span>
+              <LogOut className="w-4 h-4 text-red-600 dark:text-red-400" />
+              <span className="hidden md:inline text-red-700 dark:text-red-400 text-[11px]">Déconnexion</span>
             </button>
           </div>
         </div>

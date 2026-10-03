@@ -18,6 +18,9 @@ interface SessionContextType {
   isMobileSidebarOpen: boolean;
   setIsMobileSidebarOpen: (val: boolean | ((prev: boolean) => boolean)) => void;
   alertCount: number;
+  theme: 'light' | 'dark';
+  setTheme: (theme: 'light' | 'dark') => void;
+  toggleTheme: () => void;
   triggerNotification: (message: string, type?: 'info' | 'success' | 'warning' | 'error') => void;
   activeNotification: { message: string; type: 'info' | 'success' | 'warning' | 'error' } | null;
   clearNotification: () => void;
@@ -54,6 +57,43 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [activeNotification, setActiveNotification] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
+
+  // Theme Management (Dark / Light) with visual fatigue reduction
+  const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('ddl_pn_theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement;
+      if (theme === 'dark') {
+        root.classList.add('dark');
+        root.setAttribute('data-theme', 'dark');
+        root.style.colorScheme = 'dark';
+      } else {
+        root.classList.remove('dark');
+        root.setAttribute('data-theme', 'light');
+        root.style.colorScheme = 'light';
+      }
+      localStorage.setItem('ddl_pn_theme', theme);
+    }
+  }, [theme]);
+
+  const setTheme = (newTheme: 'light' | 'dark') => {
+    setThemeState(newTheme);
+  };
+
+  const toggleTheme = () => {
+    setThemeState(prev => {
+      const nextTheme = prev === 'dark' ? 'light' : 'dark';
+      return nextTheme;
+    });
+  };
 
   useEffect(() => {
     localStorage.setItem('ddl_pn_sidebar_collapsed', String(isSidebarCollapsed));
@@ -127,6 +167,9 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isMobileSidebarOpen,
         setIsMobileSidebarOpen,
         alertCount: 3, // urgent relances
+        theme,
+        setTheme,
+        toggleTheme,
         triggerNotification,
         activeNotification,
         clearNotification

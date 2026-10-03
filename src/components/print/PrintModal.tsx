@@ -5,6 +5,7 @@ import { OfficialVerifiableQrCode } from '../common/OfficialVerifiableQrCode';
 import { REPUBLIQUE_CONGO } from '../../constants/referential';
 import { OfficialReportDocumentView } from '../modules/OfficialReportDocumentView';
 import { executeReliablePrint, openDocumentInNewTab } from '../../utils/printUtility';
+import { formatDateFR, formatDateLongFR } from '../../utils/dateUtils';
 
 export type PrintDocumentType =
   | 'ATTESTATION_A4'
@@ -151,7 +152,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                   </span>
                   <p className="text-[9.5px] mt-1 font-bold">RÉF : {data.receipt_reference || data.receiptReference || 'REC-DDL-PN-2026'}</p>
                   <p className="text-[8px]">
-                    Date: {data.record_date || new Date().toISOString().split('T')[0]} • {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    Date: {formatDateFR(data.record_date || new Date())} • {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
 
@@ -315,7 +316,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                     <div className="text-left font-serif">
                       <p className="font-bold text-slate-800 text-xs uppercase">Enregistrement Officiel :</p>
                       <p className="text-amber-900 font-mono-ref font-bold text-sm">{data.reference_number || 'DIP-HONNEUR-DDLPN-2026'}</p>
-                      <p className="text-[11px] text-slate-600 mt-1 italic">Fait à Pointe-Noire, le {data.award_date || new Date().toISOString().split('T')[0]}</p>
+                      <p className="text-[11px] text-slate-600 mt-1 italic">Fait à Pointe-Noire, le {formatDateFR(data.award_date || new Date())}</p>
                     </div>
 
                     <div className="text-center font-serif">
@@ -378,7 +379,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                   {/* Right: Date, Reference & Real Verifiable QR Code */}
                   <div className="text-right w-56 font-serif text-xs flex flex-col items-end">
                     <p className="italic text-slate-700 text-[10px]">
-                      Pointe-Noire, le {data.date_emission || data.record_date || new Date().toISOString().split('T')[0]}
+                      Pointe-Noire, le {formatDateFR(data.date_emission || data.record_date || new Date())}
                     </p>
                     <p className="font-mono-ref font-bold text-slate-900 mt-0.5 text-[10px]">
                       N° {data.reference_number || data.receipt_reference || 'REF-DDL-PN-2026/01'}
@@ -453,7 +454,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                           « {data.motif} »
                         </div>
                         <p>
-                          En conséquence de quoi, <strong>IL VOUS EST IMPARTI UN DÉLAI DE {data.delai_huitaine_date || '72 HEURES OUVRÉES'}</strong>, à compter de la présente notification, pour vous présenter à la Direction Départementale des Loisirs munis des pièces justificatives et régulariser votre situation.
+                          En conséquence de quoi, <strong>IL VOUS EST IMPARTI UN DÉLAI DE {data.delai_huitaine_date ? (data.delai_huitaine_date.includes('-') ? formatDateFR(data.delai_huitaine_date) : data.delai_huitaine_date) : '72 HEURES OUVRÉES'}</strong>, à compter de la présente notification, pour vous présenter à la Direction Départementale des Loisirs munis des pièces justificatives et régulariser votre situation.
                         </p>
                         <p className="font-bold text-slate-900 text-[10px]">
                           PASSÉ CE DÉLAI DE RIGUEUR, il sera procédé à la FERMETURE ADMINISTRATIVE immédiate de votre local avec apposition des scellés de la République par le Service Assistance et Autorisation (SAA) assisté de la Force Publique.
@@ -490,7 +491,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                         <div className="bg-purple-50 border border-purple-300 p-2 rounded-lg text-center space-y-0.5">
                           <p className="text-[9.5px] font-bold text-purple-950 uppercase">Date & Heure de Comparution :</p>
                           <p className="text-[11px] font-extrabold font-mono-ref text-purple-900">
-                            📅 {data.delai_huitaine_date || 'Le jour ouvrable convenu'} à 10 Heures Précises
+                            📅 {data.delai_huitaine_date ? (data.delai_huitaine_date.includes('-') ? formatDateFR(data.delai_huitaine_date) : data.delai_huitaine_date) : 'Le jour ouvrable convenu'} à 10 Heures Précises
                           </p>
                           <p className="text-[10px] text-purple-950">
                             <strong>Lieu :</strong> DDL-PN — <strong>Bureau N° 3 (Service Assistance et Autorisation - SAA)</strong>, Centre-Ville, face Port Autonome.
@@ -729,7 +730,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                     {/* Right: Signature du Directeur Départemental */}
                     <div className="text-center font-serif w-72">
                       <p className="text-[10px] text-slate-700 mb-0.5 font-semibold">
-                        Fait à Pointe-Noire, le {data.record_date || data.date_emission || new Date().toLocaleDateString('fr-FR')}
+                        Fait à Pointe-Noire, le {formatDateFR(data.record_date || data.date_emission || new Date())}
                       </p>
                       <p className="font-extrabold text-slate-900 text-[10.5px] uppercase">
                         Le Directeur Départemental des Loisirs,

@@ -23,6 +23,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { storageService } from '../../services/storageService';
+import { formatDateFR } from '../../utils/dateUtils';
 import { useSession } from '../../context/SessionContext';
 import { OfficialLegalAct, TerrainPaymentRecord, Establishment, SpaHonorDiploma } from '../../types';
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
@@ -592,7 +593,7 @@ export const DocumentArchivingModule: React.FC = () => {
 
                       {/* Date */}
                       <td className="py-3 px-3 font-mono-ref text-slate-500 whitespace-nowrap">
-                        <span>{doc.dateEmission}</span>
+                        <span>{formatDateFR(doc.dateEmission)}</span>
                         <span className="text-[10px] text-slate-400 block">{doc.tailleKo} Ko</span>
                       </td>
 
@@ -698,7 +699,7 @@ export const DocumentArchivingModule: React.FC = () => {
                     {previewItem.title}
                   </h4>
                   <p className="text-xs text-slate-500 mt-1">
-                    Émis le {previewItem.dateEmission} • Classé le {previewItem.dateArchivage}
+                    Émis le {formatDateFR(previewItem.dateEmission)} • Classé le {formatDateFR(previewItem.dateArchivage)}
                   </p>
                 </div>
 

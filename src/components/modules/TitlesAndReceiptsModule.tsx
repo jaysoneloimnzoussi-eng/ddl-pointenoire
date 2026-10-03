@@ -27,6 +27,7 @@ import {
   Send
 } from 'lucide-react';
 import { storageService, calculateEstablishmentFee } from '../../services/storageService';
+import { formatDateFR } from '../../utils/dateUtils';
 import { useSession } from '../../context/SessionContext';
 import { TerrainPaymentRecord, Establishment, ArrondissementCode, RegimeType, AgentTourneeEvent } from '../../types';
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
@@ -1112,7 +1113,7 @@ export const TitlesAndReceiptsModule: React.FC = () => {
                         {record.receipt_reference}
                       </span>
                       <span className="text-[10px] text-slate-500 font-mono-ref">
-                        {record.record_date}
+                        {formatDateFR(record.record_date)}
                       </span>
                     </div>
 
@@ -1184,7 +1185,7 @@ export const TitlesAndReceiptsModule: React.FC = () => {
                   .map(evt => (
                     <tr key={evt.id} className="hover:bg-slate-50 transition">
                       <td className="p-3 font-mono-ref font-bold text-slate-800">
-                        {evt.date} à {evt.timeStart}
+                        {formatDateFR(evt.date)} à {evt.timeStart}
                       </td>
                       <td className="p-3">
                         <span className="font-bold text-slate-900 uppercase block">{evt.establishmentName}</span>

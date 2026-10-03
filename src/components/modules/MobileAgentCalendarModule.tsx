@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { storageService } from '../../services/storageService';
+import { formatDateFR } from '../../utils/dateUtils';
 import { supabase, isSupabaseConfigured } from '../../services/supabaseClient';
 import { AgentTourneeEvent, Establishment, TerrainPaymentRecord, AppUser, RegimeType } from '../../types';
 import { APP_USERS, TERRITORIAL_REFERENTIAL } from '../../constants/referential';
@@ -606,7 +607,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
       storageService.updateAgentEvent(evt.id, {
         status: 'EFFECTUE',
         amountCollected: Number(paymentAmount),
-        notes: `${evt.notes || ''} [Acompte perçu in situ le ${currentDateStr} : ${Number(paymentAmount).toLocaleString('fr-FR')} FCFA. Prochain RDV solde : ${nextAppointmentDate || 'N/A'}]`
+        notes: `${evt.notes || ''} [Acompte perçu in situ le ${formatDateFR(currentDateStr)} : ${Number(paymentAmount).toLocaleString('fr-FR')} FCFA. Prochain RDV solde : ${nextAppointmentDate ? formatDateFR(nextAppointmentDate) : 'N/A'}]`
       });
     });
 
@@ -1893,7 +1894,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
                   >
                     <div className="w-20 text-center shrink-0">
                       <span className="text-[10px] font-mono-ref font-bold text-slate-400 uppercase block">
-                        {evt.date}
+                        {formatDateFR(evt.date)}
                       </span>
                       <span className="text-xs font-mono-ref font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded mt-1 inline-block">
                         {evt.timeStart}
@@ -2039,7 +2040,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
             {/* Time & Agent */}
             <div className="flex items-center gap-2 text-slate-600 mb-3 bg-slate-50 p-2.5 rounded-lg border font-mono-ref">
               <Clock className="w-4 h-4 text-blue-600" />
-              <span>{selectedEvent.date} • {selectedEvent.timeStart} - {selectedEvent.timeEnd}</span>
+              <span>{formatDateFR(selectedEvent.date)} • {selectedEvent.timeStart} - {selectedEvent.timeEnd}</span>
               <span className="ml-auto text-slate-500 font-bold">Agent: {selectedEvent.agentBadge}</span>
             </div>
 
@@ -3572,7 +3573,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
                             <div className="space-y-1 flex-1">
                               <div className="flex items-center gap-2">
                                 <span className="font-mono-ref font-bold text-xs bg-amber-200 text-amber-950 px-2 py-0.5 rounded">
-                                  Nouvelle date : {pe.date} ({pe.timeStart})
+                                  Nouvelle date : {formatDateFR(pe.date)} ({pe.timeStart})
                                 </span>
                                 <span className="text-[10px] bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded font-bold">
                                   Reporté
@@ -3609,7 +3610,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
                                 className="px-3.5 py-1.5 bg-[#022448] hover:bg-[#003870] text-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
                               >
                                 <Calendar className="w-3.5 h-3.5" />
-                                <span>Voir au {pe.date}</span>
+                                <span>Voir au {formatDateFR(pe.date)}</span>
                               </button>
                             </div>
                           </div>
@@ -3821,7 +3822,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
                     ACCORD TENANCIER IN SITU
                   </span>
                   <span className="text-xs text-slate-500 font-mono-ref font-bold">
-                    Date initiale : {postponeEvent.date}
+                    Date initiale : {formatDateFR(postponeEvent.date)}
                   </span>
                 </div>
                 <h3 className="text-lg font-black text-[#022448] flex items-center gap-2 mt-1">
@@ -3829,7 +3830,7 @@ export const MobileAgentCalendarModule: React.FC = () => {
                   <span>Reporter le Rendez-vous & Déplacer l'Établissement</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  L'établissement <strong>disparaîtra du planning du {postponeEvent.date}</strong> et réapparaîtra automatiquement sur le calendrier au jour convenu avec le tenancier.
+                  L'établissement <strong>disparaîtra du planning du {formatDateFR(postponeEvent.date)}</strong> et réapparaîtra automatiquement sur le calendrier au jour convenu avec le tenancier.
                 </p>
               </div>
               <button

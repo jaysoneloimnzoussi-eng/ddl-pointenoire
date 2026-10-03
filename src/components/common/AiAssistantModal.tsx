@@ -18,6 +18,7 @@ import {
 import { AiReportService } from '../../services/aiReportService';
 import { storageService } from '../../services/storageService';
 import { REPUBLIQUE_CONGO } from '../../constants/referential';
+import { formatDateFR } from '../../utils/dateUtils';
 import { useSession } from '../../context/SessionContext';
 
 interface AiAssistantModalProps {
@@ -206,7 +207,7 @@ En conséquence, il vous est imparti un **délai impératif et non prorogeable d
 
 **Faute par vous de vous conformer aux prescriptions ci-dessus dans le délai prescrit, il sera procédé sans autre avis à la fermeture administrative immédiate de vos locaux avec apposition des scellés de la République et poursuites judiciaires.**
 
-Fait à Pointe-Noire, le ${new Date().toLocaleDateString('fr-FR')}
+Fait à Pointe-Noire, le ${formatDateFR(new Date())}
 *Pour le Service SAA : Jacques MATOKO*
 *Le Directeur Départemental des Loisirs : Jean Richard NTSEKE NGOUAKA*`;
       } else if (lower.includes('pta') || lower.includes('plan de travail')) {

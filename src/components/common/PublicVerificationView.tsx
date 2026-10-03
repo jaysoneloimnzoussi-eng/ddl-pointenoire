@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2, ShieldCheck, FileText, Calendar, Building2, MapPin, X } from 'lucide-react';
 import { OfficialRepublicLogo, RepublicTricolorBar } from './OfficialSeal';
+import { formatDateFR } from '../../utils/dateUtils';
 
 interface PublicVerificationViewProps {
   refCode: string;
@@ -49,7 +50,7 @@ export const PublicVerificationView: React.FC<PublicVerificationViewProps> = ({
             )}
             <div className="flex justify-between border-b border-slate-200 pb-1.5">
               <span className="text-slate-500">DATE D'ÉMISSION :</span>
-              <strong className="text-slate-900">{date || 'Session Active 2026'}</strong>
+              <strong className="text-slate-900">{date ? formatDateFR(date) : 'Session Active 2026'}</strong>
             </div>
             <div className="flex justify-between border-b border-slate-200 pb-1.5">
               <span className="text-slate-500">SIGNATAIRE :</span>

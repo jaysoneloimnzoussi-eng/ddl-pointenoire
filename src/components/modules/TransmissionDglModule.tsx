@@ -14,6 +14,7 @@ import {
 import { storageService } from '../../services/storageService';
 import { useSession } from '../../context/SessionContext';
 import { Establishment } from '../../types';
+import { formatDateFR } from '../../utils/dateUtils';
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
 
 export const TransmissionDglModule: React.FC = () => {
@@ -209,9 +210,14 @@ export const TransmissionDglModule: React.FC = () => {
             {transmittedBatches.map(b => (
               <div key={b.batchNumber} className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono-ref font-bold text-[#022448] text-xs">
-                    {b.batchNumber}
-                  </span>
+                  <div>
+                    <span className="font-mono-ref font-bold text-[#022448] text-xs">
+                      {b.batchNumber}
+                    </span>
+                    <span className="text-[10px] text-slate-500 block font-mono-ref">
+                      Date d'envoi : {formatDateFR(b.date)}
+                    </span>
+                  </div>
                   <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.5 rounded">
                     {b.status === 'ARRETES_SIGNES_MINISTERE' ? 'Arrêtés Signés' : 'En Examen DGL'}
                   </span>

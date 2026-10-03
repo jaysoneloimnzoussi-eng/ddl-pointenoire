@@ -19,6 +19,8 @@ import {
   Shield,
   Building2,
   Archive,
+  Moon,
+  Sun,
   X
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
@@ -85,6 +87,9 @@ export const VerticalSidebar: React.FC = () => {
     isTabletTerrainMode,
     setIsTabletTerrainMode,
     currentUser,
+    theme,
+    toggleTheme,
+    triggerNotification,
     logout
   } = useSession();
 
@@ -270,6 +275,88 @@ export const VerticalSidebar: React.FC = () => {
             <div className="text-center font-mono-ref font-bold text-amber-400 text-[10px]">
               2026
             </div>
+          )}
+
+          {/* Theme Switcher (Dark / Light) for visual fatigue reduction */}
+          {!isSidebarCollapsed ? (
+            <div className="bg-[#022448]/90 border border-[#033468] rounded-xl p-2 shadow-inner">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <div
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      theme === 'dark'
+                        ? 'bg-indigo-950 text-indigo-400 border border-indigo-700/50'
+                        : 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
+                    }`}
+                  >
+                    {theme === 'dark' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+                  </div>
+                  <div className="leading-tight truncate">
+                    <span className="text-[11px] font-bold text-white block">
+                      {theme === 'dark' ? 'Mode Sombre' : 'Mode Clair'}
+                    </span>
+                    <span className="text-[8.5px] text-slate-400 block truncate">
+                      {theme === 'dark' ? 'Anti-fatigue nocturne' : 'Affichage diurne'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Accessible switch toggle button */}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={theme === 'dark'}
+                  onClick={() => {
+                    toggleTheme();
+                    triggerNotification(
+                      theme === 'dark'
+                        ? 'Mode clair activé'
+                        : 'Mode sombre activé : protection oculaire & travail nocturne',
+                      'info'
+                    );
+                  }}
+                  className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                    theme === 'dark' ? 'bg-indigo-600' : 'bg-slate-700'
+                  }`}
+                  title={theme === 'dark' ? 'Passer en mode clair' : 'Activer le mode sombre anti-fatigue'}
+                >
+                  <span className="sr-only">Basculer le mode sombre</span>
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out flex items-center justify-center ${
+                      theme === 'dark' ? 'translate-x-5 text-indigo-900' : 'translate-x-0 text-amber-600'
+                    }`}
+                  >
+                    {theme === 'dark' ? (
+                      <Moon className="w-2.5 h-2.5" />
+                    ) : (
+                      <Sun className="w-2.5 h-2.5" />
+                    )}
+                  </span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                toggleTheme();
+                triggerNotification(
+                  theme === 'dark'
+                    ? 'Mode clair activé'
+                    : 'Mode sombre activé : protection oculaire & travail nocturne',
+                  'info'
+                );
+              }}
+              className={`w-full flex items-center justify-center p-2 rounded-lg transition-colors border cursor-pointer ${
+                theme === 'dark'
+                  ? 'bg-indigo-950/60 hover:bg-indigo-900 text-indigo-300 border-indigo-800/60'
+                  : 'bg-white/5 hover:bg-white/10 text-amber-300 border-white/10'
+              }`}
+              title={theme === 'dark' ? 'Mode Sombre actif (Cliquer pour passer en Clair)' : 'Mode Clair actif (Cliquer pour passer en Sombre)'}
+            >
+              {theme === 'dark' ? <Moon className="w-4 h-4 text-indigo-300" /> : <Sun className="w-4 h-4 text-amber-400" />}
+            </button>
           )}
 
           {/* Quick logout action */}
