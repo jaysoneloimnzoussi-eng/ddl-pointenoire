@@ -30,7 +30,11 @@ import {
   Sparkles,
   Landmark,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  Camera,
+  Upload,
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { authService } from '../../services/authService';
@@ -38,6 +42,7 @@ import { UserAccount, UserRole } from '../../types';
 import { OfficialRepublicLogo, RepublicTricolorBar } from '../common/OfficialSeal';
 import { REPUBLIQUE_CONGO, TERRITORIAL_REFERENTIAL } from '../../constants/referential';
 import { formatDateFR } from '../../utils/dateUtils';
+import { buildVerificationUrl } from '../../utils/qrUtils';
 import QRCode from 'qrcode';
 
 export const AdminPersonnelModule: React.FC = () => {
@@ -76,6 +81,12 @@ export const AdminPersonnelModule: React.FC = () => {
     sermentDate: '2026-01-15'
   });
 
+  // Photo modal & file inputs state
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [newAgentPhotoUrl, setNewAgentPhotoUrl] = useState<string>('');
+  const photoInputRef = React.useRef<HTMLInputElement | null>(null);
+  const createPhotoInputRef = React.useRef<HTMLInputElement | null>(null);
+
   // QR Code preview for selected agent
   const [agentQrUrl, setAgentQrUrl] = useState<string>('');
 
@@ -87,10 +98,69 @@ export const AdminPersonnelModule: React.FC = () => {
     return accounts.find(a => a.id === selectedAgentId) || accounts[0] || null;
   }, [accounts, selectedAgentId]);
 
-  // Generate QR code whenever selected agent changes
+  // Handle Photo file compression and processing to data URL
+  const processImageFile = (file: File, onDone: (dataUrl: string) => void) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const rawUrl = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxW = 320;
+        const maxH = 400;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxW || h > maxH) {
+          if (w / h > maxW / maxH) {
+            h = Math.round((h * maxW) / w);
+            w = maxW;
+          } else {
+            w = Math.round((w * maxH) / h);
+            h = maxH;
+          }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL('image/jpeg', 0.85);
+          onDone(compressed);
+        } else {
+          onDone(rawUrl);
+        }
+      };
+      img.src = rawUrl;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveSelectedAgentPhoto = (photoDataUrl: string) => {
+    if (!selectedAgent) return;
+    authService.updateAccount(selectedAgent.id, { photoUrl: photoDataUrl });
+    reloadAccounts();
+    triggerNotification(`Photo d'identité insérée avec succès sur le badge de ${selectedAgent.name} !`, 'success');
+    setIsPhotoModalOpen(false);
+  };
+
+  const handleRemoveSelectedAgentPhoto = () => {
+    if (!selectedAgent) return;
+    authService.updateAccount(selectedAgent.id, { photoUrl: undefined });
+    reloadAccounts();
+    triggerNotification(`Photo retirée du badge de ${selectedAgent.name}.`, 'info');
+    setIsPhotoModalOpen(false);
+  };
+
+  // Generate clean, clickable QR code whenever selected agent changes
   React.useEffect(() => {
     if (!selectedAgent) return;
-    const verifyPayload = `https://ddl-pointenoire.vercel.app/#/verify?agent=${encodeURIComponent(selectedAgent.badge)}&nom=${encodeURIComponent(selectedAgent.name)}&role=${encodeURIComponent(selectedAgent.role)}&val=2026\n[ASSERMENTATION DDL-PN / MCAPNIT]\nAGENT: ${selectedAgent.name}\nBADGE: ${selectedAgent.badge}\nMATRICULE: ${selectedAgent.matricule || '315713H'}\nSERVICE: ${selectedAgent.service}\nZONE: ${selectedAgent.zone || 'Pointe-Noire'}\nSERMENT: TGI Pointe-Noire (Loi 13-2011)\nVALIDITÉ: PTA 2026`;
+    const verifyPayload = buildVerificationUrl({
+      ref: selectedAgent.badge,
+      agent: selectedAgent.badge,
+      nom: selectedAgent.name,
+      role: selectedAgent.role,
+      type: 'BADGE_ASSERMENTE'
+    });
 
     QRCode.toDataURL(verifyPayload, {
       errorCorrectionLevel: 'H',
@@ -171,12 +241,14 @@ export const AdminPersonnelModule: React.FC = () => {
       defaultPassword: generatedPwd,
       sermentDate: newAgentForm.sermentDate,
       datePriseService: new Date().toISOString().split('T')[0],
+      photoUrl: newAgentPhotoUrl.trim() || undefined,
       isActive: true
     });
 
     reloadAccounts();
     setSelectedAgentId(created.id);
-    triggerNotification(`Agent ${created.name} (${created.badge}) enregistré avec succès !`, 'success');
+    setNewAgentPhotoUrl('');
+    triggerNotification(`Agent ${created.name} (${created.badge}) enregistré avec succès avec sa photo officielle !`, 'success');
 
     // Reset form
     setNewAgentForm({
@@ -714,6 +786,56 @@ export const AdminPersonnelModule: React.FC = () => {
               </div>
             </div>
 
+            {/* Photo Upload in Creation Form */}
+            <div className="bg-slate-50 border border-slate-300 rounded-xl p-3.5 space-y-2">
+              <label className="font-bold text-slate-700 text-xs block">
+                Photo d'Identité pour le Badge Officiel (Optionnelle) :
+              </label>
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-16 rounded-lg bg-slate-200 border-2 border-slate-300 overflow-hidden flex items-center justify-center shrink-0">
+                  {newAgentPhotoUrl ? (
+                    <img src={newAgentPhotoUrl} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-6 h-6 text-slate-400" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-1">
+                  <input
+                    ref={createPhotoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        processImageFile(file, url => setNewAgentPhotoUrl(url));
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => createPhotoInputRef.current?.click()}
+                      className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>{newAgentPhotoUrl ? 'Changer la photo' : 'Téléverser photo d’identité'}</span>
+                    </button>
+                    {newAgentPhotoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setNewAgentPhotoUrl('')}
+                        className="px-2 py-1.5 text-xs text-red-600 hover:text-red-800 font-semibold"
+                      >
+                        Supprimer
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-500">Format JPG, PNG ou capture directe. Centrée sur le visage.</p>
+                </div>
+              </div>
+            </div>
+
             <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
               <button
                 type="button"
@@ -758,7 +880,18 @@ export const AdminPersonnelModule: React.FC = () => {
               </select>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Insert / Change Photo Button */}
+              <button
+                type="button"
+                onClick={() => setIsPhotoModalOpen(true)}
+                className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+                title="Insérer ou modifier la photo officielle sur ce badge"
+              >
+                <Camera className="w-4 h-4 text-amber-300" />
+                <span>{selectedAgent?.photoUrl ? 'Modifier Photo Badge' : '📷 Insérer Photo Badge'}</span>
+              </button>
+
               <button
                 onClick={handlePrintBadge}
                 className="px-4 py-2 bg-[#022448] hover:bg-[#033468] text-white font-black text-xs rounded-xl shadow-sm flex items-center gap-2 transition cursor-pointer"
@@ -768,6 +901,20 @@ export const AdminPersonnelModule: React.FC = () => {
               </button>
             </div>
           </div>
+
+          {/* Hidden file input for photo upload */}
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) {
+                processImageFile(file, url => handleSaveSelectedAgentPhoto(url));
+              }
+            }}
+            className="hidden"
+          />
 
           {/* BADGE PREVIEW (RECTO / VERSO) */}
           {selectedAgent && (
@@ -810,8 +957,25 @@ export const AdminPersonnelModule: React.FC = () => {
                   {/* Body: Photo, Info, Chip */}
                   <div className="p-3 flex items-center gap-3.5 flex-1">
                     {/* Official Photo Avatar */}
-                    <div className="w-20 h-24 rounded-lg bg-[#006d2f] text-amber-300 font-black text-2xl flex flex-col items-center justify-center border-2 border-amber-400 shadow-md shrink-0 relative overflow-hidden">
-                      <span>{selectedAgent.name.charAt(0)}</span>
+                    <div
+                      onClick={() => setIsPhotoModalOpen(true)}
+                      className="w-20 h-24 rounded-lg bg-[#006d2f] text-amber-300 font-black text-2xl flex flex-col items-center justify-center border-2 border-amber-400 shadow-md shrink-0 relative overflow-hidden cursor-pointer group hover:scale-[1.02] transition"
+                      title="Cliquer pour insérer ou changer la photo officielle du badge"
+                    >
+                      {selectedAgent.photoUrl ? (
+                        <img
+                          src={selectedAgent.photoUrl}
+                          alt={selectedAgent.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center">
+                          <span>{selectedAgent.name.charAt(0)}</span>
+                          <span className="text-[7px] text-amber-200 mt-1 flex items-center gap-0.5 opacity-90 group-hover:opacity-100 font-mono-ref">
+                            <Camera className="w-2.5 h-2.5" /> + Photo
+                          </span>
+                        </div>
+                      )}
                       <div className="absolute bottom-0 inset-x-0 bg-[#022448]/90 text-[7px] text-white font-mono-ref text-center py-0.5 font-bold">
                         ASSERMENTÉ
                       </div>
@@ -1006,8 +1170,16 @@ export const AdminPersonnelModule: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 my-6">
                 {/* Agent Photo & QR */}
                 <div className="sm:col-span-4 flex flex-col items-center gap-4">
-                  <div className="w-32 h-40 rounded-xl bg-gradient-to-b from-[#022448] to-[#011427] text-amber-300 flex flex-col items-center justify-center font-black text-4xl shadow-md border-2 border-amber-400 relative">
-                    <span>{selectedAgent.name.charAt(0)}</span>
+                  <div className="w-32 h-40 rounded-xl bg-gradient-to-b from-[#022448] to-[#011427] text-amber-300 flex flex-col items-center justify-center font-black text-4xl shadow-md border-2 border-amber-400 relative overflow-hidden">
+                    {selectedAgent.photoUrl ? (
+                      <img
+                        src={selectedAgent.photoUrl}
+                        alt={selectedAgent.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span>{selectedAgent.name.charAt(0)}</span>
+                    )}
                     <div className="absolute bottom-2 bg-amber-400 text-slate-950 text-[9px] font-extrabold font-mono-ref px-2 py-0.5 rounded">
                       PHOTO OFFICIELLE
                     </div>
@@ -1184,6 +1356,139 @@ export const AdminPersonnelModule: React.FC = () => {
                 className="px-5 py-2 bg-[#022448] hover:bg-[#033468] text-white font-bold rounded-xl shadow-xs"
               >
                 Enregistrer le Nouveau Mot de Passe
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL: PHOTO D'IDENTITÉ OFFICIELLE POUR LE BADGE
+         ======================================================== */}
+      {isPhotoModalOpen && selectedAgent && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border-2 border-emerald-400">
+            <RepublicTricolorBar className="h-2" />
+
+            <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#006d2f] text-amber-300 flex items-center justify-center shadow-xs">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-[#022448] font-republic uppercase">
+                    Photo d'Identité du Badge
+                  </h3>
+                  <p className="text-[10px] text-slate-500 font-mono-ref truncate max-w-[240px]">
+                    {selectedAgent.name} ({selectedAgent.badge})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPhotoModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-slate-200 text-slate-500 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-5">
+              {/* Photo Preview Frame */}
+              <div className="flex flex-col items-center">
+                <div className="w-28 h-36 rounded-2xl bg-[#006d2f] text-amber-300 font-black text-3xl flex flex-col items-center justify-center border-4 border-amber-400 shadow-xl overflow-hidden relative">
+                  {selectedAgent.photoUrl ? (
+                    <img
+                      src={selectedAgent.photoUrl}
+                      alt={selectedAgent.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-center p-2">
+                      <span>{selectedAgent.name.charAt(0)}</span>
+                      <span className="text-[9px] text-amber-200 mt-1 font-mono-ref font-normal">
+                        Aucune photo
+                      </span>
+                    </div>
+                  )}
+                  <div className="absolute bottom-0 inset-x-0 bg-[#022448]/95 text-[8px] text-amber-300 font-mono-ref text-center py-0.5 font-bold uppercase tracking-wider">
+                    ASSERMENTÉ
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-500 mt-2 font-mono-ref text-center">
+                  Format Carte PVC Officielle • Résolution Optimisée
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-2.5">
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  className="w-full py-3 px-4 bg-[#006d2f] hover:bg-[#005a26] text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  <Upload className="w-4 h-4 text-amber-300" />
+                  <span>Téléverser une Photo (Fichier / Galerie)</span>
+                </button>
+
+                {/* Preset Administrative Official Avatars */}
+                <div className="pt-2 border-t border-slate-200 space-y-2">
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">
+                    Ou sélectionner un modèle officiel :
+                  </span>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      {
+                        label: 'Homme 1',
+                        url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80'
+                      },
+                      {
+                        label: 'Femme 1',
+                        url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&auto=format&fit=crop&q=80'
+                      },
+                      {
+                        label: 'Homme 2',
+                        url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80'
+                      },
+                      {
+                        label: 'Femme 2',
+                        url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&auto=format&fit=crop&q=80'
+                      }
+                    ].map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleSaveSelectedAgentPhoto(preset.url)}
+                        className="group flex flex-col items-center gap-1 p-1 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition cursor-pointer"
+                      >
+                        <div className="w-12 h-14 rounded-lg overflow-hidden border border-slate-300 group-hover:ring-2 group-hover:ring-emerald-500">
+                          <img src={preset.url} alt={preset.label} className="w-full h-full object-cover" />
+                        </div>
+                        <span className="text-[9px] text-slate-600 font-medium">{preset.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedAgent.photoUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveSelectedAgentPhoto}
+                    className="w-full py-2 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 font-bold rounded-xl transition"
+                  >
+                    Supprimer la photo actuelle
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsPhotoModalOpen(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+              >
+                Fermer
               </button>
             </div>
           </div>

@@ -22,7 +22,8 @@ import {
   RefreshCw,
   Menu,
   LogOut,
-  Shield
+  Shield,
+  QrCode
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { APP_USERS, REPUBLIQUE_CONGO } from '../../constants/referential';
@@ -191,6 +192,35 @@ export const RepublicHeader: React.FC = () => {
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-600 dark:text-blue-400' : ''}`} />
             </button>
           </div>
+
+          {/* Prominent Google Agenda SAA Button (Affichage Principal) */}
+          <button
+            onClick={() => setActiveModule('MOD-03')}
+            className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition cursor-pointer shadow-xs ${
+              activeModule === 'MOD-03'
+                ? 'bg-[#1a73e8] text-white ring-2 ring-blue-400/50 shadow-md'
+                : 'bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700'
+            }`}
+            title="Afficher le Google Agenda SAA (Module Principal Terrain)"
+          >
+            <CalendarDays className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span className="font-extrabold tracking-tight">Agenda SAA</span>
+            <span className={`text-[9.5px] px-1.5 py-0.2 rounded-full font-mono-ref font-black ${
+              activeModule === 'MOD-03' ? 'bg-white text-blue-800' : 'bg-blue-600 text-white'
+            }`}>
+              Principal
+            </span>
+          </button>
+
+          {/* QR Code Scanner Trigger Button */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('ddl_open_qr_scanner'))}
+            className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 transition cursor-pointer shadow-2xs"
+            title="Scanner un QR Code officiel avec la caméra ou une photo"
+          >
+            <QrCode className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="hidden md:inline">Scanner QR</span>
+          </button>
 
           {/* Quick Tablet / Field Mode Toggle */}
           <button

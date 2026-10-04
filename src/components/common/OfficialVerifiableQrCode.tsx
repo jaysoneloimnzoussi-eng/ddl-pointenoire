@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
+import { buildVerificationUrl } from '../../utils/qrUtils';
 
 interface OfficialVerifiableQrCodeProps {
   data: {
@@ -25,14 +26,17 @@ export const OfficialVerifiableQrCode: React.FC<OfficialVerifiableQrCodeProps> =
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   useEffect(() => {
-    // Generate authentic verification payload with verification URL & certificate content
-    const refCode = data.ref || 'DDL-PN-2026';
-    const verifyUrl = `https://ddl-pointenoire.vercel.app/#/verify?ref=${encodeURIComponent(refCode)}&etab=${encodeURIComponent(data.establishment_name || '')}&date=${encodeURIComponent(data.date || '')}`;
-    
-    // Official cryptographic digital signature string embedded
-    const payload = `${verifyUrl}\n[CERTIFICAT OFFICIEL DDL-PN]\nREF: ${refCode}\nTYPE: ${data.type || 'DOCUMENT_OFFICIEL'}\nETAB: ${data.establishment_name || 'N/A'}\nPROMOTEUR: ${data.promoter_name || 'N/A'}\nARRONDISSEMENT: ${data.arrondissement || 'Pointe-Noire'}\nSIGNATAIRE: NTSEKE NGOUAKA Jean Richard\nVALIDITE: REGLEMENTAIRE MCAPNIT`;
+    // Generate authentic, clickable verification URL for phone cameras & scanners
+    const verifyUrl = buildVerificationUrl({
+      ref: data.ref,
+      type: data.type,
+      etab: data.establishment_name,
+      nom: data.promoter_name,
+      date: data.date,
+      amount: data.amount
+    });
 
-    QRCode.toDataURL(payload, {
+    QRCode.toDataURL(verifyUrl, {
       errorCorrectionLevel: 'M',
       margin: 1,
       width: size * 2,

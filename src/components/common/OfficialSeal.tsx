@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
+import { buildVerificationUrl } from '../../utils/qrUtils';
 
 interface LogoProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
@@ -84,21 +85,27 @@ export const RepublicQrCode: React.FC<RepublicQrCodeProps> = ({
 
   useEffect(() => {
     let content = '';
-    if (typeof targetData === 'string') {
+    if (typeof targetData === 'string' && targetData.startsWith('http')) {
       content = targetData;
     } else if (targetData && typeof targetData === 'object') {
-      const refCode = targetData.ref || targetData.pv_number || targetData.receipt || targetData.id || 'DDL-PN-2026';
+      const refCode = targetData.ref || targetData.pv_number || targetData.receipt || targetData.id || targetData.agent || 'DDL-PN-2026';
       const etabName = targetData.establishment_name || targetData.name || targetData.etab || '';
       const dateStr = targetData.date || '';
-      const verifyUrl = `https://ddl-pointenoire.vercel.app/#/verify?ref=${encodeURIComponent(refCode)}&etab=${encodeURIComponent(etabName)}&date=${encodeURIComponent(dateStr)}`;
-      
-      content = `${verifyUrl}\n[AUTHENTICITÉ RÉPUBLIQUE DU CONGO - DDL-PN]\n` +
-        Object.entries(targetData)
-          .map(([k, v]) => `${k.toUpperCase()}: ${v}`)
-          .join('\n') +
-        `\nSIGNATAIRE: NTSEKE NGOUAKA Jean Richard\nVALIDITÉ: OFFICIELLE MCAPNIT`;
+      const typeStr = targetData.type || '';
+      const agentBadge = targetData.agent || targetData.badge || '';
+      const nomStr = targetData.promoter_name || targetData.nom || '';
+
+      content = buildVerificationUrl({
+        ref: refCode,
+        etab: etabName,
+        date: dateStr,
+        type: typeStr,
+        agent: agentBadge,
+        nom: nomStr,
+        amount: targetData.amount
+      });
     } else {
-      content = 'DDL-PN-2026-OFFICIEL';
+      content = buildVerificationUrl({ ref: 'DDL-PN-2026' });
     }
 
     QRCode.toDataURL(content, {

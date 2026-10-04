@@ -46,7 +46,9 @@ import {
   Building2,
   QrCode,
   FolderLock,
-  CloudDownload
+  CloudDownload,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { storageService } from '../../services/storageService';
@@ -109,9 +111,20 @@ export const MobileAgentCalendarModule: React.FC = () => {
 
   // Calendar Date State (Default date of exercise: 2026-10-02)
   const [currentDateStr, setCurrentDateStr] = useState<string>('2026-10-02');
-  const [viewMode, setViewMode] = useState<'JOUR' | 'SEMAINE' | 'MOIS' | 'PLANNING'>('SEMAINE');
+  const [viewMode, setViewMode] = useState<'JOUR' | 'SEMAINE' | 'MOIS' | 'PLANNING'>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return 'JOUR';
+    }
+    return 'SEMAINE';
+  });
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return false;
+  });
+  const [isFullScreenAgenda, setIsFullScreenAgenda] = useState<boolean>(false);
 
   // Filter establishments strictly per agent (or all 117 for Admin)
   const establishments = useMemo(() => {
@@ -1013,7 +1026,9 @@ export const MobileAgentCalendarModule: React.FC = () => {
   const HOURS = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden font-sans">
+    <div className={`flex flex-col bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden font-sans transition-all duration-200 ${
+      isFullScreenAgenda ? 'fixed inset-0 z-50 rounded-none h-screen w-screen' : 'h-[calc(100vh-100px)] min-h-[580px]'
+    }`}>
       {/* ========================================================
           1. GOOGLE CALENDAR MAIN HEADER
          ======================================================== */}
@@ -1164,17 +1179,53 @@ export const MobileAgentCalendarModule: React.FC = () => {
             <span className="hidden md:inline">Transférer depuis Google Agenda</span>
           </button>
 
-          {/* Google Calendar View Switcher (Jour, Semaine, Mois, Planning) */}
+          {/* Quick Segmented Mode Buttons */}
+          <div className="hidden sm:flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-semibold">
+            {(['JOUR', 'SEMAINE', 'PLANNING'] as const).map(mode => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                className={`px-2.5 py-1 rounded-md text-[11px] transition cursor-pointer ${
+                  viewMode === mode
+                    ? 'bg-white text-blue-700 font-bold shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {mode === 'JOUR' ? 'Jour' : mode === 'SEMAINE' ? 'Semaine' : 'Planning'}
+              </button>
+            ))}
+          </div>
+
+          {/* Google Calendar View Switcher Dropdown (for Mobile & Month) */}
           <select
             value={viewMode}
             onChange={e => setViewMode(e.target.value as any)}
-            className="py-1 px-2.5 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 focus:outline-none cursor-pointer"
+            className="sm:hidden py-1 px-2 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 focus:outline-none cursor-pointer"
           >
             <option value="JOUR">Jour</option>
             <option value="SEMAINE">Semaine</option>
             <option value="MOIS">Mois</option>
             <option value="PLANNING">Planning</option>
           </select>
+
+          {/* Full Screen Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setIsFullScreenAgenda(prev => !prev)}
+            className={`p-1.5 rounded-md border transition cursor-pointer ${
+              isFullScreenAgenda
+                ? 'bg-amber-100 text-amber-900 border-amber-300'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+            }`}
+            title={isFullScreenAgenda ? 'Quitter le mode plein écran principal' : 'Afficher l’agenda en plein écran principal'}
+          >
+            {isFullScreenAgenda ? (
+              <Minimize2 className="w-4 h-4 text-amber-800" />
+            ) : (
+              <Maximize2 className="w-4 h-4 text-slate-700" />
+            )}
+          </button>
 
           {/* INDIVIDUAL AGENT PROFILE BADGE / SUPERVISION FILTER */}
           {currentUser.role === 'ADMIN' || currentUser.role === 'DIRECTEUR' ? (
@@ -1615,9 +1666,10 @@ export const MobileAgentCalendarModule: React.FC = () => {
               VIEW 1: VUE SEMAINE (Google Calendar 7-Day Time Grid)
              ---------------------------------------------------- */}
           {viewMode === 'SEMAINE' && (
-            <div className="flex-1 overflow-y-auto flex flex-col">
-              {/* Day Header Columns */}
-              <div className="grid grid-cols-8 border-b border-slate-200 bg-slate-50 sticky top-0 z-20 text-xs">
+            <div className="flex-1 overflow-y-auto overflow-x-auto flex flex-col">
+              <div className="min-w-[760px] flex-1 flex flex-col">
+                {/* Day Header Columns */}
+                <div className="grid grid-cols-8 border-b border-slate-200 bg-slate-50 sticky top-0 z-20 text-xs">
                 <div className="p-2 border-r border-slate-200 text-center font-bold text-slate-400 text-[10px]">
                   HEURE
                 </div>
@@ -1699,7 +1751,8 @@ export const MobileAgentCalendarModule: React.FC = () => {
                 })}
               </div>
             </div>
-          )}
+          </div>
+        )}
 
           {/* ----------------------------------------------------
               VIEW 2: VUE JOUR (Hourly Time Grid 07:00 - 20:00)

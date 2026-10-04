@@ -16,12 +16,14 @@ import { CongoMapIllustration } from '../common/CongoMapIllustration';
 import { REPUBLIQUE_CONGO } from '../../constants/referential';
 import { AppUser } from '../../types';
 import { authService } from '../../services/authService';
+import { QrCode } from 'lucide-react';
 
 interface LoginPageProps {
   onLoginSuccess: (user: AppUser, initialModule?: string) => void;
+  onOpenScanner?: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onOpenScanner }) => {
   const [identifier, setIdentifier] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -225,6 +227,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   )}
                 </button>
               </form>
+
+              {/* Public QR Code Scanner Trigger for Non-authenticated users / Police / Citizens */}
+              {onOpenScanner && (
+                <div className="mt-4 pt-4 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={onOpenScanner}
+                    className="w-full py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-[#006d2f] border border-emerald-300 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
+                  >
+                    <QrCode className="w-4 h-4 text-emerald-700" />
+                    <span>Contrôle Citoyen & Police : Scanner un QR Code / Badge</span>
+                  </button>
+                </div>
+              )}
 
               {/* Secure Support Box (Strict Confidentiality - No Directory) */}
               <div className="mt-6 p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600 space-y-1">

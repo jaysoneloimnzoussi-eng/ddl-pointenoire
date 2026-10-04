@@ -23,10 +23,11 @@ import { PromoterFintechPortalModule } from './components/modules/PromoterFintec
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AiAssistantModal } from './components/common/AiAssistantModal';
 import { PublicVerificationView } from './components/common/PublicVerificationView';
+import { QrScannerModal } from './components/common/QrScannerModal';
 import { formatDateFR } from './utils/dateUtils';
 import { RepublicTricolorBar, OfficialRepublicLogo } from './components/common/OfficialSeal';
 import { REPUBLIQUE_CONGO } from './constants/referential';
-import { AlertCircle, CheckCircle, Info, X, Sparkles } from 'lucide-react';
+import { AlertCircle, CheckCircle, Info, X, Sparkles, QrCode } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const {
@@ -39,42 +40,149 @@ const AppContent: React.FC = () => {
   } = useSession();
 
   const [isGlobalAiOpen, setIsGlobalAiOpen] = React.useState(false);
+  const [isScannerOpen, setIsScannerOpen] = React.useState(false);
   const [verificationData, setVerificationData] = React.useState<{
     isOpen: boolean;
     ref: string;
     etab?: string;
     date?: string;
+    agentBadge?: string;
+    type?: string;
+    nom?: string;
+    role?: string;
+    amount?: number;
   }>({
     isOpen: false,
     ref: ''
   });
 
-  // Listen for hash verification on page load or QR code scan
-  React.useEffect(() => {
-    const handleHashCheck = () => {
-      const hash = window.location.hash;
-      if (hash.includes('#/verify') || hash.includes('#verify')) {
-        const urlParams = new URLSearchParams(hash.split('?')[1] || '');
-        const ref = urlParams.get('ref') || 'DDL-PN-2026';
-        const etab = urlParams.get('etab') || '';
-        const date = urlParams.get('date') || '';
+  const parseAndVerify = (urlOrString: string) => {
+    try {
+      let params: URLSearchParams;
+      let cleanInput = urlOrString.trim();
+
+      if (cleanInput.includes('?')) {
+        const queryPart = cleanInput.split('?')[1]?.split('#')[0] || '';
+        params = new URLSearchParams(queryPart);
+      } else if (cleanInput.includes('#')) {
+        const hashQuery = cleanInput.split('#')[1]?.split('?')[1] || cleanInput.split('#')[1] || '';
+        params = new URLSearchParams(hashQuery);
+      } else {
+        // Plain string reference e.g. SAA-PN-315 or REC-2026-0012
+        const isAgent =
+          cleanInput.startsWith('SAA-') ||
+          cleanInput.startsWith('ADM-') ||
+          cleanInput.startsWith('DDL-') ||
+          cleanInput.startsWith('DIR') ||
+          cleanInput.startsWith('SAF-');
+
         setVerificationData({
           isOpen: true,
-          ref,
-          etab,
-          date
+          ref: cleanInput,
+          agentBadge: isAgent ? cleanInput : undefined
         });
+        return;
+      }
+
+      const ref = params.get('ref') || params.get('pv') || params.get('agent') || 'DDL-PN-2026';
+      const etab = params.get('etab') || '';
+      const date = params.get('date') || '';
+      const agentBadge =
+        params.get('agent') ||
+        (ref.startsWith('SAA-') || ref.startsWith('ADM-') || ref.startsWith('DIR') || ref.startsWith('SAF-')
+          ? ref
+          : undefined);
+      const type = params.get('type') || '';
+      const nom = params.get('nom') || '';
+      const role = params.get('role') || '';
+      const amount = params.get('amount') ? Number(params.get('amount')) : undefined;
+
+      setVerificationData({
+        isOpen: true,
+        ref,
+        etab,
+        date,
+        agentBadge,
+        type,
+        nom,
+        role,
+        amount
+      });
+    } catch (e) {
+      console.error('Erreur analyse QR:', e);
+    }
+  };
+
+  // Listen for verification parameters in search query or hash on page load or scan
+  React.useEffect(() => {
+    const handleUrlCheck = () => {
+      const search = window.location.search;
+      const hash = window.location.hash;
+
+      if (search && (search.includes('verify=') || search.includes('ref=') || search.includes('agent='))) {
+        parseAndVerify(window.location.href);
+      } else if (hash && (hash.includes('#/verify') || hash.includes('#verify'))) {
+        parseAndVerify(hash);
       }
     };
 
-    handleHashCheck();
-    window.addEventListener('hashchange', handleHashCheck);
-    return () => window.removeEventListener('hashchange', handleHashCheck);
+    handleUrlCheck();
+    const handleOpenScanner = () => setIsScannerOpen(true);
+    window.addEventListener('ddl_open_qr_scanner', handleOpenScanner);
+    window.addEventListener('hashchange', handleUrlCheck);
+    window.addEventListener('popstate', handleUrlCheck);
+    return () => {
+      window.removeEventListener('ddl_open_qr_scanner', handleOpenScanner);
+      window.removeEventListener('hashchange', handleUrlCheck);
+      window.removeEventListener('popstate', handleUrlCheck);
+    };
   }, []);
 
-  // If not authenticated, render LoginPage
+  const closeVerification = () => {
+    setVerificationData(prev => ({ ...prev, isOpen: false }));
+    // Clean URL parameters smoothly without full page refresh
+    if (window.history.pushState) {
+      const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+      window.history.pushState({ path: cleanUrl }, '', cleanUrl);
+    }
+  };
+
+  // If not authenticated, render LoginPage OR PublicVerificationView if user scanned QR code
   if (!isAuthenticated) {
-    return <LoginPage onLoginSuccess={login} />;
+    return (
+      <>
+        <LoginPage
+          onLoginSuccess={login}
+          onOpenScanner={() => setIsScannerOpen(true)}
+        />
+
+        {/* Public QR Code Authentication Modal for Non-logged-in users */}
+        {verificationData.isOpen && (
+          <PublicVerificationView
+            refCode={verificationData.ref}
+            establishmentName={verificationData.etab}
+            date={verificationData.date}
+            agentBadge={verificationData.agentBadge}
+            type={verificationData.type}
+            nom={verificationData.nom}
+            role={verificationData.role}
+            amount={verificationData.amount}
+            onClose={closeVerification}
+            onOpenScanner={() => setIsScannerOpen(true)}
+          />
+        )}
+
+        {/* QR Code Scanner */}
+        <QrScannerModal
+          isOpen={isScannerOpen}
+          onClose={() => setIsScannerOpen(false)}
+          onScanSuccess={result => {
+            setIsScannerOpen(false);
+            parseAndVerify(result);
+          }}
+        />
+      </>
+    );
   }
 
   const renderActiveModule = () => {
@@ -195,13 +303,26 @@ const AppContent: React.FC = () => {
         <PublicVerificationView
           refCode={verificationData.ref}
           establishmentName={verificationData.etab}
-          date={formatDateFR(verificationData.date)}
-          onClose={() => {
-            setVerificationData(prev => ({ ...prev, isOpen: false }));
-            window.location.hash = '';
-          }}
+          date={verificationData.date}
+          agentBadge={verificationData.agentBadge}
+          type={verificationData.type}
+          nom={verificationData.nom}
+          role={verificationData.role}
+          amount={verificationData.amount}
+          onClose={closeVerification}
+          onOpenScanner={() => setIsScannerOpen(true)}
         />
       )}
+
+      {/* QR Code Scanner */}
+      <QrScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={result => {
+          setIsScannerOpen(false);
+          parseAndVerify(result);
+        }}
+      />
 
       {/* Official Republic Footer */}
       <footer className="no-print bg-[#022448] text-white border-t border-[#033468] py-6 mt-12 text-xs">
