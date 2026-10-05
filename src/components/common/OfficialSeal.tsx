@@ -164,10 +164,9 @@ export const RepublicQrCode: React.FC<RepublicQrCodeProps> = ({
               alt="QR Code Officiel Républicain"
               className="w-full h-full object-contain select-none"
               style={{
-                imageRendering: 'pixelated',
                 display: 'block',
-                maxWidth: '100%',
-                maxHeight: '100%'
+                width: '100%',
+                height: '100%'
               }}
             />
           ) : (

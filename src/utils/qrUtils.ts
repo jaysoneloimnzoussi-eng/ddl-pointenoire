@@ -57,7 +57,7 @@ export function buildVerificationUrl(data: VerificationPayload): string {
  * Generate high-definition SVG data URL for crisp rendering on any screen,
  * retina display, print output, and across all mobile/desktop platforms without canvas dependencies.
  */
-export async function generateQrSvgDataUrl(text: string, size = 120): Promise<string> {
+export async function generateQrSvgDataUrl(text: string, size = 160): Promise<string> {
   const cacheKey = `${text}_${size}`;
   if (qrSvgCache.has(cacheKey)) {
     return qrSvgCache.get(cacheKey)!;
@@ -67,8 +67,8 @@ export async function generateQrSvgDataUrl(text: string, size = 120): Promise<st
     const svgString = await QRCode.toString(text, {
       type: 'svg',
       margin: 1,
-      width: size,
-      errorCorrectionLevel: 'M',
+      width: Math.max(size * 3, 360),
+      errorCorrectionLevel: 'H',
       color: {
         dark: '#000000',
         light: '#FFFFFF'
@@ -85,7 +85,7 @@ export async function generateQrSvgDataUrl(text: string, size = 120): Promise<st
   }
 }
 
-export async function generateQrPngDataUrl(text: string, size = 120): Promise<string> {
+export async function generateQrPngDataUrl(text: string, size = 160): Promise<string> {
   const cacheKey = `png_${text}_${size}`;
   if (qrDataUrlCache.has(cacheKey)) {
     return qrDataUrlCache.get(cacheKey)!;
@@ -94,8 +94,8 @@ export async function generateQrPngDataUrl(text: string, size = 120): Promise<st
   try {
     const dataUrl = await QRCode.toDataURL(text, {
       margin: 1,
-      width: size * 2,
-      errorCorrectionLevel: 'M',
+      width: Math.max(size * 4, 480),
+      errorCorrectionLevel: 'H',
       color: {
         dark: '#000000',
         light: '#FFFFFF'
