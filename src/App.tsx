@@ -24,6 +24,8 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AiAssistantModal } from './components/common/AiAssistantModal';
 import { PublicVerificationView } from './components/common/PublicVerificationView';
 import { QrScannerModal } from './components/common/QrScannerModal';
+import { AttestationDepotModal } from './components/modules/AttestationDepotModal';
+import { IndividualActEditorModal, IndividualActType } from './components/modules/IndividualActEditorModal';
 import { formatDateFR } from './utils/dateUtils';
 import { RepublicTricolorBar, OfficialRepublicLogo } from './components/common/OfficialSeal';
 import { REPUBLIQUE_CONGO } from './constants/referential';
@@ -41,6 +43,15 @@ const AppContent: React.FC = () => {
 
   const [isGlobalAiOpen, setIsGlobalAiOpen] = React.useState(false);
   const [isScannerOpen, setIsScannerOpen] = React.useState(false);
+  const [isAttestationModalOpen, setIsAttestationModalOpen] = React.useState(false);
+  const [individualActModalState, setIndividualActModalState] = React.useState<{
+    isOpen: boolean;
+    actType: IndividualActType;
+    preselectedEstId?: string;
+  }>({
+    isOpen: false,
+    actType: 'MISE_EN_DEMEURE'
+  });
   const [verificationData, setVerificationData] = React.useState<{
     isOpen: boolean;
     ref: string;
@@ -128,11 +139,26 @@ const AppContent: React.FC = () => {
 
     handleUrlCheck();
     const handleOpenScanner = () => setIsScannerOpen(true);
+    const handleOpenAttestation = () => setIsAttestationModalOpen(true);
+    const handleOpenIndividualAct = (e: any) => {
+      const actType = e.detail?.actType || 'MISE_EN_DEMEURE';
+      const preselectedEstId = e.detail?.preselectedEstId;
+      setIndividualActModalState({
+        isOpen: true,
+        actType,
+        preselectedEstId
+      });
+    };
+
     window.addEventListener('ddl_open_qr_scanner', handleOpenScanner);
+    window.addEventListener('ddl_open_attestation_depot', handleOpenAttestation);
+    window.addEventListener('ddl_open_individual_act', handleOpenIndividualAct);
     window.addEventListener('hashchange', handleUrlCheck);
     window.addEventListener('popstate', handleUrlCheck);
     return () => {
       window.removeEventListener('ddl_open_qr_scanner', handleOpenScanner);
+      window.removeEventListener('ddl_open_attestation_depot', handleOpenAttestation);
+      window.removeEventListener('ddl_open_individual_act', handleOpenIndividualAct);
       window.removeEventListener('hashchange', handleUrlCheck);
       window.removeEventListener('popstate', handleUrlCheck);
     };
@@ -323,6 +349,22 @@ const AppContent: React.FC = () => {
           parseAndVerify(result);
         }}
       />
+
+      {/* Dedicated Attestation de Dépôt Modal */}
+      <AttestationDepotModal
+        isOpen={isAttestationModalOpen}
+        onClose={() => setIsAttestationModalOpen(false)}
+      />
+
+      {/* Dedicated Individual Act Editor Modal */}
+      {individualActModalState.isOpen && (
+        <IndividualActEditorModal
+          isOpen={individualActModalState.isOpen}
+          onClose={() => setIndividualActModalState(prev => ({ ...prev, isOpen: false }))}
+          actType={individualActModalState.actType}
+          preselectedEstId={individualActModalState.preselectedEstId}
+        />
+      )}
 
       {/* Official Republic Footer */}
       <footer className="no-print bg-[#022448] text-white border-t border-[#033468] py-6 mt-12 text-xs">

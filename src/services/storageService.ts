@@ -1964,6 +1964,8 @@ class StorageService {
       this.updateEstablishment(act.establishment_id, { status: 'fermeture_administrative' });
     } else if (act.type === 'CONVOCATION') {
       this.updateEstablishment(act.establishment_id, { status: 'convoque' });
+    } else if (act.type === 'ATTESTATION_DEPOT') {
+      this.updateEstablishment(act.establishment_id, { status: 'attestation_depot' });
     }
 
     return newAct;

@@ -404,7 +404,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                           date: data.date_emission || data.record_date,
                           arrondissement: data.arrondissement
                         }}
-                        size={46}
+                        size={56}
                         showDetails={false}
                       />
                     </div>
@@ -570,6 +570,57 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                         </p>
                       </div>
                     </div>
+                  ) : documentType === 'ACTE_JURIDIQUE_A4' && data.type === 'PV_CONSTAT' ? (
+                    /* ==============================================================
+                        ACTE JURIDIQUE: PROCÈS-VERBAL DE CONSTAT D'INFRACTION
+                       ============================================================== */
+                    <div className="space-y-2">
+                      <div className="text-center my-1.5">
+                        <span className="text-[10px] font-mono-ref font-bold text-amber-700 uppercase tracking-widest block">
+                          POLICE ADMINISTRATIVE DES LOISIRS
+                        </span>
+                        <h2 className="text-base font-black uppercase tracking-wide text-amber-900 font-republic mt-0.5 underline decoration-amber-600 underline-offset-4">
+                          PROCÈS-VERBAL DE CONSTATATION D'INFRACTION & NON-CONFORMITÉ
+                        </h2>
+                        <p className="text-[9.5px] uppercase font-bold text-slate-700">
+                          Relevé contradictoire d'infraction aux normes républicaines
+                        </p>
+                      </div>
+
+                      {/* Box Identification */}
+                      <div className="bg-slate-50 border border-slate-300 p-2 rounded-lg text-[10.5px] leading-tight space-y-0.5">
+                        <div className="flex justify-between">
+                          <span><strong>Établissement :</strong> <span className="font-extrabold uppercase text-[#022448]">« {data.establishment_name} »</span></span>
+                          <span className="font-mono-ref font-bold text-slate-600">Réf : {data.reference_number}</span>
+                        </div>
+                        <p><strong>Promoteur / Gérant :</strong> {data.promoter_name}</p>
+                        <p><strong>Localisation :</strong> {data.arrondissement} • {data.address || 'Pointe-Noire'}</p>
+                        {data.agent_notificateur && (
+                          <p className="text-[9.5px] text-slate-500 pt-0.5 border-t border-slate-200">
+                            Agents verbalisateurs assermentés : <strong>{data.agent_notificateur}</strong>
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Visas */}
+                      <div className="text-[9px] space-y-0.5 text-slate-600 border-l-2 border-amber-600 pl-2 italic">
+                        <p>Vu la Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs en République du Congo ;</p>
+                        <p>Vu l'Arrêté Départemental N° 018/DDL-PN-2026 relatif aux normes acoustiques nocturnes.</p>
+                      </div>
+
+                      {/* Constatations */}
+                      <div className="text-[10.5px] text-justify leading-snug space-y-1.5">
+                        <p>
+                          Les agents soussignés du Service Assistance et Autorisation (SAA) certifient s'être transportés sur les lieux et avoir formellement constaté les infractions suivantes :
+                        </p>
+                        <div className="bg-amber-50 border-l-4 border-amber-600 p-2 font-semibold text-amber-950 text-[10.5px] leading-snug">
+                          « {data.motif} »
+                        </div>
+                        <p>
+                          <strong>MESURES CONSERVATOIRES :</strong> Notification immédiate d'injonction de cessation du trouble, sommation de mise en conformité sous délai légal de {data.delai_huitaine_date || '72 heures'}, sans préjudice des poursuites administratives et judiciaires applicables.
+                        </p>
+                      </div>
+                    </div>
                   ) : documentType === 'ACTE_JURIDIQUE_A4' ? (
                     /* ==============================================================
                         ACTE JURIDIQUE: ORDRE DE MISSION SAA / CONTRÔLE
@@ -684,9 +735,6 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                         <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-widest text-[#022448] font-republic underline decoration-[#006d2f] underline-offset-8 mt-1">
                           ATTESTATION DE DÉPÔT
                         </h1>
-                        <p className="text-xs text-slate-500 italic mt-2">
-                          Délivrée en application de la Loi N° 21-2019 du 12 juillet 2019
-                        </p>
                       </div>
 
                       <div className="text-sm sm:text-base text-justify leading-loose space-y-4 font-serif text-slate-900 px-2 sm:px-4">
@@ -710,7 +758,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                         </p>
 
                         <p className="indent-8 leading-relaxed">
-                          La présente attestation est délivrée à titre précaire et conservatoire pour permettre la continuité des activités professionnelles durant la phase d'instruction technique et de mise en conformité réglementaire, dans l'attente de la délivrance du titre officiel par la Direction Générale des Loisirs à Brazzaville.
+                          La présente attestation est délivrée à titre transitoire pour permettre la continuité des activités durant la phase d'instruction technique et de mise en conformité du dossier.
                         </p>
 
                         <p className="indent-8 font-semibold text-slate-800 pt-2">
@@ -737,9 +785,11 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                       <p className="text-[10px] text-slate-700 mb-0.5 font-semibold">
                         Fait à Pointe-Noire, le {formatDateFR(data.record_date || data.date_emission || new Date())}
                       </p>
-                      <p className="font-extrabold text-slate-900 text-[10.5px] uppercase">
-                        Le Directeur Départemental des Loisirs,
-                      </p>
+                      {documentType !== 'ATTESTATION_A4' && (
+                        <p className="font-extrabold text-slate-900 text-[10.5px] uppercase">
+                          Le Directeur Départemental des Loisirs,
+                        </p>
+                      )}
                       <div className="h-9 flex items-center justify-center text-slate-400 text-[10px] italic font-serif my-0.5">
                         [Signature officielle et Sceau de la République]
                       </div>

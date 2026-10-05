@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import QRCode from 'qrcode';
-import { buildVerificationUrl } from '../../utils/qrUtils';
+import React, { useEffect, useState, useMemo } from 'react';
+import { buildVerificationUrl, generateQrSvgDataUrl, getCachedQrUrl } from '../../utils/qrUtils';
 
 interface OfficialVerifiableQrCodeProps {
   data: {
@@ -23,11 +22,9 @@ export const OfficialVerifiableQrCode: React.FC<OfficialVerifiableQrCodeProps> =
   showDetails = true,
   className = ''
 }) => {
-  const [qrDataUrl, setQrDataUrl] = useState<string>('');
-
-  useEffect(() => {
-    // Generate authentic, clickable verification URL for phone cameras & scanners
-    const verifyUrl = buildVerificationUrl({
+  // Construct stable verification URL
+  const verifyUrl = useMemo(() => {
+    return buildVerificationUrl({
       ref: data.ref,
       type: data.type,
       etab: data.establishment_name,
@@ -35,38 +32,81 @@ export const OfficialVerifiableQrCode: React.FC<OfficialVerifiableQrCodeProps> =
       date: data.date,
       amount: data.amount
     });
+  }, [
+    data.ref,
+    data.type,
+    data.establishment_name,
+    data.promoter_name,
+    data.date,
+    data.amount
+  ]);
 
-    QRCode.toDataURL(verifyUrl, {
-      errorCorrectionLevel: 'M',
-      margin: 1,
-      width: size * 2,
-      color: {
-        dark: '#000000',
-        light: '#FFFFFF'
-      }
-    })
-      .then(url => setQrDataUrl(url))
-      .catch(err => console.error('Error generating QR code:', err));
-  }, [data, size]);
+  // Initialize with cached QR if available for 0ms flicker-free render
+  const [qrDataUrl, setQrDataUrl] = useState<string>(() => getCachedQrUrl(verifyUrl, size) || '');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    // Generate crisp cross-platform vector SVG QR Code
+    generateQrSvgDataUrl(verifyUrl, size)
+      .then(url => {
+        if (isMounted && url) {
+          setQrDataUrl(url);
+        }
+      })
+      .catch(err => {
+        console.error('Error generating QR code:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [verifyUrl, size]);
 
   return (
     <div className={`inline-flex flex-col items-center text-center ${className}`}>
-      <div
-        className="p-1 bg-white border border-slate-400 shadow-xs rounded flex items-center justify-center"
-        style={{ width: size + 8, height: size + 8 }}
+      <a
+        href={verifyUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Scanner ou cliquer pour vérifier l'authenticité officielle de ce document"
+        className="block group cursor-pointer transition-transform hover:scale-105"
+        style={{ textDecoration: 'none' }}
       >
-        {qrDataUrl ? (
-          <img
-            src={qrDataUrl}
-            alt={`QR Code Vérifiable - ${data.ref || 'DDL-PN'}`}
-            className="w-full h-full object-contain select-none"
-          />
-        ) : (
-          <div className="w-full h-full bg-slate-100 flex items-center justify-center text-[8px] text-slate-400">
-            QR
-          </div>
-        )}
-      </div>
+        <div
+          className="p-1 bg-white border border-slate-400 shadow-xs rounded flex items-center justify-center overflow-hidden"
+          style={{
+            width: size + 8,
+            height: size + 8,
+            minWidth: size + 8,
+            minHeight: size + 8,
+            backgroundColor: '#ffffff',
+            boxSizing: 'border-box'
+          }}
+        >
+          {qrDataUrl ? (
+            <img
+              src={qrDataUrl}
+              alt={`QR Code Vérifiable - ${data.ref || 'DDL-PN'}`}
+              className="w-full h-full object-contain select-none"
+              style={{
+                imageRendering: 'pixelated',
+                display: 'block',
+                maxWidth: '100%',
+                maxHeight: '100%'
+              }}
+            />
+          ) : (
+            <div
+              className="w-full h-full flex flex-col items-center justify-center text-[8px] font-bold text-slate-500 bg-white"
+              style={{ backgroundColor: '#ffffff' }}
+            >
+              <span>QR</span>
+              <span className="text-[6px] text-slate-400">OFFICIEL</span>
+            </div>
+          )}
+        </div>
+      </a>
 
       {showDetails && (
         <div className="mt-1 font-mono-ref leading-tight">

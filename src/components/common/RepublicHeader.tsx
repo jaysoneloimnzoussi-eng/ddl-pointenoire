@@ -23,7 +23,12 @@ import {
   Menu,
   LogOut,
   Shield,
-  QrCode
+  QrCode,
+  FileText,
+  Scale,
+  AlertTriangle,
+  ShieldAlert,
+  Calendar
 } from 'lucide-react';
 import { useSession } from '../../context/SessionContext';
 import { APP_USERS, REPUBLIQUE_CONGO } from '../../constants/referential';
@@ -67,6 +72,7 @@ export const RepublicHeader: React.FC = () => {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [networkStatus, setNetworkStatus] = useState(storageService.getNetworkStatus());
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [actsDropdownOpen, setActsDropdownOpen] = useState(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -221,6 +227,129 @@ export const RepublicHeader: React.FC = () => {
             <QrCode className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span className="hidden md:inline">Scanner QR</span>
           </button>
+
+          {/* Dedicated Attestation de Dépôt Button */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('ddl_open_attestation_depot'))}
+            className="flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-100 to-amber-50 dark:from-amber-950/80 dark:to-amber-900/60 hover:from-amber-200 hover:to-amber-100 text-amber-950 dark:text-amber-200 border-2 border-amber-400 dark:border-amber-500 shadow-xs hover:shadow-md transition cursor-pointer"
+            title="Délivrer une Attestation de Dépôt A4 pour un établissement (sélection par liste déroulante)"
+          >
+            <FileText className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
+            <span className="font-extrabold tracking-tight">Attestation de Dépôt</span>
+          </button>
+
+          {/* Quick Individual Acts Launcher Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setActsDropdownOpen(prev => !prev)}
+              className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-xl bg-[#022448] text-white hover:bg-[#033468] border border-blue-400/40 shadow-xs transition cursor-pointer"
+              title="Rédiger un acte juridique individuel pré-rempli"
+            >
+              <Scale className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+              <span className="hidden lg:inline">Actes & Sanctions</span>
+              <ChevronDown className="w-3 h-3 text-slate-300" />
+            </button>
+
+            {actsDropdownOpen && (
+              <div
+                className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-2 z-50 text-xs animate-in fade-in"
+                onClick={() => setActsDropdownOpen(false)}
+              >
+                <div className="px-2 py-1.5 border-b border-slate-100 dark:border-slate-800 mb-1">
+                  <span className="text-[10px] font-mono-ref font-black uppercase text-slate-400 block">
+                    RÉDACTION INDIVIDUELLE D'ACTE
+                  </span>
+                  <span className="text-[11px] font-bold text-[#022448] dark:text-amber-300">
+                    Formulaires Dédiés Pré-remplis
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('ddl_open_attestation_depot'))}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl transition text-left cursor-pointer group"
+                >
+                  <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                    <FileText className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <strong className="text-slate-800 dark:text-white block group-hover:text-emerald-700">Attestation de Dépôt</strong>
+                    <span className="text-[10px] text-slate-400">Autorisation provisoire A4</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('ddl_open_individual_act', { detail: { actType: 'MISE_EN_DEMEURE' } }))}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition text-left cursor-pointer group"
+                >
+                  <div className="w-6 h-6 rounded-lg bg-red-100 dark:bg-red-900/60 text-red-700 dark:text-red-300 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <strong className="text-slate-800 dark:text-white block group-hover:text-red-700">Mise en Demeure (72h)</strong>
+                    <span className="text-[10px] text-slate-400">Régularisation sous huitaine</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('ddl_open_individual_act', { detail: { actType: 'ARRETE_FERMETURE' } }))}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition text-left cursor-pointer group"
+                >
+                  <div className="w-6 h-6 rounded-lg bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300 flex items-center justify-center shrink-0">
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <strong className="text-slate-800 dark:text-white block group-hover:text-rose-700">Arrêté de Fermeture</strong>
+                    <span className="text-[10px] text-slate-400">Fermeture d'office & scellés</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('ddl_open_individual_act', { detail: { actType: 'CONVOCATION' } }))}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-xl transition text-left cursor-pointer group"
+                >
+                  <div className="w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0">
+                    <Calendar className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <strong className="text-slate-800 dark:text-white block group-hover:text-purple-700">Convocation SAA</strong>
+                    <span className="text-[10px] text-slate-400">Audience contradictoire</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('ddl_open_individual_act', { detail: { actType: 'ORDRE_MISSION' } }))}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-xl transition text-left cursor-pointer group"
+                >
+                  <div className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0">
+                    <Scale className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <strong className="text-slate-800 dark:text-white block group-hover:text-blue-700">Ordre de Mission</strong>
+                    <span className="text-[10px] text-slate-400">Inspection & brigade terrain</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('ddl_open_individual_act', { detail: { actType: 'PV_CONSTAT' } }))}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-xl transition text-left cursor-pointer group"
+                >
+                  <div className="w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                    <FileCheck2 className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <strong className="text-slate-800 dark:text-white block group-hover:text-amber-700">PV d'Infraction</strong>
+                    <span className="text-[10px] text-slate-400">Constat sonomètre & normes</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Quick Tablet / Field Mode Toggle */}
           <button

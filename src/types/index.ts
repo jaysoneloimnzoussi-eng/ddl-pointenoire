@@ -172,7 +172,7 @@ export interface ActivityCategoryRate {
 
 export interface OfficialLegalAct {
   id: string;
-  type: 'MISE_EN_DEMEURE' | 'CONVOCATION' | 'ARRETE_FERMETURE' | 'ORDRE_MISSION' | 'FICHE_ENQUETE';
+  type: 'MISE_EN_DEMEURE' | 'CONVOCATION' | 'ARRETE_FERMETURE' | 'ORDRE_MISSION' | 'FICHE_ENQUETE' | 'ATTESTATION_DEPOT' | 'PV_CONSTAT' | 'RECEPISSE_DECLARATION';
   reference_number: string;
   establishment_id: string;
   establishment_name: string;

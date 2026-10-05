@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import QRCode from 'qrcode';
-import { buildVerificationUrl } from '../../utils/qrUtils';
+import React, { useEffect, useState, useMemo } from 'react';
+import { buildVerificationUrl, generateQrSvgDataUrl, getCachedQrUrl } from '../../utils/qrUtils';
 
 interface LogoProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
@@ -80,13 +79,11 @@ export const RepublicQrCode: React.FC<RepublicQrCodeProps> = ({
   showDetails = false,
   className = ''
 }) => {
-  const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const targetData = payload ?? data;
 
-  useEffect(() => {
-    let content = '';
+  const content = useMemo(() => {
     if (typeof targetData === 'string' && targetData.startsWith('http')) {
-      content = targetData;
+      return targetData;
     } else if (targetData && typeof targetData === 'object') {
       const refCode = targetData.ref || targetData.pv_number || targetData.receipt || targetData.id || targetData.agent || 'DDL-PN-2026';
       const etabName = targetData.establishment_name || targetData.name || targetData.etab || '';
@@ -95,7 +92,7 @@ export const RepublicQrCode: React.FC<RepublicQrCodeProps> = ({
       const agentBadge = targetData.agent || targetData.badge || '';
       const nomStr = targetData.promoter_name || targetData.nom || '';
 
-      content = buildVerificationUrl({
+      return buildVerificationUrl({
         ref: refCode,
         etab: etabName,
         date: dateStr,
@@ -104,41 +101,85 @@ export const RepublicQrCode: React.FC<RepublicQrCodeProps> = ({
         nom: nomStr,
         amount: targetData.amount
       });
-    } else {
-      content = buildVerificationUrl({ ref: 'DDL-PN-2026' });
     }
+    return buildVerificationUrl({ ref: 'DDL-PN-2026' });
+  }, [
+    typeof targetData === 'string' ? targetData : undefined,
+    targetData?.ref,
+    targetData?.pv_number,
+    targetData?.receipt,
+    targetData?.id,
+    targetData?.agent,
+    targetData?.establishment_name,
+    targetData?.name,
+    targetData?.etab,
+    targetData?.date,
+    targetData?.type,
+    targetData?.promoter_name,
+    targetData?.nom,
+    targetData?.amount
+  ]);
 
-    QRCode.toDataURL(content, {
-      errorCorrectionLevel: 'M',
-      margin: 1,
-      width: size * 2,
-      color: {
-        dark: '#000000',
-        light: '#FFFFFF'
-      }
-    })
-      .then(url => setQrDataUrl(url))
+  const [qrDataUrl, setQrDataUrl] = useState<string>(() => getCachedQrUrl(content, size) || '');
+
+  useEffect(() => {
+    let isMounted = true;
+    generateQrSvgDataUrl(content, size)
+      .then(url => {
+        if (isMounted && url) {
+          setQrDataUrl(url);
+        }
+      })
       .catch(err => console.error('Erreur génération QR code:', err));
-  }, [targetData, size]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [content, size]);
 
   return (
     <div className={`inline-flex flex-col items-center text-center ${className}`}>
-      <div
-        className="p-1 bg-white border border-slate-300 shadow-xs rounded flex items-center justify-center"
-        style={{ width: size + 6, height: size + 6 }}
+      <a
+        href={content}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Scanner ou cliquer pour vérifier l'authenticité"
+        className="block cursor-pointer transition-transform hover:scale-105"
+        style={{ textDecoration: 'none' }}
       >
-        {qrDataUrl ? (
-          <img
-            src={qrDataUrl}
-            alt="QR Code Officiel Républicain"
-            className="w-full h-full object-contain select-none"
-          />
-        ) : (
-          <div className="w-full h-full bg-slate-100 flex items-center justify-center text-[8px] text-slate-400">
-            QR
-          </div>
-        )}
-      </div>
+        <div
+          className="p-1 bg-white border border-slate-300 shadow-xs rounded flex items-center justify-center overflow-hidden"
+          style={{
+            width: size + 6,
+            height: size + 6,
+            minWidth: size + 6,
+            minHeight: size + 6,
+            backgroundColor: '#ffffff',
+            boxSizing: 'border-box'
+          }}
+        >
+          {qrDataUrl ? (
+            <img
+              src={qrDataUrl}
+              alt="QR Code Officiel Républicain"
+              className="w-full h-full object-contain select-none"
+              style={{
+                imageRendering: 'pixelated',
+                display: 'block',
+                maxWidth: '100%',
+                maxHeight: '100%'
+              }}
+            />
+          ) : (
+            <div
+              className="w-full h-full bg-white flex flex-col items-center justify-center text-[8px] font-bold text-slate-500"
+              style={{ backgroundColor: '#ffffff' }}
+            >
+              <span>QR</span>
+            </div>
+          )}
+        </div>
+      </a>
       {showDetails && (
         <div className="mt-1 font-mono-ref leading-tight">
           <p className="text-[7.5px] font-black uppercase text-slate-900 tracking-wider">

@@ -42,7 +42,7 @@ import { UserAccount, UserRole } from '../../types';
 import { OfficialRepublicLogo, RepublicTricolorBar } from '../common/OfficialSeal';
 import { REPUBLIQUE_CONGO, TERRITORIAL_REFERENTIAL } from '../../constants/referential';
 import { formatDateFR } from '../../utils/dateUtils';
-import { buildVerificationUrl } from '../../utils/qrUtils';
+import { buildVerificationUrl, generateQrSvgDataUrl, getCachedQrUrl } from '../../utils/qrUtils';
 import QRCode from 'qrcode';
 
 export const AdminPersonnelModule: React.FC = () => {
@@ -162,17 +162,38 @@ export const AdminPersonnelModule: React.FC = () => {
       type: 'BADGE_ASSERMENTE'
     });
 
-    QRCode.toDataURL(verifyPayload, {
-      errorCorrectionLevel: 'H',
-      margin: 1,
-      width: 240,
-      color: {
-        dark: '#022448',
-        light: '#ffffff'
-      }
-    })
-      .then(url => setAgentQrUrl(url))
-      .catch(err => console.error('QR Error:', err));
+    const cached = getCachedQrUrl(verifyPayload, 240);
+    if (cached) {
+      setAgentQrUrl(cached);
+    }
+
+    let isMounted = true;
+    generateQrSvgDataUrl(verifyPayload, 240)
+      .then(url => {
+        if (isMounted && url) {
+          setAgentQrUrl(url);
+        }
+      })
+      .catch(() => {
+        // Fallback to toDataURL
+        QRCode.toDataURL(verifyPayload, {
+          errorCorrectionLevel: 'H',
+          margin: 1,
+          width: 240,
+          color: {
+            dark: '#022448',
+            light: '#ffffff'
+          }
+        })
+          .then(url => {
+            if (isMounted) setAgentQrUrl(url);
+          })
+          .catch(err => console.error('QR Error:', err));
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [selectedAgent]);
 
   // Auto-generate badge and login when name or role changes in form

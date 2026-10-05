@@ -26,8 +26,9 @@ import { storageService } from '../../services/storageService';
 import { useSession } from '../../context/SessionContext';
 import { OfficialLegalAct, Establishment, AuditLogEntry, StateDigitalSignature } from '../../types';
 import { formatDateFR } from '../../utils/dateUtils';
-import { PrintModal } from '../print/PrintModal';
+import { PrintModal, PrintDocumentType } from '../print/PrintModal';
 import { OfficialRepublicLogo, RepublicTricolorBar } from '../common/OfficialSeal';
+import { IndividualActEditorModal, IndividualActType } from './IndividualActEditorModal';
 
 export const LegalActsGeneratorModule: React.FC = () => {
   const { currentUser, triggerNotification } = useSession();
@@ -37,6 +38,24 @@ export const LegalActsGeneratorModule: React.FC = () => {
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => storageService.getAuditLogs());
   const establishments = storageService.getEstablishments();
   const signatories = useMemo(() => storageService.getOfficialSignatories(), []);
+
+  // Individual Act Editor Modal State
+  const [individualModal, setIndividualModal] = useState<{
+    isOpen: boolean;
+    actType: IndividualActType;
+    preselectedEstId?: string;
+  }>({
+    isOpen: false,
+    actType: 'MISE_EN_DEMEURE'
+  });
+
+  const openIndividualAct = (actType: IndividualActType, estId?: string) => {
+    setIndividualModal({
+      isOpen: true,
+      actType,
+      preselectedEstId: estId
+    });
+  };
 
   // Filter & Search Audit
   const [auditSearchQuery, setAuditSearchQuery] = useState('');
@@ -95,7 +114,7 @@ export const LegalActsGeneratorModule: React.FC = () => {
   // Print modal
   const [printDoc, setPrintDoc] = useState<{
     isOpen: boolean;
-    type: 'ACTE_JURIDIQUE_A4';
+    type: PrintDocumentType;
     title: string;
     data: any;
   }>({
@@ -226,11 +245,11 @@ export const LegalActsGeneratorModule: React.FC = () => {
 
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => openIndividualAct('MISE_EN_DEMEURE')}
               className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 text-xs transition transform hover:scale-105 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Rédiger un Acte Officiel</span>
+              <span>Rédiger un Acte Dédié</span>
             </button>
           </div>
         </div>
@@ -280,6 +299,138 @@ export const LegalActsGeneratorModule: React.FC = () => {
          ============================================================== */}
       {activeTab === 'ATELIER_ACTES' && (
         <div className="space-y-6">
+          {/* Executive Panel of Individual Dedicated Act Buttons */}
+          <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[10px] font-mono-ref font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950 px-2 py-0.5 rounded">
+                    RÉDACTION INDIVIDUELLE DES ACTES
+                  </span>
+                  <span className="text-xs text-slate-400">|</span>
+                  <span className="text-xs text-slate-500 font-medium">Boutons Dédiés Pré-remplis</span>
+                </div>
+                <h3 className="font-extrabold text-base text-[#022448] dark:text-white uppercase font-republic flex items-center gap-2">
+                  <Scale className="w-5 h-5 text-amber-500" />
+                  <span>Délivrance & Notification d'Actes Juridiques par Établissement</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Chaque acte juridique est accessible individuellement. Sélectionnez l'établissement par menu déroulant pour un pré-remplissage immédiat et cohérent.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 px-3 py-1.5 rounded-xl font-mono-ref">
+                  ✓ 100% Données Base Réelle ({establishments.length} Établissements)
+                </span>
+              </div>
+            </div>
+
+            {/* The 6 Individual Dedicated Buttons */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {/* 1. Attestation de Dépôt */}
+              <button
+                type="button"
+                onClick={() => openIndividualAct('ATTESTATION_DEPOT')}
+                className="flex flex-col items-start p-3.5 rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-b from-emerald-50/80 to-white dark:from-emerald-950/40 dark:to-slate-900 hover:border-emerald-600 hover:shadow-md transition cursor-pointer group text-left"
+              >
+                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center mb-2.5 shadow-xs group-hover:scale-110 transition">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-black text-emerald-950 dark:text-emerald-200 uppercase tracking-tight">
+                  Attestation de Dépôt
+                </span>
+                <span className="text-[10px] text-emerald-800/80 dark:text-emerald-300/80 leading-tight mt-1 font-medium">
+                  Autorisation provisoire A4
+                </span>
+              </button>
+
+              {/* 2. Mise en Demeure */}
+              <button
+                type="button"
+                onClick={() => openIndividualAct('MISE_EN_DEMEURE')}
+                className="flex flex-col items-start p-3.5 rounded-2xl border-2 border-red-500/50 bg-gradient-to-b from-red-50/80 to-white dark:from-red-950/40 dark:to-slate-900 hover:border-red-600 hover:shadow-md transition cursor-pointer group text-left"
+              >
+                <div className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center mb-2.5 shadow-xs group-hover:scale-110 transition">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-black text-red-950 dark:text-red-200 uppercase tracking-tight">
+                  Mise en Demeure (72h)
+                </span>
+                <span className="text-[10px] text-red-800/80 dark:text-red-300/80 leading-tight mt-1 font-medium">
+                  Sommation sous huitaine
+                </span>
+              </button>
+
+              {/* 3. Arrêté de Fermeture */}
+              <button
+                type="button"
+                onClick={() => openIndividualAct('ARRETE_FERMETURE')}
+                className="flex flex-col items-start p-3.5 rounded-2xl border-2 border-rose-700/50 bg-gradient-to-b from-rose-50/80 to-white dark:from-rose-950/40 dark:to-slate-900 hover:border-rose-700 hover:shadow-md transition cursor-pointer group text-left"
+              >
+                <div className="w-9 h-9 rounded-xl bg-[#7f1d1d] text-white flex items-center justify-center mb-2.5 shadow-xs group-hover:scale-110 transition">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-black text-rose-950 dark:text-rose-200 uppercase tracking-tight">
+                  Arrêté Fermeture
+                </span>
+                <span className="text-[10px] text-rose-800/80 dark:text-rose-300/80 leading-tight mt-1 font-medium">
+                  Fermeture d'office & scellés
+                </span>
+              </button>
+
+              {/* 4. Convocation SAA */}
+              <button
+                type="button"
+                onClick={() => openIndividualAct('CONVOCATION')}
+                className="flex flex-col items-start p-3.5 rounded-2xl border-2 border-purple-500/50 bg-gradient-to-b from-purple-50/80 to-white dark:from-purple-950/40 dark:to-slate-900 hover:border-purple-600 hover:shadow-md transition cursor-pointer group text-left"
+              >
+                <div className="w-9 h-9 rounded-xl bg-purple-700 text-white flex items-center justify-center mb-2.5 shadow-xs group-hover:scale-110 transition">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-black text-purple-950 dark:text-purple-200 uppercase tracking-tight">
+                  Convocation SAA
+                </span>
+                <span className="text-[10px] text-purple-800/80 dark:text-purple-300/80 leading-tight mt-1 font-medium">
+                  Audience contradictoire
+                </span>
+              </button>
+
+              {/* 5. Ordre de Mission */}
+              <button
+                type="button"
+                onClick={() => openIndividualAct('ORDRE_MISSION')}
+                className="flex flex-col items-start p-3.5 rounded-2xl border-2 border-blue-500/50 bg-gradient-to-b from-blue-50/80 to-white dark:from-blue-950/40 dark:to-slate-900 hover:border-blue-600 hover:shadow-md transition cursor-pointer group text-left"
+              >
+                <div className="w-9 h-9 rounded-xl bg-[#022448] text-white flex items-center justify-center mb-2.5 shadow-xs group-hover:scale-110 transition">
+                  <Scale className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-black text-blue-950 dark:text-blue-200 uppercase tracking-tight">
+                  Ordre de Mission
+                </span>
+                <span className="text-[10px] text-blue-800/80 dark:text-blue-300/80 leading-tight mt-1 font-medium">
+                  Contrôle in situ brigade
+                </span>
+              </button>
+
+              {/* 6. PV d'Infraction */}
+              <button
+                type="button"
+                onClick={() => openIndividualAct('PV_CONSTAT')}
+                className="flex flex-col items-start p-3.5 rounded-2xl border-2 border-amber-500/50 bg-gradient-to-b from-amber-50/80 to-white dark:from-amber-950/40 dark:to-slate-900 hover:border-amber-600 hover:shadow-md transition cursor-pointer group text-left"
+              >
+                <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center mb-2.5 shadow-xs group-hover:scale-110 transition">
+                  <FileCheck2 className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-black text-amber-950 dark:text-amber-200 uppercase tracking-tight">
+                  PV d'Infraction
+                </span>
+                <span className="text-[10px] text-amber-800/80 dark:text-amber-300/80 leading-tight mt-1 font-medium">
+                  Constat sonomètre & normes
+                </span>
+              </button>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xs">
               <span className="text-[10px] uppercase font-bold text-slate-500">Mises en Demeure (72h)</span>
@@ -383,9 +534,10 @@ export const LegalActsGeneratorModule: React.FC = () => {
 
                           <button
                             onClick={() => {
+                              const docType: PrintDocumentType = act.type === 'ATTESTATION_DEPOT' ? 'ATTESTATION_A4' : 'ACTE_JURIDIQUE_A4';
                               setPrintDoc({
                                 isOpen: true,
-                                type: 'ACTE_JURIDIQUE_A4',
+                                type: docType,
                                 title: `${act.type} - ${act.establishment_name}`,
                                 data: act
                               });
@@ -687,89 +839,18 @@ export const LegalActsGeneratorModule: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Créer un Acte */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-5 space-y-4 border border-slate-300 dark:border-slate-700 shadow-2xl">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-black text-sm uppercase text-[#022448] dark:text-white font-republic">
-                Rédiger un Acte Officiel
-              </h3>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateAct} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold block mb-1">Type d'Acte Réglementaire</label>
-                <select
-                  value={actType}
-                  onChange={e => handleTypeChange(e.target.value as any)}
-                  className="w-full border p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 font-bold"
-                >
-                  <option value="MISE_EN_DEMEURE">Mise en Demeure sous 72h (Régularisation)</option>
-                  <option value="CONVOCATION">Convocation Officielle (Audience SAA)</option>
-                  <option value="ARRETE_FERMETURE">Arrêté de Fermeture Administrative Temporaire</option>
-                  <option value="ORDRE_MISSION">Ordre de Mission Contrôle Terrain</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-bold block mb-1">Établissement Destinataire</label>
-                <select
-                  value={targetEstId}
-                  onChange={e => setTargetEstId(e.target.value)}
-                  className="w-full border p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 font-semibold"
-                >
-                  {establishments.map(est => (
-                    <option key={est.id} value={est.id}>
-                      {est.name} ({est.promoter_name} - {est.arrondissement})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="font-bold block mb-1">Délai d'Exécution / Date Limite</label>
-                <input
-                  type="text"
-                  value={delai}
-                  onChange={e => setDelai(e.target.value)}
-                  className="w-full border p-2 rounded-xl bg-slate-50 dark:bg-slate-800 font-bold"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="font-bold block mb-1">Motif Légal & Exposé des Faits</label>
-                <textarea
-                  value={motif}
-                  onChange={e => setMotif(e.target.value)}
-                  rows={3}
-                  className="w-full border p-2 rounded-xl bg-slate-50 dark:bg-slate-800"
-                  required
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 border rounded-xl font-bold cursor-pointer"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#022448] hover:bg-[#003870] text-white rounded-xl font-bold cursor-pointer"
-                >
-                  Générer l'Acte Juridique
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* Dedicated Individual Act Editor Modal */}
+      {individualModal.isOpen && (
+        <IndividualActEditorModal
+          isOpen={individualModal.isOpen}
+          onClose={() => setIndividualModal(prev => ({ ...prev, isOpen: false }))}
+          actType={individualModal.actType}
+          preselectedEstId={individualModal.preselectedEstId}
+          onActSaved={() => {
+            setActs(storageService.getActs());
+            setAuditLogs(storageService.getAuditLogs());
+          }}
+        />
       )}
 
       {/* Official Print Modal */}

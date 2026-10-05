@@ -24,13 +24,15 @@ import {
   HelpCircle,
   Sparkles,
   ChevronRight,
-  Send
+  Send,
+  FileText
 } from 'lucide-react';
 import { storageService, calculateEstablishmentFee } from '../../services/storageService';
 import { formatDateFR } from '../../utils/dateUtils';
 import { useSession } from '../../context/SessionContext';
 import { TerrainPaymentRecord, Establishment, ArrondissementCode, RegimeType, AgentTourneeEvent } from '../../types';
 import { PrintModal, PrintDocumentType } from '../print/PrintModal';
+import { AttestationDepotModal } from './AttestationDepotModal';
 import { TERRITORIAL_REFERENTIAL, ACTIVITY_CATEGORIES, APP_USERS } from '../../constants/referential';
 
 export const TitlesAndReceiptsModule: React.FC = () => {
@@ -51,6 +53,7 @@ export const TitlesAndReceiptsModule: React.FC = () => {
   const [estSearchInput, setEstSearchInput] = useState<string>('');
   const [isCreatingNewEst, setIsCreatingNewEst] = useState<boolean>(false);
   const [deskActionType, setDeskActionType] = useState<'PAY_NOW' | 'SCHEDULE_FIELD_VISIT'>('PAY_NOW');
+  const [isDedicatedAttestationOpen, setIsDedicatedAttestationOpen] = useState<boolean>(false);
 
   // Payment fields
   const [depositAmount, setDepositAmount] = useState<number>(30000);
@@ -339,7 +342,17 @@ export const TitlesAndReceiptsModule: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsDedicatedAttestationOpen(true)}
+            className="px-4 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black rounded-xl text-xs shadow-lg hover:shadow-xl flex items-center gap-2 transition cursor-pointer"
+            title="Délivrer une Attestation de Dépôt A4 avec sélection par liste déroulante"
+          >
+            <FileText className="w-4 h-4 text-[#022448]" />
+            <span>Délivrer Attestation de Dépôt</span>
+          </button>
+
           <div className="bg-white/10 border border-white/20 px-3 py-2 rounded-xl text-center">
             <span className="text-[10px] text-slate-300 uppercase block font-bold">Total Encaissé Guichet</span>
             <span className="font-mono-ref font-black text-amber-300 text-sm">
@@ -444,6 +457,28 @@ export const TitlesAndReceiptsModule: React.FC = () => {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Direct Dropdown List of Establishments */}
+            <div className="pt-1">
+              <label className="font-bold text-slate-700 text-xs block mb-1">
+                Ou choisir directement dans la liste déroulante :
+              </label>
+              <select
+                value={selectedEstId}
+                onChange={e => {
+                  const est = establishments.find(item => item.id === e.target.value);
+                  if (est) handleSelectEst(est);
+                }}
+                className="w-full px-3 py-2.5 bg-white border-2 border-emerald-600/50 rounded-xl text-xs font-bold text-slate-900 shadow-2xs focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+              >
+                <option value="">-- Sélectionnez un établissement dans la liste déroulante ({establishments.length} enregistrés) --</option>
+                {establishments.map(est => (
+                  <option key={est.id} value={est.id}>
+                    « {est.name} » — {est.arrondissement} ({est.activity_code}) • Promoteur : {est.promoter_name || 'Exploitant'}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Selected Establishment Summary Card */}
@@ -570,6 +605,35 @@ export const TitlesAndReceiptsModule: React.FC = () => {
                       {APP_USERS.find(u => u.id === currentEst.assigned_agent_id)?.name || currentEst.identified_by || 'Loic AMBETOS (SAA-PN-315)'}
                     </span>
                   </div>
+                </div>
+
+                {/* Direct Attestation Issuance for this establishment */}
+                <div className="pt-2.5 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Délivrance directe du titre transitoire pour cet établissement :
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPrintDoc({
+                        isOpen: true,
+                        type: 'ATTESTATION_A4',
+                        title: `Attestation de Dépôt - ${currentEst.name}`,
+                        data: {
+                          ...currentEst,
+                          receipt_reference: `ATT-DDL-PN-2026/${currentEst.id.slice(-4).toUpperCase()}`,
+                          reference_number: `ATT-DDL-PN-2026/${currentEst.id.slice(-4).toUpperCase()}`,
+                          amount_paid: currentEst.amount_paid || 30000,
+                          date_emission: new Date().toISOString().split('T')[0],
+                          record_date: new Date().toISOString().split('T')[0]
+                        }
+                      });
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#022448]" />
+                    <span>Délivrer & Imprimer l'Attestation de Dépôt A4</span>
+                  </button>
                 </div>
               </div>
             )}
@@ -1226,6 +1290,16 @@ export const TitlesAndReceiptsModule: React.FC = () => {
         documentType={printDoc.type}
         title={printDoc.title}
         data={printDoc.data}
+      />
+
+      {/* Dedicated Attestation de Dépôt Modal */}
+      <AttestationDepotModal
+        isOpen={isDedicatedAttestationOpen}
+        onClose={() => {
+          setIsDedicatedAttestationOpen(false);
+          reloadAll();
+        }}
+        preselectedEstId={selectedEstId}
       />
     </div>
   );
