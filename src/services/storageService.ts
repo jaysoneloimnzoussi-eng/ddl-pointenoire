@@ -1154,6 +1154,48 @@ class StorageService {
     }
   }
 
+  // --- Clean mock/demo establishments so user only sees real establishments ---
+  public clearDemoEstablishments(): number {
+    const demoNames = [
+      'atlantic palace hôtel & lounge',
+      'hôtel elaïs & espace loisirs',
+      'le kactus club & discothèque',
+      'hôtel palm beach & bar plage',
+      'complexe la pyramide',
+      'le no stress bar lounge',
+      'complexe la villa blanche',
+      'hôtel twiga & lounge',
+      'le privilège club vip',
+      'l\'orchidée lounge & salon de thé',
+      'le balafon bar-dancing',
+      'espace récréatif mbota plage',
+      'le bambou bar-lounge',
+      'le safari bar dancing',
+      'complexe loisirs tié-tié canal 7',
+      'bar ponton la belle',
+      'espace culturel & loisirs yaro',
+      'complexe siafoumou loisirs',
+      'les dauphins de siafoumou',
+      'espace détente le jardin du mayombe',
+      'loisirs plein air mongo-kamba',
+      'espace convivial vindoulou',
+      'complexe touristique mâ-loango',
+      'plage océane ngoyo détente',
+      'espace loisirs djeno carrefour'
+    ];
+
+    const initialCount = this.establishments.length;
+    this.establishments = this.establishments.filter(e => {
+      const isDemo = demoNames.includes(e.name.toLowerCase().trim()) || /^EST-PN-0(0[1-9]|1[0-9]|2[0-5])$/.test(e.id);
+      return !isDemo;
+    });
+
+    const removed = initialCount - this.establishments.length;
+    this.saveEstablishments();
+    this.notifyDataUpdated();
+    return removed;
+  }
+
   // --- Real Supabase Synchronizer ---
   public async syncWithSupabase(): Promise<{ establishmentsCount: number; recordsCount: number; success: boolean; message?: string }> {
     if (this.isSyncing) return { establishmentsCount: this.establishments.length, recordsCount: this.payments.length, success: true };

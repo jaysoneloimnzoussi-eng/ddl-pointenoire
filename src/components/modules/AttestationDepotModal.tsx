@@ -216,7 +216,25 @@ export const AttestationDepotModal: React.FC<AttestationDepotModalProps> = ({
           </div>
 
           {/* Body Content */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+            {/* Guide d'utilisation rapide en 3 étapes faciles */}
+            <div className="bg-gradient-to-r from-blue-50 via-emerald-50 to-blue-50 dark:from-slate-800 dark:via-slate-800/80 dark:to-slate-800 p-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-800 flex flex-col md:flex-row items-center justify-between gap-3 text-xs shadow-2xs">
+              <div className="flex items-center gap-2 font-bold text-[#022448] dark:text-emerald-300">
+                <span className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-black shrink-0 shadow-xs">1</span>
+                <span>Sélectionnez l'établissement ci-dessous</span>
+              </div>
+              <div className="hidden md:block text-slate-400 font-bold">➔</div>
+              <div className="flex items-center gap-2 font-bold text-[#022448] dark:text-amber-300">
+                <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-black shrink-0 shadow-xs">2</span>
+                <span>Les informations sont déjà pré-remplies</span>
+              </div>
+              <div className="hidden md:block text-slate-400 font-bold">➔</div>
+              <div className="flex items-center gap-2 font-bold text-[#022448] dark:text-emerald-300">
+                <span className="w-6 h-6 rounded-full bg-[#006d2f] text-white flex items-center justify-center text-xs font-black shrink-0 shadow-xs">3</span>
+                <span>Cliquez sur « Délivrer & Imprimer »</span>
+              </div>
+            </div>
+
             {/* 1. SELECTION DES ÉTABLISSEMENTS PAR LISTE DÉROULANTE */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -224,18 +242,34 @@ export const AttestationDepotModal: React.FC<AttestationDepotModalProps> = ({
                   <Building2 className="w-4 h-4 text-emerald-600" />
                   <span>Choisir l'établissement bénéficiaire dans la liste déroulante :</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={handleCreateNewToggle}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition cursor-pointer ${
-                    isAddingNew
-                      ? 'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950 dark:text-amber-200'
-                      : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  <PlusCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>{isAddingNew ? 'Revenir à la liste déroulante' : '+ Nouvel établissement hors registre'}</span>
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {establishments.some(e => /^EST-PN-0(0[1-9]|1[0-9]|2[0-5])$/.test(e.id)) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const count = storageService.clearDemoEstablishments();
+                        setEstablishments(storageService.getEstablishments());
+                        triggerNotification(`${count} exemples de test supprimés. Seuls vos vrais établissements sont conservés.`, 'info');
+                      }}
+                      className="text-[11px] font-bold text-red-600 dark:text-red-400 hover:text-red-800 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 px-2.5 py-1.5 rounded-xl transition cursor-pointer"
+                      title="Supprimer les 25 établissements de démonstration"
+                    >
+                      🗑️ Vider les 25 exemples fictifs
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleCreateNewToggle}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition cursor-pointer ${
+                      isAddingNew
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950 dark:text-amber-200'
+                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <PlusCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>{isAddingNew ? 'Revenir à la liste déroulante' : '+ Saisie rapide d’un établissement'}</span>
+                  </button>
+                </div>
               </div>
 
               {!isAddingNew ? (
