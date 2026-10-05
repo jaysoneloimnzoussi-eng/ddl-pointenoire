@@ -70,7 +70,7 @@ const ACTS_CONFIG: Record<IndividualActType, ActMetaConfig> = {
     badgeText: 'text-emerald-200',
     accentBorder: 'border-emerald-600',
     printDocType: 'ATTESTATION_A4',
-    defaultRefPrefix: 'ATT-DDL-PN-2026/',
+    defaultRefPrefix: 'MCAPNIT/DGL/DDL-PNR/SAA/',
     defaultDelai: 'Valable 3 mois (Pendant l’instruction du dossier d’agrément)',
     defaultMotif: "Dépôt régulier du dossier de demande d'agrément technique d'exploitation et acquittement des droits d'instruction de régie administrative.",
     visas: [
@@ -238,7 +238,7 @@ export const IndividualActEditorModal: React.FC<IndividualActEditorModalProps> =
       // Generate Reference Number
       let ref = '';
       if (actType === 'ATTESTATION_DEPOT') {
-        ref = `ATT-DDL-PN-2026/${String(count + 40).padStart(3, '0')}`;
+        ref = `${String(count + 40).padStart(3, '0')}/MCAPNIT/DGL/DDL-PNR/SAA/2026`;
       } else if (actType === 'MISE_EN_DEMEURE') {
         ref = `MD-${String(count + 90).padStart(3, '0')}/MCAPNIT/DGL/DDL-PN-2026`;
       } else if (actType === 'ARRETE_FERMETURE') {

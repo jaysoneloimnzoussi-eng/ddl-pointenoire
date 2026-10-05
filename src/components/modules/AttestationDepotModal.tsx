@@ -12,7 +12,8 @@ import {
   Search,
   PlusCircle,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  FileDown
 } from 'lucide-react';
 import { storageService } from '../../services/storageService';
 import { Establishment, ArrondissementCode, RegimeType } from '../../types';
@@ -22,6 +23,7 @@ import { OfficialRepublicLogo, RepublicTricolorBar } from '../common/OfficialSea
 import { OfficialVerifiableQrCode } from '../common/OfficialVerifiableQrCode';
 import { formatDateFR } from '../../utils/dateUtils';
 import { PrintModal } from '../print/PrintModal';
+import { downloadAttestationDocx, formatOfficialRefNumber, formatArrondissementHuman } from '../../utils/docxExport';
 
 interface AttestationDepotModalProps {
   isOpen: boolean;
@@ -39,6 +41,7 @@ export const AttestationDepotModal: React.FC<AttestationDepotModalProps> = ({
   const [selectedEstId, setSelectedEstId] = useState<string>(preselectedEstId || '');
   const [filterSearch, setFilterSearch] = useState<string>('');
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
+  const [isDownloadingDocx, setIsDownloadingDocx] = useState<boolean>(false);
 
   // Form state for the attestation
   const [formData, setFormData] = useState({
@@ -50,7 +53,7 @@ export const AttestationDepotModal: React.FC<AttestationDepotModalProps> = ({
     arrondissement: '1_LUMUMBA' as ArrondissementCode,
     quartier: 'Centre-Ville',
     address: '',
-    reference_number: '',
+    reference_number: '048/MCAPNIT/DGL/DDL-PNR/SAA/2026',
     date_emission: new Date().toISOString().split('T')[0],
     amount_paid: 30000
   });
@@ -80,7 +83,8 @@ export const AttestationDepotModal: React.FC<AttestationDepotModalProps> = ({
     if (est) {
       const actObj = ACTIVITY_CATEGORIES.find(a => a.code === est.activity_code);
       const activityLabel = actObj ? actObj.label : est.activity_code || 'Établissement de loisirs';
-      const refNum = `ATT-DDL-PN-2026/${est.id.slice(-4).toUpperCase()}`;
+      const numSeq = (est.id.replace(/\D/g, '').slice(-3) || '048').padStart(3, '0');
+      const refNum = `${numSeq}/MCAPNIT/DGL/DDL-PNR/SAA/2026`;
 
       setFormData({
         establishment_name: est.name,
@@ -116,7 +120,7 @@ export const AttestationDepotModal: React.FC<AttestationDepotModalProps> = ({
       const next = !prev;
       if (next) {
         setSelectedEstId('');
-        const randId = Math.floor(1000 + Math.random() * 9000);
+        const randId = String(Math.floor(10 + Math.random() * 900)).padStart(3, '0');
         setFormData({
           establishment_name: '',
           promoter_title: 'Monsieur',
@@ -126,7 +130,7 @@ export const AttestationDepotModal: React.FC<AttestationDepotModalProps> = ({
           arrondissement: '1_LUMUMBA',
           quartier: 'Centre-Ville',
           address: '',
-          reference_number: `ATT-DDL-PN-2026/${randId}`,
+          reference_number: `${randId}/MCAPNIT/DGL/DDL-PNR/SAA/2026`,
           date_emission: new Date().toISOString().split('T')[0],
           amount_paid: 30000
         });
@@ -135,6 +139,33 @@ export const AttestationDepotModal: React.FC<AttestationDepotModalProps> = ({
       }
       return next;
     });
+  };
+
+  const handleDownloadDocx = async () => {
+    if (!formData.establishment_name.trim()) {
+      triggerNotification('Veuillez spécifier le nom de l’établissement avant de télécharger.', 'error');
+      return;
+    }
+    try {
+      setIsDownloadingDocx(true);
+      await downloadAttestationDocx({
+        reference_number: formData.reference_number,
+        establishment_name: formData.establishment_name,
+        promoter_title: formData.promoter_title,
+        promoter_name: formData.promoter_name,
+        activity_type: formData.activity_type,
+        quartier: formData.quartier,
+        arrondissement: formData.arrondissement,
+        address: formData.address,
+        date_emission: formData.date_emission
+      });
+      triggerNotification('Attestation de dépôt téléchargée en format Word (.docx) avec succès !', 'success');
+    } catch (err) {
+      console.error('Erreur export DOCX:', err);
+      triggerNotification('Erreur lors du téléchargement du fichier Word.', 'error');
+    } finally {
+      setIsDownloadingDocx(false);
+    }
   };
 
   const handleLaunchPrint = (e: React.FormEvent) => {
@@ -477,14 +508,30 @@ export const AttestationDepotModal: React.FC<AttestationDepotModalProps> = ({
                 </div>
 
                 {/* Validation CTA inside left column */}
-                <div className="pt-3">
-                  <button
-                    type="submit"
-                    className="w-full py-3.5 px-6 bg-gradient-to-r from-[#006d2f] to-[#022448] hover:from-emerald-800 hover:to-slate-900 text-white font-black rounded-xl shadow-lg flex items-center justify-center gap-2 transition cursor-pointer"
-                  >
-                    <Printer className="w-5 h-5 text-amber-300" />
-                    <span>Délivrer & Imprimer l'Attestation A4</span>
-                  </button>
+                <div className="pt-3 space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={handleDownloadDocx}
+                      disabled={isDownloadingDocx}
+                      className="py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2 transition cursor-pointer text-xs"
+                      title="Télécharger l'attestation en format Word (.docx) pour faire de petites retouches avant impression"
+                    >
+                      <FileDown className="w-4 h-4" />
+                      <span>{isDownloadingDocx ? 'Export Word...' : 'Télécharger Word (.docx)'}</span>
+                    </button>
+
+                    <button
+                      type="submit"
+                      className="py-3 px-4 bg-gradient-to-r from-[#006d2f] to-[#022448] hover:from-emerald-800 hover:to-slate-900 text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2 transition cursor-pointer text-xs"
+                    >
+                      <Printer className="w-4 h-4 text-amber-300" />
+                      <span>Délivrer & Imprimer A4</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-500 italic text-center">
+                    💡 Vous pouvez modifier le document Word librement (noms, adresses, dates) avant impression définitive.
+                  </p>
                 </div>
               </div>
 
@@ -493,22 +540,36 @@ export const AttestationDepotModal: React.FC<AttestationDepotModalProps> = ({
                 <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-300 dark:border-slate-800">
                   <span className="text-[10px] font-mono-ref font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    Aperçu Direct du Document Réglementaire (A4)
+                    Aperçu Conforme de l'Attestation de Dépôt A4
                   </span>
-                  <span className="text-[9px] bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 font-bold px-2 py-0.5 rounded">
-                    PTA 2026
-                  </span>
+                  <button
+                    type="button"
+                    onClick={handleDownloadDocx}
+                    disabled={isDownloadingDocx}
+                    className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-900 dark:bg-blue-950 dark:text-blue-300 font-bold px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer"
+                    title="Télécharger le fichier .docx"
+                  >
+                    <FileDown className="w-3 h-3" />
+                    <span>Télécharger .DOCX</span>
+                  </button>
                 </div>
 
                 {/* Document miniature card */}
                 <div className="bg-white text-slate-900 p-4 sm:p-5 rounded-xl shadow-md border border-slate-300 font-serif text-[11px] leading-tight space-y-3 flex-1 flex flex-col justify-between">
-                  {/* Top Bar miniature */}
+                  {/* Top Bar: République du Congo à droite, Ministère & Réf à gauche */}
                   <div className="flex justify-between items-start border-b border-slate-300 pb-2">
-                    <div className="text-left text-[8px] space-y-0.5">
-                      <p className="font-extrabold text-[#006d2f] uppercase">RÉPUBLIQUE DU CONGO</p>
-                      <p className="italic text-slate-500">Unité - Travail - Progrès</p>
-                      <p className="font-bold text-[#022448]">MCAPNIT / DDL-PN</p>
-                      <p className="text-[7px] text-slate-600">SERVICE ASSISTANCE & AUTORISATION</p>
+                    <div className="text-left text-[7.5px] leading-tight space-y-0.5 max-w-[190px]">
+                      <p className="font-extrabold text-[#022448] uppercase">MINISTÈRE DE L'INDUSTRIE CULTURELLE,</p>
+                      <p className="font-bold text-slate-700 uppercase">TOURISTIQUE, ARTISTIQUE ET DES LOISIRS</p>
+                      <div className="w-8 h-0.25 bg-slate-400 my-0.5" />
+                      <p className="font-bold text-slate-800 uppercase">DIRECTION GÉNÉRALE DES LOISIRS</p>
+                      <div className="w-6 h-0.25 bg-slate-300 my-0.5" />
+                      <p className="font-bold text-[#006d2f] uppercase">DIRECTION DÉPARTEMENTALE DES LOISIRS DE POINTE-NOIRE</p>
+                      <div className="w-6 h-0.25 bg-slate-300 my-0.5" />
+                      <p className="font-bold text-slate-700 uppercase">SERVICE ASSISTANCE ET AUTORISATION (SAA)</p>
+                      <p className="font-mono-ref font-black text-slate-900 text-[8.5px] pt-0.5">
+                        N° <span className="underline decoration-slate-400">{formData.reference_number}</span>
+                      </p>
                     </div>
 
                     <div className="flex flex-col items-center">
@@ -517,8 +578,12 @@ export const AttestationDepotModal: React.FC<AttestationDepotModalProps> = ({
                     </div>
 
                     <div className="text-right text-[8px] flex flex-col items-end">
-                      <p className="italic text-slate-600">Pointe-Noire, le {formatDateFR(formData.date_emission)}</p>
-                      <p className="font-mono-ref font-bold text-red-900 text-[8.5px]">{formData.reference_number}</p>
+                      <p className="font-black text-[9.5px] uppercase text-[#006d2f] font-republic tracking-wider">
+                        RÉPUBLIQUE DU CONGO
+                      </p>
+                      <p className="italic text-slate-600 text-[7.5px]">Unité - Travail - Progrès</p>
+                      <div className="w-10 h-0.25 bg-amber-400 my-0.5" />
+                      <p className="italic text-slate-700 mt-0.5">Pointe-Noire, le {formatDateFR(formData.date_emission)}</p>
                       <div className="mt-1">
                         <OfficialVerifiableQrCode
                           data={{
@@ -529,7 +594,7 @@ export const AttestationDepotModal: React.FC<AttestationDepotModalProps> = ({
                             date: formData.date_emission,
                             amount: formData.amount_paid
                           }}
-                          size={40}
+                          size={38}
                           showDetails={false}
                         />
                       </div>
@@ -537,51 +602,51 @@ export const AttestationDepotModal: React.FC<AttestationDepotModalProps> = ({
                   </div>
 
                   {/* Title */}
-                  <div className="text-center my-1">
-                    <span className="text-[8px] font-mono-ref font-bold text-[#006d2f] uppercase tracking-widest block">
+                  <div className="text-center my-1.5">
+                    <span className="text-[8.5px] font-mono-ref font-bold text-[#006d2f] uppercase tracking-widest block">
                       TITRE TRANSITOIRE D'EXPLOITATION
                     </span>
-                    <h4 className="text-sm font-black uppercase tracking-widest text-[#022448] font-republic underline decoration-[#006d2f] underline-offset-4 mt-0.5">
+                    <h4 className="text-sm font-black uppercase tracking-wider text-[#022448] font-republic underline decoration-[#006d2f] underline-offset-4 mt-0.5">
                       ATTESTATION DE DÉPÔT
                     </h4>
                   </div>
 
                   {/* Paragraph 1 */}
-                  <p className="text-justify text-[9.5px] leading-relaxed">
+                  <p className="text-justify text-[9.5px] leading-relaxed text-slate-900">
                     Par la présente, je soussigné, Directeur Départemental des Loisirs de Pointe-Noire, atteste que{' '}
                     <strong className="text-[#022448] font-bold">
                       {formData.promoter_title} {formData.promoter_name || 'l’Exploitant'}
-                    </strong>,{' '}
-                    a déposé un dossier d'instruction en vue de solliciter l'agrément officiel d'exploitation d'un{' '}
-                    <strong>{formData.activity_type}</strong>, dénommé{' '}
+                    </strong>
+                    , a déposé un dossier d'instruction en vue de solliciter l'agrément officiel d'exploitation d'un{' '}
+                    <strong className="font-bold text-slate-900">{formData.activity_type}</strong>, dénommé{' '}
                     <strong className="text-[#022448] uppercase">
                       « {formData.establishment_name || '...'} »
                     </strong>, sis à{' '}
-                    <span className="italic">{formData.quartier || 'Pointe-Noire'}</span>, {formData.arrondissement}.
+                    <span className="italic">{formData.address || formData.quartier || 'Pointe-Noire'}{formData.quartier && formData.address && !formData.address.includes(formData.quartier) ? ` (${formData.quartier})` : ''}</span>, {formatArrondissementHuman(formData.arrondissement)}.
                   </p>
 
-                  {/* Paragraph 2 (simplified as requested!) */}
-                  <p className="text-justify text-[9.5px] leading-relaxed text-slate-700">
+                  {/* Paragraph 2 */}
+                  <p className="text-justify text-[9.5px] leading-relaxed text-slate-800">
                     La présente attestation est délivrée à titre transitoire pour permettre la continuité des activités durant la phase d'instruction technique et de mise en conformité du dossier.
                   </p>
 
                   {/* Paragraph 3 */}
-                  <p className="text-[9px] font-semibold text-slate-800">
+                  <p className="text-[9.5px] font-bold text-slate-900">
                     En foi de quoi, la présente attestation lui est établie pour servir et valoir ce que de droit. /-
                   </p>
 
-                  {/* Signature block (cleaned up as requested!) */}
+                  {/* Signature block */}
                   <div className="pt-2 border-t border-slate-200 flex justify-between items-end text-[7.5px]">
-                    <div className="text-slate-500 space-y-0.5">
-                      <p className="font-bold uppercase text-slate-700">Ampliations :</p>
+                    <div className="text-slate-600 space-y-0.5 text-left">
+                      <p className="font-bold uppercase text-slate-800">AMPLIATIONS :</p>
                       <p>• SAA / SAF / Chrono</p>
                       <p>• Intéressé(e)</p>
                     </div>
 
-                    <div className="text-center font-serif">
-                      <p className="text-slate-600">Fait à Pointe-Noire, le {formatDateFR(formData.date_emission)}</p>
+                    <div className="text-right font-serif">
+                      <p className="text-slate-600 italic">Fait à Pointe-Noire, le {formatDateFR(formData.date_emission)}</p>
                       <p className="text-[7px] italic text-slate-400 py-0.5">[Sceau & Paraphe Officiel]</p>
-                      <p className="font-bold text-[#022448] uppercase font-republic">Jean Richard NTSEKE NGOUAKA</p>
+                      <p className="font-bold text-[#022448] uppercase font-republic text-[8.5px]">Jean Richard NTSEKE NGOUAKA</p>
                     </div>
                   </div>
                 </div>

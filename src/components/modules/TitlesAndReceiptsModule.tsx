@@ -615,14 +615,16 @@ export const TitlesAndReceiptsModule: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
+                      const numSeq = (currentEst.id.replace(/\D/g, '').slice(-3) || '048').padStart(3, '0');
+                      const ref = `${numSeq}/MCAPNIT/DGL/DDL-PNR/SAA/${new Date().getFullYear()}`;
                       setPrintDoc({
                         isOpen: true,
                         type: 'ATTESTATION_A4',
                         title: `Attestation de Dépôt - ${currentEst.name}`,
                         data: {
                           ...currentEst,
-                          receipt_reference: `ATT-DDL-PN-2026/${currentEst.id.slice(-4).toUpperCase()}`,
-                          reference_number: `ATT-DDL-PN-2026/${currentEst.id.slice(-4).toUpperCase()}`,
+                          receipt_reference: ref,
+                          reference_number: ref,
                           amount_paid: currentEst.amount_paid || 30000,
                           date_emission: new Date().toISOString().split('T')[0],
                           record_date: new Date().toISOString().split('T')[0]

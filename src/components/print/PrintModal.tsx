@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { X, Printer, ExternalLink, Download, CheckCircle2, ShieldCheck, QrCode, FileText } from 'lucide-react';
+import { X, Printer, ExternalLink, Download, CheckCircle2, ShieldCheck, QrCode, FileText, FileDown } from 'lucide-react';
 import { OfficialRepublicLogo, RepublicTricolorBar, RepublicQrCode } from '../common/OfficialSeal';
 import { OfficialVerifiableQrCode } from '../common/OfficialVerifiableQrCode';
 import { REPUBLIQUE_CONGO } from '../../constants/referential';
 import { OfficialReportDocumentView } from '../modules/OfficialReportDocumentView';
 import { executeReliablePrint, openDocumentInNewTab } from '../../utils/printUtility';
 import { formatDateFR, formatDateLongFR } from '../../utils/dateUtils';
+import { downloadAttestationDocx, formatOfficialRefNumber, formatArrondissementHuman } from '../../utils/docxExport';
 
 export type PrintDocumentType =
   | 'ATTESTATION_A4'
@@ -37,6 +38,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
   data
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isDownloadingDocx, setIsDownloadingDocx] = useState(false);
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -60,6 +62,27 @@ export const PrintModal: React.FC<PrintModalProps> = ({
 
   const handleOpenStandalone = () => {
     openDocumentInNewTab('ddlpn-printable-sheet', title);
+  };
+
+  const handleDownloadDocx = async () => {
+    try {
+      setIsDownloadingDocx(true);
+      await downloadAttestationDocx({
+        reference_number: data.reference_number || data.receipt_reference || '048',
+        establishment_name: data.establishment_name || data.name || '',
+        promoter_title: data.promoter_title || 'Monsieur',
+        promoter_name: data.promoter_name || '',
+        activity_type: data.activity_type || 'Établissement de loisirs',
+        quartier: data.quartier || '',
+        arrondissement: data.arrondissement || '1_LUMUMBA',
+        address: data.address || '',
+        date_emission: data.date_emission || data.record_date
+      });
+    } catch (err) {
+      console.error('Erreur export DOCX:', err);
+    } finally {
+      setIsDownloadingDocx(false);
+    }
   };
 
   return (
@@ -94,6 +117,20 @@ export const PrintModal: React.FC<PrintModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Word DOCX Download Button for Attestation de Dépôt */}
+            {documentType === 'ATTESTATION_A4' && (
+              <button
+                type="button"
+                onClick={handleDownloadDocx}
+                disabled={isDownloadingDocx}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition cursor-pointer"
+                title="Télécharger en document Word (.docx) modifiable avant impression"
+              >
+                <FileDown className="w-3.5 h-3.5" />
+                <span>{isDownloadingDocx ? 'Export Word...' : 'Télécharger Word (.docx)'}</span>
+              </button>
+            )}
+
             {/* Direct Primary Print Button */}
             <button
               type="button"
@@ -378,7 +415,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                     {/* Le numéro du courrier découle directement de la capsule émettrice */}
                     <div className="mt-2 pt-1 border-t border-slate-300 text-center">
                       <p className="font-mono-ref font-black text-slate-900 text-[10px]">
-                        N° <span className="underline decoration-slate-400 underline-offset-2">{data.reference_number || data.receipt_reference || '087/MCAPNIT/DGL/DDL-PN/SAA-2026'}</span>
+                        N° <span className="underline decoration-slate-400 underline-offset-2">{documentType === 'ATTESTATION_A4' ? formatOfficialRefNumber(data.reference_number || data.receipt_reference || '048').replace(/^N°\s*/, '') : (data.reference_number || data.receipt_reference || '087/MCAPNIT/DGL/DDL-PN/SAA-2026')}</span>
                       </p>
                     </div>
                   </div>
@@ -736,105 +773,112 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                         </div>
                       )}
                     </div>
-                  ) : (
+                  ) : documentType === 'ATTESTATION_A4' ? (
                     /* ==============================================================
-                        PROTOTYPE MAJEUR: ATTESTATION DE DÉPÔT ET TITRE PROVISOIRE A4
+                        PROTOTYPE MAJEUR: ATTESTATION DE DÉPÔT ET TITRE TRANSITOIRE A4
+                        (CONFORME STRICTEMENT AU MODÈLE OFFICIEL DDL-PN DEMANDÉ)
                        ============================================================== */
-                    <div className="space-y-6 my-auto">
+                    <div className="space-y-8 my-auto max-w-2xl mx-auto py-6">
                       <div className="text-center my-2">
-                        <span className="text-xs font-mono-ref font-black text-[#006d2f] uppercase tracking-[0.25em] block">
-                          TITRE PROVISOIRE D'EXPLOITATION & DE CONTINUITÉ D'ACTIVITÉ
+                        <span className="text-xs sm:text-sm font-bold text-[#006d2f] uppercase tracking-widest block font-sans">
+                          TITRE TRANSITOIRE D'EXPLOITATION
                         </span>
-                        <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-widest text-[#022448] font-republic underline decoration-[#006d2f] decoration-2 underline-offset-8 mt-2">
+                        <h1 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-wide text-[#022448] font-serif underline decoration-[#006d2f] decoration-2 underline-offset-8 mt-2">
                           ATTESTATION DE DÉPÔT
                         </h1>
-                        <p className="text-xs text-slate-600 italic mt-2">
-                          Délivrée en application de la Loi N° 21-2019 du 12 juillet 2019 fixant le régime général des loisirs
-                        </p>
                       </div>
 
-                      <div className="text-sm sm:text-base text-justify leading-loose space-y-5 font-serif text-slate-900 px-2 sm:px-4">
-                        <p className="indent-10">
-                          Par la présente, le Directeur Départemental des Loisirs de Pointe-Noire soussigné, atteste que{' '}
+                      <div className="text-sm sm:text-base text-justify leading-relaxed sm:leading-loose space-y-6 font-serif text-slate-900">
+                        <p>
+                          Par la présente, je soussigné, Directeur Départemental des Loisirs de Pointe-Noire, atteste que{' '}
                           <strong className="font-bold text-[#022448]">
-                            {data.promoter_title || 'Monsieur / Madame'} {data.promoter_name || 'l’Exploitant'}
-                          </strong>, Promoteur / Gérant dûment enregistré au répertoire départemental, a déposé auprès du Service Assistance et Autorisation (SAA) le dossier réglementaire complet aux fins de délivrance de l'Agrément d'Exploitation pour l'établissement récréatif ci-après désigné :
+                            {data.promoter_title || 'Monsieur'} {data.promoter_name || 'Exploitant'}
+                          </strong>
+                          , a déposé un dossier d'instruction en vue de solliciter l'agrément officiel d'exploitation d'un{' '}
+                          <strong className="font-bold text-slate-900">{data.activity_type || 'Établissement de Loisirs'}</strong>
+                          , dénommé <strong className="font-bold text-[#022448] uppercase">« {data.establishment_name || data.name} »</strong>
+                          , sis à <span className="italic">{data.address || data.quartier || 'Pointe-Noire'}{data.quartier && data.address && !data.address.includes(data.quartier) ? ` (${data.quartier})` : ''}</span>, {formatArrondissementHuman(data.arrondissement)}.
                         </p>
 
-                        {/* Cartouche d'Identification Harmonisé */}
-                        <div className="bg-slate-50 border-2 border-[#022448]/30 rounded-xl p-4 my-2 font-serif text-[13px] sm:text-sm space-y-1.5 shadow-2xs">
-                          <div className="flex justify-between items-center border-b border-slate-300 pb-1.5">
-                            <span>Dénomination commerciale :</span>
-                            <span className="font-extrabold text-[#022448] text-base uppercase font-republic">« {data.establishment_name || data.name} »</span>
-                          </div>
-                          <div className="flex justify-between items-center pt-0.5">
-                            <span>Nature de l'activité récréative :</span>
-                            <span className="font-bold text-slate-800">{data.activity_type || data.activity_code || 'Établissement de Loisirs & Divertissements'}</span>
-                          </div>
-                          <div className="flex justify-between items-center pt-0.5">
-                            <span>Localisation administrative :</span>
-                            <span className="font-bold text-slate-800">{data.arrondissement} • Quartier {data.quartier || 'Centre'} ({data.address || 'Pointe-Noire'})</span>
-                          </div>
-                          {(data.filing_fee || data.amount_paid) && (
-                            <div className="flex justify-between items-center pt-1 border-t border-slate-200 text-xs font-mono-ref text-emerald-800">
-                              <span>Régularité des droits d'instruction :</span>
-                              <span className="font-black">Quittance d'enregistrement acquittée</span>
-                            </div>
-                          )}
-                        </div>
-
-                        <p className="indent-10">
-                          La présente attestation confère à l'établissement bénéficiaire le droit légal d'exercer et de poursuivre ses activités récréatives à titre transitoire pendant toute la durée de la procédure d'instruction technique in situ et de transmission de l'agrément définitif par la Direction Générale des Loisirs.
+                        <p className="text-slate-800">
+                          La présente attestation est délivrée à titre transitoire pour permettre la continuité des activités durant la phase d'instruction technique et de mise en conformité du dossier.
                         </p>
 
-                        <p className="indent-10">
-                          Les autorités administratives, préfectorales, policières et de sécurité publique sont tenues de lui accorder toute la protection requise par les lois et règlements de la République, et de veiller au respect de la quiétude des usagers.
-                        </p>
-
-                        <p className="indent-10 font-bold text-slate-900 pt-1">
-                          En foi de quoi, la présente Attestation de Dépôt lui est délivrée pour servir et valoir ce que de droit. /-
+                        <p className="font-bold text-slate-900">
+                          En foi de quoi, la présente attestation lui est établie pour servir et valoir ce que de droit. /-
                         </p>
                       </div>
+                    </div>
+                  ) : (
+                    /* Fallback for other documents */
+                    <div className="space-y-4">
+                      {/* Empty generic container */}
                     </div>
                   )}
                 </div>
 
-                {/* 3. BAS DE PAGE SOLENNEL : AMPLIATIONS & SIGNATURE DU CHEF DIRECTEMENT AU BAS */}
-                <div className="mt-auto pt-3 border-t-2 border-[#022448] flex items-end justify-between text-xs">
-                  {/* À GAUCHE: Ampliations en bas */}
-                  <div className="text-left text-[8.5px] sm:text-[9px] text-slate-700 font-serif leading-tight space-y-0.5 max-w-[250px]">
-                    <p className="font-black text-slate-900 uppercase tracking-wider mb-1 underline underline-offset-2">
-                      AMPLIATIONS :
-                    </p>
-                    <p>• Cabinet du Ministre (ATCR) .................... 1</p>
-                    <p>• Direction Générale des Loisirs (DGL) ........ 1</p>
-                    <p>• Préfecture de Pointe-Noire .................. 1</p>
-                    <p>• Mairie Centrale de Pointe-Noire ............. 1</p>
-                    <p>• Commissariat Central de Police .............. 1</p>
-                    <p>• Service Administratif et Financier (SAF) ... 1</p>
-                    <p>• Service Assistance et Autorisation (SAA) .... 1</p>
-                    <p>• Intéressé(e) / Archives Chrono .............. 2</p>
-                  </div>
-
-                  {/* À DROITE: Signature du Directeur Départemental - AUCUN ESPACE EN DESSOUS */}
-                  <div className="text-center font-serif w-80">
-                    <p className="text-[11px] text-slate-800 font-bold uppercase tracking-wide">
-                      Le Directeur Départemental des Loisirs de Pointe-Noire,
-                    </p>
-
-                    {/* Espace officiel pour le paraphe, la signature manuscrite et le timbre sec */}
-                    <div className="h-16 flex items-center justify-center text-slate-400 text-[10px] italic font-serif my-1 border border-dashed border-slate-300 rounded bg-slate-50/50">
-                      [Cachet d'État & Signature du Directeur]
+                {/* 3. BAS DE PAGE SOLENNEL : AMPLIATIONS & SIGNATURE */}
+                {documentType === 'ATTESTATION_A4' ? (
+                  <div className="mt-auto pt-4 border-t border-slate-300 flex items-end justify-between text-xs font-serif">
+                    {/* À GAUCHE: Ampliations brèves */}
+                    <div className="text-left text-[9.5px] sm:text-[10px] text-slate-800 leading-tight space-y-1">
+                      <p className="font-extrabold uppercase tracking-wider text-slate-900">
+                        AMPLIATIONS :
+                      </p>
+                      <p>• SAA / SAF / Chrono</p>
+                      <p>• Intéressé(e)</p>
                     </div>
 
-                    <p className="font-black text-[#022448] text-sm uppercase font-republic tracking-wider">
-                      Jean Richard NTSEKE NGOUAKA
-                    </p>
-                    <p className="text-[8.5px] text-slate-500 font-semibold italic mt-0.5">
-                      Chevalier dans l'Ordre du Mérite Congolais
-                    </p>
+                    {/* À DROITE: Fait à Pointe-Noire & Signature */}
+                    <div className="text-right text-[10.5px] sm:text-[11px] text-slate-800 space-y-1">
+                      <p className="italic text-slate-700">
+                        Fait à Pointe-Noire, le {formatDateFR(data.date_emission || data.record_date || new Date())}
+                      </p>
+                      <p className="text-[9px] italic text-slate-400 py-0.5">
+                        [Sceau & Paraphe Officiel]
+                      </p>
+                      <p className="font-extrabold text-[#022448] text-sm uppercase tracking-wide">
+                        JEAN RICHARD NTSEKE NGOUAKA
+                      </p>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="mt-auto pt-3 border-t-2 border-[#022448] flex items-end justify-between text-xs">
+                    {/* À GAUCHE: Ampliations en bas */}
+                    <div className="text-left text-[8.5px] sm:text-[9px] text-slate-700 font-serif leading-tight space-y-0.5 max-w-[250px]">
+                      <p className="font-black text-slate-900 uppercase tracking-wider mb-1 underline underline-offset-2">
+                        AMPLIATIONS :
+                      </p>
+                      <p>• Cabinet du Ministre (ATCR) .................... 1</p>
+                      <p>• Direction Générale des Loisirs (DGL) ........ 1</p>
+                      <p>• Préfecture de Pointe-Noire .................. 1</p>
+                      <p>• Mairie Centrale de Pointe-Noire ............. 1</p>
+                      <p>• Commissariat Central de Police .............. 1</p>
+                      <p>• Service Administratif et Financier (SAF) ... 1</p>
+                      <p>• Service Assistance et Autorisation (SAA) .... 1</p>
+                      <p>• Intéressé(e) / Archives Chrono .............. 2</p>
+                    </div>
+
+                    {/* À DROITE: Signature du Directeur Départemental - AUCUN ESPACE EN DESSOUS */}
+                    <div className="text-center font-serif w-80">
+                      <p className="text-[11px] text-slate-800 font-bold uppercase tracking-wide">
+                        Le Directeur Départemental des Loisirs de Pointe-Noire,
+                      </p>
+
+                      {/* Espace officiel pour le paraphe, la signature manuscrite et le timbre sec */}
+                      <div className="h-16 flex items-center justify-center text-slate-400 text-[10px] italic font-serif my-1 border border-dashed border-slate-300 rounded bg-slate-50/50">
+                        [Cachet d'État & Signature du Directeur]
+                      </div>
+
+                      <p className="font-black text-[#022448] text-sm uppercase font-republic tracking-wider">
+                        Jean Richard NTSEKE NGOUAKA
+                      </p>
+                      <p className="text-[8.5px] text-slate-500 font-semibold italic mt-0.5">
+                        Chevalier dans l'Ordre du Mérite Congolais
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
